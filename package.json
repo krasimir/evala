@@ -29,9 +29,11 @@
     "cpx": "^1.5.0",
     "eslint": "^4.12.1",
     "eslint-plugin-react": "^7.5.1",
+    "kuker-emitters": "^6.7.2",
     "prop-types": "^15.6.0",
     "react": "^15.6.1",
     "react-dom": "^15.6.1",
+    "react-helmet": "^5.2.0",
     "stent": "4.1.0",
     "watchify": "^3.9.0",
     "zip-folder": "^1.0.0"
