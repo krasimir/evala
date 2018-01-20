@@ -1,2 +1,1 @@
-# git
-GID (Get It Done)
+# GID (Get It Done)
