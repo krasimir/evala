@@ -7,6 +7,9 @@ body, html {
   font-size: 18px;
   color: rgb(26, 26, 26);
 }
+iframe{
+  overflow:hidden;
+}
 .tar {
   text-align: right;
 }

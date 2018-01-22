@@ -4,7 +4,7 @@ import { GOOGLE_MAPS_API_KEY } from '../constants';
 import normalizeDarkSkyData from '../helpers/normalizeDarkSkyData';
 import moment from 'moment';
 
-const USE_FAKE = true;
+const USE_FAKE = false;
 
 function createGoogleMapsURL() {
   if (USE_FAKE) {
@@ -72,7 +72,7 @@ function * fetchData(state) {
     }
   }
 
-  return { name: 'day', data, lastUpdated };
+  return { name: 'with-data', data, lastUpdated };
 }
 
 const Weather = Machine.create('Weather', {
@@ -81,14 +81,18 @@ const Weather = Machine.create('Weather', {
     'no-data': {
       'fetch': fetchData
     },
-    fetching: {
+    'fetching': {
       'foo': 'bar'
     },
-    error: {
-      'foo': 'bar'
-    },
-    day: {
+    'error': {
       'fetch': fetchData
+    },
+    'with-data': {
+      'fetch': fetchData,
+      'refresh': function * (state) {
+        localStorage.removeItem('GID_WEATHER');
+        return yield call(fetchData);
+      }
     }
   }
 });

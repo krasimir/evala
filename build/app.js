@@ -36664,10 +36664,6 @@ var _reactDom = require('react-dom');
 
 var _reactDom2 = _interopRequireDefault(_reactDom);
 
-var _stent = require('stent');
-
-var _kukerEmitters = require('kuker-emitters');
-
 var _reactHelmet = require('react-helmet');
 
 var _getGlobalStyles = require('./helpers/getGlobalStyles');
@@ -36682,7 +36678,11 @@ var _Weather = require('./Weather');
 
 var _Weather2 = _interopRequireDefault(_Weather);
 
+require('./stent/debug');
+
 require('./stent/Weather');
+
+require('./helpers/shortcuts');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -36691,8 +36691,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-_stent.Machine.addMiddleware((0, _kukerEmitters.StentEmitter)());
 
 var App = function (_React$Component) {
   _inherits(App, _React$Component);
@@ -36729,7 +36727,7 @@ var App = function (_React$Component) {
 
 _reactDom2.default.render(_react2.default.createElement(App, null), document.querySelector('#container'));
 
-},{"./Time":557,"./Weather":558,"./helpers/getGlobalStyles":560,"./stent/Weather":562,"babel-polyfill":1,"kuker-emitters":369,"react":535,"react-dom":379,"react-helmet":506,"stent":553}],557:[function(require,module,exports){
+},{"./Time":557,"./Weather":558,"./helpers/getGlobalStyles":560,"./helpers/shortcuts":562,"./stent/Weather":563,"./stent/debug":564,"babel-polyfill":1,"react":535,"react-dom":379,"react-helmet":506}],557:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -37029,12 +37027,12 @@ var Weather = function (_React$Component) {
             _react2.default.createElement(
               'a',
               { onClick: this._displayDays },
-              'days'
+              'daily'
             ),
             _react2.default.createElement(
               'a',
               { onClick: this._displayHours },
-              'hours'
+              'hourly'
             )
           ),
           _react2.default.createElement('hr', null),
@@ -37133,7 +37131,7 @@ var toDateTime = function toDateTime(time) {
 };
 
 function normalizeDarkSkyData(data) {
-  console.log(data);
+  // console.log(data);
 
   var days = data.daily.data.map(function (_ref) {
     var time = _ref.time,
@@ -37174,6 +37172,15 @@ function normalizeDarkSkyData(data) {
 },{"moment":370}],562:[function(require,module,exports){
 'use strict';
 
+var _stent = require('stent');
+
+Mousetrap.bind('ctrl+u', function (e) {
+  _stent.Machine.get('Weather').refresh();
+});
+
+},{"stent":553}],563:[function(require,module,exports){
+'use strict';
+
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
@@ -37198,7 +37205,7 @@ var _marked = /*#__PURE__*/regeneratorRuntime.mark(fetchLocal),
     _marked2 = /*#__PURE__*/regeneratorRuntime.mark(fetchRemote),
     _marked3 = /*#__PURE__*/regeneratorRuntime.mark(fetchData);
 
-var USE_FAKE = true;
+var USE_FAKE = false;
 
 function createGoogleMapsURL() {
   if (USE_FAKE) {
@@ -37353,7 +37360,7 @@ function fetchData(state) {
           return _context3.abrupt('return', { name: 'error', data: null, error: _context3.t0 });
 
         case 23:
-          return _context3.abrupt('return', { name: 'day', data: data, lastUpdated: lastUpdated });
+          return _context3.abrupt('return', { name: 'with-data', data: data, lastUpdated: lastUpdated });
 
         case 24:
         case 'end':
@@ -37369,18 +37376,46 @@ var Weather = _stent.Machine.create('Weather', {
     'no-data': {
       'fetch': fetchData
     },
-    fetching: {
+    'fetching': {
       'foo': 'bar'
     },
-    error: {
-      'foo': 'bar'
-    },
-    day: {
+    'error': {
       'fetch': fetchData
+    },
+    'with-data': {
+      'fetch': fetchData,
+      'refresh': /*#__PURE__*/regeneratorRuntime.mark(function refresh(state) {
+        return regeneratorRuntime.wrap(function refresh$(_context4) {
+          while (1) {
+            switch (_context4.prev = _context4.next) {
+              case 0:
+                localStorage.removeItem('GID_WEATHER');
+                _context4.next = 3;
+                return (0, _helpers.call)(fetchData);
+
+              case 3:
+                return _context4.abrupt('return', _context4.sent);
+
+              case 4:
+              case 'end':
+                return _context4.stop();
+            }
+          }
+        }, refresh, this);
+      })
     }
   }
 });
 
 exports.default = Weather;
 
-},{"../constants":559,"../helpers/normalizeDarkSkyData":561,"moment":370,"stent":553,"stent/lib/helpers":546}]},{},[556]);
+},{"../constants":559,"../helpers/normalizeDarkSkyData":561,"moment":370,"stent":553,"stent/lib/helpers":546}],564:[function(require,module,exports){
+'use strict';
+
+var _stent = require('stent');
+
+var _kukerEmitters = require('kuker-emitters');
+
+_stent.Machine.addMiddleware((0, _kukerEmitters.StentEmitter)());
+
+},{"kuker-emitters":369,"stent":553}]},{},[556]);

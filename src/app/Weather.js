@@ -102,8 +102,8 @@ class Weather extends React.Component {
           <span className='small'>{ lastUpdated.format('MMMM Do YYYY, HH:mm') }<br />{ data.timezone }</span>
           <hr />
           <span className='small'>
-            <a onClick={ this._displayDays }>days</a>
-            <a onClick={ this._displayHours }>hours</a>
+            <a onClick={ this._displayDays }>daily</a>
+            <a onClick={ this._displayHours }>hourly</a>
           </span>
           <hr />
           { this.state.display === 'days' && this._renderDays() }

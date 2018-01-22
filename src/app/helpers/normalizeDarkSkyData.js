@@ -3,7 +3,7 @@ import moment from 'moment';
 const toDateTime = time => moment.unix(time);
 
 export default function normalizeDarkSkyData(data) {
-  console.log(data);
+  // console.log(data);
 
   const days = data.daily.data.map(({
     time,

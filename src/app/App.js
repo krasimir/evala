@@ -1,15 +1,13 @@
 import 'babel-polyfill';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import { Machine } from 'stent';
-import { StentEmitter } from 'kuker-emitters';
 import { Helmet } from 'react-helmet';
 import getGlobalStyles from './helpers/getGlobalStyles';
 import Time from './Time';
 import Weather from './Weather';
+import './stent/debug';
 import './stent/Weather';
-
-Machine.addMiddleware(StentEmitter());
+import './helpers/shortcuts';
 
 class App extends React.Component {
   render() {
