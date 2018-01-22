@@ -105,7 +105,6 @@ class Weather extends React.Component {
             <a onClick={ this._displayDays }>daily</a>
             <a onClick={ this._displayHours }>hourly</a>
           </span>
-          <hr />
           { this.state.display === 'days' && this._renderDays() }
           { this.state.display === 'hours' && this._renderHours() }
         </div>

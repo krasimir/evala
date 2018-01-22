@@ -7,6 +7,9 @@ body, html {
   font-size: 18px;
   color: rgb(26, 26, 26);
 }
+*, *:before, *:after {
+  box-sizing: border-box;
+}
 iframe{
   overflow:hidden;
 }
@@ -16,15 +19,30 @@ iframe{
 .tal {
   text-align: left;
 }
-.time {
-  position: absolute;
-  top: 1em;
-  left: 1em;
-  text-align: left;
+
+
+.container {
+  display: grid;
+  height: 100%;
+  grid-template-columns: 50% 50%;
+  grid-template-rows: 30% 70%;
+  grid-template-areas: "time weather" "notes notes";
+  grid-gap: 2em 2em;
+  height: calc(100% - 2em);
+  width: calc(100% - 2em);
 }
-.time .big, .weather .big {
-  font-size: 3em;
+
+
+.time {
+  padding: 2em;
+  justify-self: right;
+  align-self: end;
+  text-align: right;
+}
+.time .big {
+  font-size: 6em;
   display: block;
+  font-weight: 100;
 }
 .time .medium, .weather .medium {
   display: block;
@@ -35,12 +53,18 @@ iframe{
   font-size: 0.7em;
   opacity: 0.6;
 }
+
+
 .weather {
-  position: absolute;
-  top: 1em;
-  right: 1em;
-  text-align: right;
-  padding-bottom: 1em;
+  text-align: left;
+  padding: 2em;
+  justify-self: left;
+  align-self: end;
+}
+.weather .big {
+  font-size: 3em;
+  display: block;
+  font-weight: 300;
 }
 .weather hr {
   border-top: 0;
@@ -61,4 +85,12 @@ iframe{
 }
 .weatherIcon {
   margin-right: 0.5em;
+  font-size: 0.7em;
+  transform: translateY(-9px);
+}
+
+
+.notes {
+  padding: 2em;
+  grid-area: notes;
 }

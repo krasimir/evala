@@ -27,7 +27,7 @@ function * fetchLocal() {
   if (fromLocalStorage) {
     try {
       const { data, lastUpdated } = JSON.parse(fromLocalStorage);
-      const diffInHours = (moment(lastUpdated).diff(moment(), 'hours', true));
+      const diffInHours = (moment().diff(moment(lastUpdated), 'hours', true));
 
       if (diffInHours <= 4) {
         return { data, lastUpdated };
@@ -94,6 +94,12 @@ const Weather = Machine.create('Weather', {
         return yield call(fetchData);
       }
     }
+  },
+  today() {
+    if (this.state.data) {
+      return this.state.data.days.find(day => day.time.isSame(moment(), 'day'));
+    }
+    return null;
   }
 });
 

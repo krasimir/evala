@@ -36664,6 +36664,10 @@ var _reactDom = require('react-dom');
 
 var _reactDom2 = _interopRequireDefault(_reactDom);
 
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
 var _reactHelmet = require('react-helmet');
 
 var _getGlobalStyles = require('./helpers/getGlobalStyles');
@@ -36683,6 +36687,8 @@ require('./stent/debug');
 require('./stent/Weather');
 
 require('./helpers/shortcuts');
+
+var _react3 = require('stent/lib/react');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -36706,18 +36712,19 @@ var App = function (_React$Component) {
     value: function render() {
       return _react2.default.createElement(
         'div',
-        null,
+        { className: 'container' },
         _react2.default.createElement(
           _reactHelmet.Helmet,
           null,
           _react2.default.createElement(
             'style',
             null,
-            (0, _getGlobalStyles2.default)()
+            (0, _getGlobalStyles2.default)(this.props.today)
           )
         ),
         _react2.default.createElement(_Time2.default, null),
-        _react2.default.createElement(_Weather2.default, null)
+        _react2.default.createElement(_Weather2.default, null),
+        _react2.default.createElement('div', { className: 'notes' })
       );
     }
   }]);
@@ -36725,9 +36732,19 @@ var App = function (_React$Component) {
   return App;
 }(_react2.default.Component);
 
-_reactDom2.default.render(_react2.default.createElement(App, null), document.querySelector('#container'));
+App.propTypes = {
+  today: _propTypes2.default.any
+};
 
-},{"./Time":557,"./Weather":558,"./helpers/getGlobalStyles":560,"./helpers/shortcuts":562,"./stent/Weather":563,"./stent/debug":564,"babel-polyfill":1,"react":535,"react-dom":379,"react-helmet":506}],557:[function(require,module,exports){
+var AppConnected = (0, _react3.connect)(App).with('Weather').map(function (weather) {
+  return {
+    today: weather.today()
+  };
+});
+
+_reactDom2.default.render(_react2.default.createElement(AppConnected, null), document.querySelector('#container'));
+
+},{"./Time":557,"./Weather":558,"./helpers/getGlobalStyles":560,"./helpers/shortcuts":562,"./stent/Weather":563,"./stent/debug":564,"babel-polyfill":1,"prop-types":377,"react":535,"react-dom":379,"react-helmet":506,"stent/lib/react":555}],557:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -37035,7 +37052,6 @@ var Weather = function (_React$Component) {
               'hourly'
             )
           ),
-          _react2.default.createElement('hr', null),
           this.state.display === 'days' && this._renderDays(),
           this.state.display === 'hours' && this._renderHours()
         );
@@ -37095,8 +37111,21 @@ exports.default = (0, _react3.connect)(Weather).with('Weather').map(function (_r
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-var BG_COLORS = exports.BG_COLORS = ['#BBBB88', '#CCC68D', '#EEDD99', '#EEC290', '#EEAA88', '#FCFEF5', '#E9FFE1', '#CDCFB7', '#D6E6C3', '#FAFBE3'];
+exports.calculateBGColor = calculateBGColor;
+var BG_COLOR_OPACITY = 0.5;
+
+var COLORS_PER_TEMPERATURE = exports.COLORS_PER_TEMPERATURE = [{ temperature: -65, color: 'rgba(130, 22, 146, ' + BG_COLOR_OPACITY + ')' }, { temperature: -55, color: 'rgba(130, 22, 146, ' + BG_COLOR_OPACITY + ')' }, { temperature: -45, color: 'rgba(130, 22, 146, ' + BG_COLOR_OPACITY + ')' }, { temperature: -40, color: 'rgba(130, 22, 146, ' + BG_COLOR_OPACITY + ')' }, { temperature: -30, color: 'rgba(130, 87, 219, ' + BG_COLOR_OPACITY + ')' }, { temperature: -20, color: 'rgba(32, 140, 236, ' + BG_COLOR_OPACITY + ')' }, { temperature: -10, color: 'rgba(32, 196, 232, ' + BG_COLOR_OPACITY + ')' }, { temperature: 0, color: 'rgba(35, 221, 221, ' + BG_COLOR_OPACITY + ')' }, { temperature: 10, color: 'rgba(194, 255, 40, ' + BG_COLOR_OPACITY + ')' }, { temperature: 20, color: 'rgba(255, 240, 40, ' + BG_COLOR_OPACITY + ')' }, { temperature: 25, color: 'rgba(255, 194, 40, ' + BG_COLOR_OPACITY + ')' }, { temperature: 30, color: 'rgba(252, 128, 20, ' + BG_COLOR_OPACITY + ')' }];
+var BG_DEFAULT_COLOR = exports.BG_DEFAULT_COLOR = '#fff';
 var GOOGLE_MAPS_API_KEY = exports.GOOGLE_MAPS_API_KEY = 'AIzaSyAj1B0ZHdivYN5cG8-7Ry5fnLvtuY9rm0o';
+
+function calculateBGColor(temperature) {
+  for (var i = 0; i < COLORS_PER_TEMPERATURE.length - 1; i++) {
+    if (temperature >= COLORS_PER_TEMPERATURE[i].temperature && temperature < COLORS_PER_TEMPERATURE[i + 1].temperature) {
+      return COLORS_PER_TEMPERATURE[i].color;
+    }
+  }
+  return COLORS_PER_TEMPERATURE[COLORS_PER_TEMPERATURE.length - 1].color;
+}
 
 },{}],560:[function(require,module,exports){
 'use strict';
@@ -37108,8 +37137,14 @@ exports.default = getGlobalStyles;
 
 var _constants = require('../constants');
 
-function getGlobalStyles() {
-  return '\n    body {\n      background: ' + _constants.BG_COLORS[Math.floor(Math.random() * _constants.BG_COLORS.length)] + ';\n      transition: background-color 1000ms ease;\n    }\n  ';
+function getGlobalStyles(today) {
+  var bgColor = _constants.BG_DEFAULT_COLOR;
+
+  if (today) {
+    bgColor = (0, _constants.calculateBGColor)(today.temperature);
+  }
+
+  return '\n    body {\n      background: ' + bgColor + ';\n      transition: background-color 1000ms ease;\n    }\n  ';
 };
 
 },{"../constants":559}],561:[function(require,module,exports){
@@ -37241,7 +37276,7 @@ function fetchLocal() {
 
           _context.prev = 2;
           _JSON$parse = JSON.parse(fromLocalStorage), data = _JSON$parse.data, lastUpdated = _JSON$parse.lastUpdated;
-          diffInHours = (0, _moment2.default)(lastUpdated).diff((0, _moment2.default)(), 'hours', true);
+          diffInHours = (0, _moment2.default)().diff((0, _moment2.default)(lastUpdated), 'hours', true);
 
           if (!(diffInHours <= 4)) {
             _context.next = 7;
@@ -37404,6 +37439,14 @@ var Weather = _stent.Machine.create('Weather', {
         }, refresh, this);
       })
     }
+  },
+  today: function today() {
+    if (this.state.data) {
+      return this.state.data.days.find(function (day) {
+        return day.time.isSame((0, _moment2.default)(), 'day');
+      });
+    }
+    return null;
   }
 });
 
