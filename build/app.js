@@ -38875,6 +38875,8 @@ require('./stent/debug');
 
 require('./stent/Weather');
 
+require('./stent/Details');
+
 require('./helpers/shortcuts');
 
 var _react3 = require('stent/lib/react');
@@ -38915,7 +38917,7 @@ var App = function (_React$Component) {
 
       return _react2.default.createElement(
         'div',
-        { className: 'container' },
+        { className: 'container ' + (this.props.isDetailsOpen ? 'withDetails' : '') },
         _react2.default.createElement(
           _reactHelmet.Helmet,
           null,
@@ -38941,18 +38943,20 @@ var App = function (_React$Component) {
 }(_react2.default.Component);
 
 App.propTypes = {
-  today: _propTypes2.default.any
+  today: _propTypes2.default.any,
+  isDetailsOpen: _propTypes2.default.bool
 };
 
-var AppConnected = (0, _react3.connect)(App).with('Weather').map(function (weather) {
+var AppConnected = (0, _react3.connect)(App).with('Weather', 'Details').map(function (weather, details) {
   return {
-    today: weather.today()
+    today: weather.today(),
+    isDetailsOpen: details.isOpened()
   };
 });
 
 _reactDom2.default.render(_react2.default.createElement(AppConnected, null), document.querySelector('#container'));
 
-},{"./Time":564,"./Weather":565,"./helpers/getGlobalStyles":567,"./helpers/shortcuts":569,"./stent/Weather":570,"./stent/debug":571,"babel-polyfill":1,"moment":377,"prop-types":384,"react":542,"react-dom":386,"react-helmet":513,"stent/lib/react":562}],564:[function(require,module,exports){
+},{"./Time":564,"./Weather":565,"./helpers/getGlobalStyles":567,"./helpers/shortcuts":569,"./stent/Details":570,"./stent/Weather":571,"./stent/debug":572,"babel-polyfill":1,"moment":377,"prop-types":384,"react":542,"react-dom":386,"react-helmet":513,"stent/lib/react":562}],564:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -39095,7 +39099,8 @@ var Weather = function (_React$Component) {
   }, {
     key: '_displayDays',
     value: function _displayDays() {
-      this.setState({ display: this.state.display === 'days' ? null : 'days' });
+      this.props.openDetails('aa');
+      // this.setState({ display: this.state.display === 'days' ? null : 'days' });
     }
   }, {
     key: '_displayHours',
@@ -39175,7 +39180,7 @@ var Weather = function (_React$Component) {
           return item.time.isAfter(_this3.now, 'hour');
         }).map(function (item, i) {
           return _react2.default.createElement(
-            'div',
+            'span',
             { key: i, className: 'small tal' },
             item.time.format('Do HH:mm'),
             ' ',
@@ -39295,12 +39300,13 @@ var Weather = function (_React$Component) {
 Weather.propTypes = {
   state: _propTypes2.default.string,
   fetch: _propTypes2.default.func,
+  openDetails: _propTypes2.default.func,
   error: _propTypes2.default.any,
   data: _propTypes2.default.any,
   lastUpdated: _propTypes2.default.any
 };
 
-exports.default = (0, _react3.connect)(Weather).with('Weather').map(function (_ref2) {
+exports.default = (0, _react3.connect)(Weather).with('Weather', 'Details').map(function (_ref2, details) {
   var state = _ref2.state,
       fetch = _ref2.fetch,
       refreshData = _ref2.refreshData;
@@ -39309,7 +39315,10 @@ exports.default = (0, _react3.connect)(Weather).with('Weather').map(function (_r
     data: state.data,
     error: state.error,
     lastUpdated: state.lastUpdated,
-    fetch: fetch
+    fetch: fetch,
+    openDetails: function openDetails(content) {
+      return details.open(content);
+    }
   };
 });
 
@@ -39439,6 +39448,33 @@ Mousetrap.bind('ctrl+u', function (e) {
 });
 
 },{"stent":560}],570:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _stent = require('stent');
+
+var Details = _stent.Machine.create('Details', {
+  state: { name: 'closed', content: null },
+  transitions: {
+    'closed': {
+      'open': function open(state, content) {
+        return { name: 'opened', content: content };
+      }
+    },
+    'opened': {
+      'close': function close(state, content) {
+        return { name: 'closed', content: null };
+      }
+    }
+  }
+});
+
+exports.default = Details;
+
+},{"stent":560}],571:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -39677,7 +39713,7 @@ var Weather = _stent.Machine.create('Weather', {
 
 exports.default = Weather;
 
-},{"../constants":566,"../helpers/normalizeDarkSkyData":568,"moment":377,"stent":560,"stent/lib/helpers":553}],571:[function(require,module,exports){
+},{"../constants":566,"../helpers/normalizeDarkSkyData":568,"moment":377,"stent":560,"stent/lib/helpers":553}],572:[function(require,module,exports){
 'use strict';
 
 var _stent = require('stent');

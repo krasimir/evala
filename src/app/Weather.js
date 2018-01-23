@@ -32,7 +32,8 @@ class Weather extends React.Component {
     this.props.fetch();
   }
   _displayDays() {
-    this.setState({ display: this.state.display === 'days' ? null : 'days' });
+    this.props.openDetails('aa');
+    // this.setState({ display: this.state.display === 'days' ? null : 'days' });
   }
   _displayHours() {
     this.setState({ display: this.state.display === 'hours' ? null : 'hours' });
@@ -70,9 +71,9 @@ class Weather extends React.Component {
           .filter(item => item.time.isAfter(this.now, 'hour'))
           .map((item, i) => {
             return (
-              <div key={ i } className='small tal'>
+              <span key={ i } className='small tal'>
                 { item.time.format('Do HH:mm') } <strong>{ this._renderItem(item) }</strong> { item.summary }
-              </div>
+              </span>
             );
           })
         }
@@ -125,17 +126,19 @@ class Weather extends React.Component {
 Weather.propTypes = {
   state: PropTypes.string,
   fetch: PropTypes.func,
+  openDetails: PropTypes.func,
   error: PropTypes.any,
   data: PropTypes.any,
   lastUpdated: PropTypes.any
 };
 
 export default connect(Weather)
-  .with('Weather')
-  .map(({ state, fetch, refreshData }) => ({
+  .with('Weather', 'Details')
+  .map(({ state, fetch, refreshData }, details) => ({
     state: state.name,
     data: state.data,
     error: state.error,
     lastUpdated: state.lastUpdated,
-    fetch
+    fetch,
+    openDetails: content => details.open(content)
   }));

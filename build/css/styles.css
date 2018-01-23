@@ -23,6 +23,7 @@ iframe{
 
 .container {
   display: grid;
+  width: 100%;
   height: 100%;
   grid-template-columns: 50% 50%;
   grid-template-rows: 30% 70%;
@@ -30,6 +31,10 @@ iframe{
   grid-gap: 2em 2em;
   height: calc(100% - 2em);
   width: calc(100% - 2em);
+  transition: width 300ms ease-out;
+}
+.container.withDetails {
+  width: 50%;
 }
 
 
@@ -85,6 +90,8 @@ iframe{
 }
 .weatherIcon {
   margin-right: 0.5em;
+}
+.weather .big .weatherIcon {
   font-size: 0.7em;
   transform: translateY(-9px);
 }

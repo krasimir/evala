@@ -8,6 +8,7 @@ import Time from './Time';
 import Weather from './Weather';
 import './stent/debug';
 import './stent/Weather';
+import './stent/Details';
 import './helpers/shortcuts';
 import { connect } from 'stent/lib/react';
 import moment from 'moment';
@@ -22,7 +23,7 @@ class App extends React.Component {
     const newTitle = this._getNewTitle();
 
     return (
-      <div className="container">
+      <div className={ `container ${ this.props.isDetailsOpen ? 'withDetails' : '' }` }>
         <Helmet>
           <style>{ getGlobalStyles(this.props.today) }</style>
           { newTitle && <title>{ newTitle }</title> }
@@ -36,13 +37,15 @@ class App extends React.Component {
 }
 
 App.propTypes = {
-  today: PropTypes.any
+  today: PropTypes.any,
+  isDetailsOpen: PropTypes.bool
 };
 
 const AppConnected = connect(App)
-  .with('Weather')
-  .map(weather => ({
-    today: weather.today()
+  .with('Weather', 'Details')
+  .map((weather, details) => ({
+    today: weather.today(),
+    isDetailsOpen: details.isOpened()
   }));
 
 ReactDOM.render(<AppConnected />, document.querySelector('#container'));
