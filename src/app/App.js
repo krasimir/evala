@@ -10,13 +10,22 @@ import './stent/debug';
 import './stent/Weather';
 import './helpers/shortcuts';
 import { connect } from 'stent/lib/react';
+import moment from 'moment';
 
 class App extends React.Component {
+  _getNewTitle() {
+    const { today } = this.props;
+
+    return today ? `${ today.temperature }℃ | ${ moment().format('HH:mm') }` : null;
+  }
   render() {
+    const newTitle = this._getNewTitle();
+
     return (
       <div className="container">
         <Helmet>
           <style>{ getGlobalStyles(this.props.today) }</style>
+          { newTitle && <title>{ newTitle }</title> }
         </Helmet>
         <Time />
         <Weather />

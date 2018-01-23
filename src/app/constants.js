@@ -14,7 +14,7 @@ export const COLORS_PER_TEMPERATURE = [
   { temperature: 25, color: `rgba(255, 194, 40, ${ BG_COLOR_OPACITY })` },
   { temperature: 30, color: `rgba(252, 128, 20, ${ BG_COLOR_OPACITY })` }
 ];
-export const BG_DEFAULT_COLOR = '#fff';
+export const BG_DEFAULT_COLOR = 'rgba(255, 255, 255, 1)';
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyAj1B0ZHdivYN5cG8-7Ry5fnLvtuY9rm0o';
 
 export function calculateBGColor(temperature) {

@@ -26,6 +26,7 @@
     "babel-preset-stage-0": "^6.24.1",
     "babelify": "^7.3.0",
     "browserify": "^14.4.0",
+    "chromath": "^0.0.7",
     "concurrently": "^3.5.1",
     "cpx": "^1.5.0",
     "eslint": "^4.12.1",
