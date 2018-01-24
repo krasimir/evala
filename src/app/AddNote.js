@@ -2,39 +2,19 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'stent/lib/react';
 import Editor from 'react-medium-editor';
+import AutoList from 'medium-editor-autolist';
+// import linkifyHtml from 'linkifyjs/html';
 
 const EDITOR_OPTIONS = {
   toolbar: {
-    buttons: ['bold', 'italic', 'underline']
+    buttons: ['bold', 'italic', 'underline', 'anchor', 'h2', 'h3', 'quote']
   },
   placeholder: {
     text: '',
     hideOnClick: true
   },
-  keyboardCommands: {
-    commands: [
-      {
-        command: 'bold',
-        key: 'B',
-        meta: true,
-        shift: false,
-        alt: false
-      },
-      {
-        command: 'italic',
-        key: 'I',
-        meta: true,
-        shift: false,
-        alt: false
-      },
-      {
-        command: 'underline',
-        key: 'U',
-        meta: true,
-        shift: false,
-        alt: false
-      }
-    ]
+  extensions: {
+    autolist: AutoList
   }
 };
 
@@ -46,25 +26,16 @@ class AddNote extends React.Component {
     this._save = this._save.bind(this);
     this.state = { text: '' };
   }
+  get editableArea() {
+    if (this.editor) {
+      return this.editor.querySelector('[contenteditable]');
+    }
+    return null;
+  }
   componentDidMount() {
     setTimeout(() => {
-      const editableArea = this.editor.querySelector('[contenteditable]');
-
-      editableArea.focus();
-      this.medium.subscribe('editableKeydown', event => {
-        if (event.keyCode === 27) {
-          if (editableArea.innerHTML !== '' && editableArea.innerHTML !== '<p><br></p>') {
-            this.setState({ text: '' }, () => {
-              editableArea.innerHTML = '';
-            });
-          } else {
-            this.props.exit();
-          }
-        }
-        if (event.ctrlKey && event.keyCode === 13) {
-          console.log('save');
-        }
-      });
+      this.editableArea && this.editableArea.focus();
+      this._setShortcuts();
     }, 300);
   }
   componentWillUnmount() {
@@ -75,6 +46,26 @@ class AddNote extends React.Component {
   }
   _onChange(text) {
     this.setState({ text });
+  }
+  _setShortcuts() {
+    if (!this.medium) return;
+
+    this.medium.subscribe('editableKeydown', event => {
+      if (event.keyCode === 27) {
+        if (
+          this.editableArea &&
+          this.editableArea.innerHTML !== '' &&
+          this.editableArea.innerHTML !== '<p><br></p>'
+        ) {
+          this.setState({ text: '' }, () => (this.editableArea.innerHTML = ''));
+        } else {
+          this.props.exit();
+        }
+      }
+      if (event.ctrlKey && event.keyCode === 13) {
+        console.log('save');
+      }
+    });
   }
   render() {
     return (
