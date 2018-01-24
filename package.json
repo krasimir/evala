@@ -37,6 +37,7 @@
     "react": "^15.6.1",
     "react-dom": "^15.6.1",
     "react-helmet": "^5.2.0",
+    "react-medium-editor": "^1.8.1",
     "stent": "5.0.2",
     "watchify": "^3.9.0",
     "zip-folder": "^1.0.0"

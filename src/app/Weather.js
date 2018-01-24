@@ -32,11 +32,18 @@ class Weather extends React.Component {
     this.props.fetch();
   }
   _displayDays() {
-    this.props.openDetails('aa');
-    // this.setState({ display: this.state.display === 'days' ? null : 'days' });
+    const newDisplay = this.state.display === 'days' ? null : 'days';
+
+    this.setState({ display: newDisplay }, () => {
+      this.props.openDetails(newDisplay ? <div>{ this._renderDays() }</div> : null);
+    });
   }
   _displayHours() {
-    this.setState({ display: this.state.display === 'hours' ? null : 'hours' });
+    const newDisplay = this.state.display === 'hours' ? null : 'hours';
+
+    this.setState({ display: newDisplay }, () => {
+      this.props.openDetails(newDisplay ? <div>{ this._renderHours() }</div> : null);
+    });
   }
   _renderItem({ temperature, apparentTemperature, icon }) {
     const iconClass = ICONS_MAPPING[icon];
@@ -56,7 +63,7 @@ class Weather extends React.Component {
       .filter(item => item.time.isAfter(this.now, 'day'))
       .map((item, i) => {
         return (
-          <div key={ i } className='small tal'>
+          <div key={ i }>
             { item.time.format('ddd (Do)') } <strong>{ this._renderItem(item) }</strong> { item.summary }
           </div>
         );
@@ -71,9 +78,9 @@ class Weather extends React.Component {
           .filter(item => item.time.isAfter(this.now, 'hour'))
           .map((item, i) => {
             return (
-              <span key={ i } className='small tal'>
+              <div key={ i }>
                 { item.time.format('Do HH:mm') } <strong>{ this._renderItem(item) }</strong> { item.summary }
-              </span>
+              </div>
             );
           })
         }
@@ -101,13 +108,10 @@ class Weather extends React.Component {
           </span>
           <span className='medium'>{ today.summary }</span>
           <span className='small'>{ lastUpdated.format('MMMM Do YYYY, HH:mm') }<br />{ data.timezone }</span>
-          <hr />
           <span className='small'>
-            <a onClick={ this._displayDays }>daily</a>
-            <a onClick={ this._displayHours }>hourly</a>
+            <a onClick={ this._displayDays }><i className='fa fa-calendar'></i></a>
+            <a onClick={ this._displayHours }><i className='fa fa-clock-o'></i></a>
           </span>
-          { this.state.display === 'days' && this._renderDays() }
-          { this.state.display === 'hours' && this._renderHours() }
         </div>
       );
     }

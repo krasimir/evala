@@ -11,6 +11,12 @@ const Details = Machine.create('Details', {
     'opened': {
       'close': function (state, content) {
         return { name: 'closed', content: null };
+      },
+      'open': function (state, content) {
+        if (!content) {
+          return { name: 'closed', content };
+        }
+        return { name: 'opened', content };
       }
     }
   }

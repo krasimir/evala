@@ -8,13 +8,13 @@ const USE_FAKE = false;
 
 function createGoogleMapsURL() {
   if (USE_FAKE) {
-    return './_mocks/googlemaps.json';
+    return './mocks/googlemaps.json';
   }
   return `https://www.googleapis.com/geolocation/v1/geolocate?key=${ GOOGLE_MAPS_API_KEY }`;
 }
 function createWeatherURL({ lat, lng }) {
   if (USE_FAKE) {
-    return './_mocks/darksky.json';
+    return './mocks/darksky.json';
   }
   return `http://gid.krasimirtsonev.com/weather/?lat=${ lat }&lng=${ lng }`;
 }
