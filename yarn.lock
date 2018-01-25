@@ -2228,6 +2228,10 @@ ignore@^3.3.3:
   version "3.3.7"
   resolved "https://registry.yarnpkg.com/ignore/-/ignore-3.3.7.tgz#612289bfb3c220e186a58118618d5be8c1bab021"
 
+immediate@~3.0.5:
+  version "3.0.6"
+  resolved "https://registry.yarnpkg.com/immediate/-/immediate-3.0.6.tgz#9db1dbd0faf8de6fbe0f5dd5e56bb606280de69b"
+
 imurmurhash@^0.1.4:
   version "0.1.4"
   resolved "https://registry.yarnpkg.com/imurmurhash/-/imurmurhash-0.1.4.tgz#9218b9b2b928a238b13dc4fb6b6d576f231453ea"
@@ -2586,6 +2590,12 @@ lexical-scope@^1.2.0:
   dependencies:
     astw "^2.0.0"
 
+lie@3.1.1:
+  version "3.1.1"
+  resolved "https://registry.yarnpkg.com/lie/-/lie-3.1.1.tgz#9a436b2cc7746ca59de7a41fa469b3efb76bd87e"
+  dependencies:
+    immediate "~3.0.5"
+
 linkifyjs:
   version "2.1.5"
   resolved "https://registry.yarnpkg.com/linkifyjs/-/linkifyjs-2.1.5.tgz#effc9f01e4aeafbbdbef21a45feab38b9516f93e"
@@ -2593,6 +2603,12 @@ linkifyjs:
     jquery ">=1.9.0"
     react ">=0.14.0"
     react-dom ">=0.14.0"
+
+localforage:
+  version "1.5.6"
+  resolved "https://registry.yarnpkg.com/localforage/-/localforage-1.5.6.tgz#d034d15e5372ee97c64173e9a9aeb96815f5dd06"
+  dependencies:
+    lie "3.1.1"
 
 lodash.memoize@~3.0.3:
   version "3.0.4"
@@ -2630,13 +2646,7 @@ md5.js@^1.3.4:
     hash-base "^3.0.0"
     inherits "^2.0.1"
 
-medium-editor-autolist:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/medium-editor-autolist/-/medium-editor-autolist-1.0.1.tgz#2be40f6f74e8f4b5fa7e8b274e3f505c2aea7cdd"
-  dependencies:
-    medium-editor "^5.23.0"
-
-medium-editor@^5.10.0, medium-editor@^5.23.0:
+medium-editor@^5.10.0:
   version "5.23.3"
   resolved "https://registry.yarnpkg.com/medium-editor/-/medium-editor-5.23.3.tgz#6fb638759ae2fc76c423feb056f346d9c518d3b7"
 

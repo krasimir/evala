@@ -35,14 +35,14 @@ class Weather extends React.Component {
     const newDisplay = this.state.display === 'days' ? null : 'days';
 
     this.setState({ display: newDisplay }, () => {
-      this.props.openDetails(newDisplay ? <div>{ this._renderDays() }</div> : null);
+      this.props.openSidebar(newDisplay ? <div>{ this._renderDays() }</div> : null);
     });
   }
   _displayHours() {
     const newDisplay = this.state.display === 'hours' ? null : 'hours';
 
     this.setState({ display: newDisplay }, () => {
-      this.props.openDetails(newDisplay ? <div>{ this._renderHours() }</div> : null);
+      this.props.openSidebar(newDisplay ? <div>{ this._renderHours() }</div> : null);
     });
   }
   _renderItem({ temperature, apparentTemperature, icon }) {
@@ -130,19 +130,19 @@ class Weather extends React.Component {
 Weather.propTypes = {
   state: PropTypes.string,
   fetch: PropTypes.func,
-  openDetails: PropTypes.func,
+  openSidebar: PropTypes.func,
   error: PropTypes.any,
   data: PropTypes.any,
   lastUpdated: PropTypes.any
 };
 
 export default connect(Weather)
-  .with('Weather', 'Details')
-  .map(({ state, fetch, refreshData }, details) => ({
+  .with('Weather', 'Sidebar')
+  .map(({ state, fetch, refreshData }, sidebar) => ({
     state: state.name,
     data: state.data,
     error: state.error,
     lastUpdated: state.lastUpdated,
     fetch,
-    openDetails: content => details.open(content)
+    openSidebar: content => sidebar.open(content)
   }));

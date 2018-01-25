@@ -1,6 +1,6 @@
 import { Machine } from 'stent';
 
-const Details = Machine.create('Details', {
+const Sidebar = Machine.create('Sidebar', {
   state: { name: 'closed', content: null },
   transitions: {
     'closed': {
@@ -22,4 +22,4 @@ const Details = Machine.create('Details', {
   }
 });
 
-export default Details;
+export default Sidebar;

@@ -36,7 +36,7 @@ iframe{
   width: 100%;
   transition: width 300ms ease-out;
 }
-.container.withDetails {
+.container.withSidebar {
   width: 50%;
 }
 @media all and (max-width: 1200px) {
@@ -124,7 +124,8 @@ iframe{
 .notes {
   padding: 2em;
   grid-area: notes;
-  justify-self: center;
+  width: 100%;
+  text-align: center;
 }
 .notes .button {
   cursor: pointer;
@@ -152,17 +153,34 @@ iframe{
 }
 .notes nav {
   width: 200px;
+  margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(2, 50%);
   align-content: center;
 }
+.notes .summary {
+  max-width: 80%;
+  margin: 2em auto;
+  text-align: center;
+}
+.notes .tagSummaryLink {
+  display: inline-block;
+  margin: 0 0.2em;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 200ms ease;
+}
+.notes .tagSummaryLink:hover {
+  color: #000;
+  opacity: 1;
+}
 
 
-@keyframes detailsSlideIn {
+@keyframes sidebarSlideIn {
   from { right: -50%; }
   to { right: 0%; }
 }
-.details {
+.sidebar {
   position: absolute;
   top: 0;
   right: 0;
@@ -172,26 +190,26 @@ iframe{
   background: #FFF;
   line-height: 1.4em;
   overflow-y: scroll;
-  animation: detailsSlideIn 300ms ease-out;
+  animation: sidebarSlideIn 300ms ease-out;
   display: grid;
   grid-template-rows: 50px auto;
   grid-row-gap: 1em;
 }
-.details nav {
+.sidebar nav {
   text-align: right;
   border-bottom: dotted 1px #999;
 }
-.details nav .close {
+.sidebar nav .close {
   cursor: pointer;
   font-size: 2em;
   opacity: 0.2;
   transition: opacity 200ms ease;
 }
-.details nav .close:hover {
+.sidebar nav .close:hover {
   opacity: 1;
 }
 .editor {
-  font-size: 1.2em;
+  font-size: 1em;
   height: 100%;
 }
 .editor p {

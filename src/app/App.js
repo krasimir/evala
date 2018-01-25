@@ -8,11 +8,19 @@ import Time from './Time';
 import Weather from './Weather';
 import './stent/debug';
 import './stent/Weather';
-import './stent/Details';
+import './stent/Sidebar';
+import './stent/Notes';
 import './helpers/shortcuts';
 import { connect } from 'stent/lib/react';
 import moment from 'moment';
-import AddNote from './AddNote';
+import Editor from './Editor';
+
+function removeHash(tag) {
+  if (tag.charAt(0) === '#') {
+    return tag.substr(1, tag.length);
+  }
+  return tag;
+}
 
 class App extends React.Component {
   _getNewTitle() {
@@ -20,12 +28,40 @@ class App extends React.Component {
 
     return today ? `${ today.temperature }℃ | ${ moment().format('HH:mm') }` : null;
   }
-  render() {
-    const newTitle = this._getNewTitle();
-    const { isDetailsOpen, detailsContent, closeDetails } = this.props;
+  _renderNotesSummary() {
+    const { notes } = this.props;
+
+    if (notes === null || notes.length === 0) return null;
+
+    const groupedByTag = notes.reduce((result, note) => {
+      if (!note.tags || note.tags.length === 0) {
+        if (!result['#notag']) result['#notag'] = 0;
+        result['#notag'] += 1;
+      } else {
+        note.tags.forEach(tag => {
+          if (!result[tag]) result[tag] = 0;
+          result[tag] += 1;
+        });
+      }
+      return result;
+    }, {});
 
     return (
-      <div className={ `container ${ isDetailsOpen ? 'withDetails' : '' }` }>
+      <div className='summary'>
+        { Object.keys(groupedByTag).map((tag, i) =>
+          <a key={ i } className='tagSummaryLink'>
+            <i className='fa fa-hashtag'></i>{ removeHash(tag) }<sup>{ groupedByTag[tag] }</sup>
+          </a>
+        )}
+      </div>
+    );
+  }
+  render() {
+    const newTitle = this._getNewTitle();
+    const { isSidebarOpen, sidebarContent, closeSidebar } = this.props;
+
+    return (
+      <div className={ `container ${ isSidebarOpen ? 'withSidebar' : '' }` }>
         <Helmet>
           <style>{ getGlobalStyles(this.props.today) }</style>
           { newTitle && <title>{ newTitle }</title> }
@@ -34,21 +70,22 @@ class App extends React.Component {
         <Weather />
         <div className='notes'>
           <nav>
-            <a className='button' onClick={ this.props.addNote }>
+            <a className='button' onClick={ this.props.newNote }>
               <i className='fa fa-plus'></i>
               <small>Ctrl + n</small>
             </a>
             <a className='button'>
               <i className='fa fa-search'></i>
-              <small>Ctrl + s</small>
+              <small>Ctrl + f</small>
             </a>
           </nav>
+          { this._renderNotesSummary() }
         </div>
-        { isDetailsOpen && <div className='details'>
+        { isSidebarOpen && <div className='sidebar'>
           <nav>
-            <a className='close' onClick={ () => closeDetails() }><i className='fa fa-close'></i></a>
+            <a className='close' onClick={ () => closeSidebar() }><i className='fa fa-close'></i></a>
           </nav>
-          { detailsContent }
+          { sidebarContent }
         </div> }
       </div>
     );
@@ -57,20 +94,22 @@ class App extends React.Component {
 
 App.propTypes = {
   today: PropTypes.any,
-  detailsContent: PropTypes.any,
-  closeDetails: PropTypes.func,
-  addNote: PropTypes.func,
-  isDetailsOpen: PropTypes.bool
+  sidebarContent: PropTypes.any,
+  closeSidebar: PropTypes.func,
+  newNote: PropTypes.func,
+  isSidebarOpen: PropTypes.bool,
+  notes: PropTypes.array
 };
 
 const AppConnected = connect(App)
-  .with('Weather', 'Details')
-  .map((weather, details) => ({
+  .with('Weather', 'Sidebar', 'Notes')
+  .map((weather, sidebar, notes) => ({
     today: weather.today(),
-    isDetailsOpen: details.isOpened(),
-    detailsContent: details.state.content,
-    closeDetails: () => details.close(null),
-    addNote: () => details.open(<AddNote />)
+    isSidebarOpen: sidebar.isOpened(),
+    sidebarContent: sidebar.state.content,
+    closeSidebar: () => sidebar.close(null),
+    newNote: () => sidebar.open(<Editor />),
+    notes: notes.state.notes
   }));
 
 ReactDOM.render(<AppConnected />, document.querySelector('#container'));

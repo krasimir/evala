@@ -2,8 +2,6 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'stent/lib/react';
 import Editor from 'react-medium-editor';
-import AutoList from 'medium-editor-autolist';
-// import linkifyHtml from 'linkifyjs/html';
 
 const EDITOR_OPTIONS = {
   toolbar: {
@@ -12,13 +10,10 @@ const EDITOR_OPTIONS = {
   placeholder: {
     text: '',
     hideOnClick: true
-  },
-  extensions: {
-    autolist: AutoList
   }
 };
 
-class AddNote extends React.Component {
+class Editor extends React.Component {
   constructor(props) {
     super(props);
 
@@ -52,18 +47,11 @@ class AddNote extends React.Component {
 
     this.medium.subscribe('editableKeydown', event => {
       if (event.keyCode === 27) {
-        if (
-          this.editableArea &&
-          this.editableArea.innerHTML !== '' &&
-          this.editableArea.innerHTML !== '<p><br></p>'
-        ) {
-          this.setState({ text: '' }, () => (this.editableArea.innerHTML = ''));
-        } else {
-          this.props.exit();
-        }
+        this.props.exit();
       }
       if (event.ctrlKey && event.keyCode === 13) {
-        console.log('save');
+        this.props.createNote(this.state.text);
+        this.props.exit();
       }
     });
   }
@@ -84,12 +72,14 @@ class AddNote extends React.Component {
   }
 }
 
-AddNote.propTypes = {
-  exit: PropTypes.func
+Editor.propTypes = {
+  exit: PropTypes.func,
+  createNote: PropTypes.func
 };
 
-export default connect(AddNote)
-  .with('Details')
-  .map(details => ({
-    exit: () => details.close()
+export default connect(Editor)
+  .with('Sidebar', 'Notes')
+  .map((sidebar, notes) => ({
+    exit: () => sidebar.close(),
+    createNote: content => notes.createNote(content)
   }));
