@@ -1,7 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'stent/lib/react';
-import Editor from 'react-medium-editor';
+import MediumEditor from 'react-medium-editor';
 
 const EDITOR_OPTIONS = {
   toolbar: {
@@ -19,6 +19,7 @@ class Editor extends React.Component {
 
     this._onChange = this._onChange.bind(this);
     this._save = this._save.bind(this);
+    this._exit = this._exit.bind(this);
     this.state = { text: '' };
   }
   get editableArea() {
@@ -37,7 +38,10 @@ class Editor extends React.Component {
     Mousetrap.unbind('ctrl+enter');
   }
   _save() {
-    console.log('save');
+    this.props.save(this.state.text);
+  }
+  _exit() {
+    this.props.exit();
   }
   _onChange(text) {
     this.setState({ text });
@@ -47,18 +51,17 @@ class Editor extends React.Component {
 
     this.medium.subscribe('editableKeydown', event => {
       if (event.keyCode === 27) {
-        this.props.exit();
+        this._exit();
       }
       if (event.ctrlKey && event.keyCode === 13) {
-        this.props.createNote(this.state.text);
-        this.props.exit();
+        this._save();
       }
     });
   }
   render() {
     return (
       <div className='editor' ref={ editor => (this.editor = editor) }>
-        <Editor
+        <MediumEditor
           tag="div"
           ref={ editor => {
             if (editor) this.medium = editor.medium;
@@ -67,6 +70,14 @@ class Editor extends React.Component {
           onChange={ this._onChange }
           options={ EDITOR_OPTIONS }
         />
+        <nav>
+          <div>
+            <a className='button close' onClick={ this._exit }><i className='fa fa-close'></i></a>
+          </div>
+          <div>
+            <a className='button save' onClick={ this._save }><i className='fa fa-check'></i></a>
+          </div>
+        </nav>
       </div>
     );
   }
@@ -74,12 +85,15 @@ class Editor extends React.Component {
 
 Editor.propTypes = {
   exit: PropTypes.func,
-  createNote: PropTypes.func
+  save: PropTypes.func
 };
 
 export default connect(Editor)
   .with('Sidebar', 'Notes')
   .map((sidebar, notes) => ({
     exit: () => sidebar.close(),
-    createNote: content => notes.createNote(content)
+    save: content => {
+      notes.createNote(content);
+      sidebar.close();
+    }
   }));

@@ -13,9 +13,6 @@ const Sidebar = Machine.create('Sidebar', {
         return { name: 'closed', content: null };
       },
       'open': function (state, content) {
-        if (!content) {
-          return { name: 'closed', content };
-        }
         return { name: 'opened', content };
       }
     }

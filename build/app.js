@@ -51617,153 +51617,6 @@ module.exports = exports['default'];
 },{"./connect":584}],586:[function(require,module,exports){
 'use strict';
 
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _react = require('react');
-
-var _react2 = _interopRequireDefault(_react);
-
-var _propTypes = require('prop-types');
-
-var _propTypes2 = _interopRequireDefault(_propTypes);
-
-var _react3 = require('stent/lib/react');
-
-var _reactMediumEditor = require('react-medium-editor');
-
-var _reactMediumEditor2 = _interopRequireDefault(_reactMediumEditor);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var EDITOR_OPTIONS = {
-  toolbar: {
-    buttons: ['bold', 'italic', 'underline', 'anchor', 'h2', 'h3', 'quote']
-  },
-  placeholder: {
-    text: '',
-    hideOnClick: true
-  }
-};
-
-var AddNote = function (_React$Component) {
-  _inherits(AddNote, _React$Component);
-
-  function AddNote(props) {
-    _classCallCheck(this, AddNote);
-
-    var _this = _possibleConstructorReturn(this, (AddNote.__proto__ || Object.getPrototypeOf(AddNote)).call(this, props));
-
-    _this._onChange = _this._onChange.bind(_this);
-    _this._save = _this._save.bind(_this);
-    _this.state = { text: '' };
-    return _this;
-  }
-
-  _createClass(AddNote, [{
-    key: 'componentDidMount',
-    value: function componentDidMount() {
-      var _this2 = this;
-
-      setTimeout(function () {
-        _this2.editableArea && _this2.editableArea.focus();
-        _this2._setShortcuts();
-      }, 300);
-    }
-  }, {
-    key: 'componentWillUnmount',
-    value: function componentWillUnmount() {
-      Mousetrap.unbind('ctrl+enter');
-    }
-  }, {
-    key: '_save',
-    value: function _save() {
-      console.log('save');
-    }
-  }, {
-    key: '_onChange',
-    value: function _onChange(text) {
-      this.setState({ text: text });
-    }
-  }, {
-    key: '_setShortcuts',
-    value: function _setShortcuts() {
-      var _this3 = this;
-
-      if (!this.medium) return;
-
-      this.medium.subscribe('editableKeydown', function (event) {
-        if (event.keyCode === 27) {
-          _this3.props.exit();
-        }
-        if (event.ctrlKey && event.keyCode === 13) {
-          _this3.props.createNote(_this3.state.text);
-          _this3.props.exit();
-        }
-      });
-    }
-  }, {
-    key: 'render',
-    value: function render() {
-      var _this4 = this;
-
-      return _react2.default.createElement(
-        'div',
-        { className: 'editor', ref: function ref(editor) {
-            return _this4.editor = editor;
-          } },
-        _react2.default.createElement(_reactMediumEditor2.default, {
-          tag: 'div',
-          ref: function ref(editor) {
-            if (editor) _this4.medium = editor.medium;
-          },
-          text: this.state.text,
-          onChange: this._onChange,
-          options: EDITOR_OPTIONS
-        })
-      );
-    }
-  }, {
-    key: 'editableArea',
-    get: function get() {
-      if (this.editor) {
-        return this.editor.querySelector('[contenteditable]');
-      }
-      return null;
-    }
-  }]);
-
-  return AddNote;
-}(_react2.default.Component);
-
-AddNote.propTypes = {
-  exit: _propTypes2.default.func,
-  createNote: _propTypes2.default.func
-};
-
-exports.default = (0, _react3.connect)(AddNote).with('Sidebar', 'Notes').map(function (sidebar, notes) {
-  return {
-    exit: function exit() {
-      return sidebar.close();
-    },
-    createNote: function createNote(content) {
-      return notes.createNote(content);
-    }
-  };
-});
-
-},{"prop-types":405,"react":565,"react-medium-editor":538,"stent/lib/react":585}],587:[function(require,module,exports){
-'use strict';
-
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 require('babel-polyfill');
@@ -51810,9 +51663,9 @@ var _moment = require('moment');
 
 var _moment2 = _interopRequireDefault(_moment);
 
-var _AddNote = require('./AddNote');
+var _Editor = require('./Editor');
 
-var _AddNote2 = _interopRequireDefault(_AddNote);
+var _Editor2 = _interopRequireDefault(_Editor);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -51889,15 +51742,12 @@ var App = function (_React$Component) {
     key: 'render',
     value: function render() {
       var newTitle = this._getNewTitle();
-      var _props = this.props,
-          isSidebarOpen = _props.isSidebarOpen,
-          sidebarContent = _props.sidebarContent,
-          closeSidebar = _props.closeSidebar;
+      var sidebarContent = this.props.sidebarContent;
 
 
       return _react2.default.createElement(
         'div',
-        { className: 'container ' + (isSidebarOpen ? 'withSidebar' : '') },
+        { className: 'container ' + (sidebarContent ? 'withSidebar' : '') },
         _react2.default.createElement(
           _reactHelmet.Helmet,
           null,
@@ -51922,7 +51772,7 @@ var App = function (_React$Component) {
             null,
             _react2.default.createElement(
               'a',
-              { className: 'button', onClick: this.props.addNote },
+              { className: 'button', onClick: this.props.newNote },
               _react2.default.createElement('i', { className: 'fa fa-plus' }),
               _react2.default.createElement(
                 'small',
@@ -51943,20 +51793,9 @@ var App = function (_React$Component) {
           ),
           this._renderNotesSummary()
         ),
-        isSidebarOpen && _react2.default.createElement(
+        sidebarContent && _react2.default.createElement(
           'div',
           { className: 'sidebar' },
-          _react2.default.createElement(
-            'nav',
-            null,
-            _react2.default.createElement(
-              'a',
-              { className: 'close', onClick: function onClick() {
-                  return closeSidebar();
-                } },
-              _react2.default.createElement('i', { className: 'fa fa-close' })
-            )
-          ),
           sidebarContent
         )
       );
@@ -51970,7 +51809,7 @@ App.propTypes = {
   today: _propTypes2.default.any,
   sidebarContent: _propTypes2.default.any,
   closeSidebar: _propTypes2.default.func,
-  addNote: _propTypes2.default.func,
+  newNote: _propTypes2.default.func,
   isSidebarOpen: _propTypes2.default.bool,
   notes: _propTypes2.default.array
 };
@@ -51978,13 +51817,9 @@ App.propTypes = {
 var AppConnected = (0, _react3.connect)(App).with('Weather', 'Sidebar', 'Notes').map(function (weather, sidebar, notes) {
   return {
     today: weather.today(),
-    isSidebarOpen: sidebar.isOpened(),
     sidebarContent: sidebar.state.content,
-    closeSidebar: function closeSidebar() {
-      return sidebar.close(null);
-    },
-    addNote: function addNote() {
-      return sidebar.open(_react2.default.createElement(_AddNote2.default, null));
+    newNote: function newNote() {
+      return sidebar.open(_react2.default.createElement(_Editor2.default, null));
     },
     notes: notes.state.notes
   };
@@ -51992,7 +51827,182 @@ var AppConnected = (0, _react3.connect)(App).with('Weather', 'Sidebar', 'Notes')
 
 _reactDom2.default.render(_react2.default.createElement(AppConnected, null), document.querySelector('#container'));
 
-},{"./AddNote":586,"./Time":588,"./Weather":589,"./helpers/getGlobalStyles":591,"./helpers/shortcuts":593,"./stent/Notes":594,"./stent/Sidebar":595,"./stent/Weather":596,"./stent/debug":597,"babel-polyfill":1,"moment":398,"prop-types":405,"react":565,"react-dom":407,"react-helmet":534,"stent/lib/react":585}],588:[function(require,module,exports){
+},{"./Editor":587,"./Time":588,"./Weather":589,"./helpers/getGlobalStyles":591,"./helpers/shortcuts":593,"./stent/Notes":594,"./stent/Sidebar":595,"./stent/Weather":596,"./stent/debug":597,"babel-polyfill":1,"moment":398,"prop-types":405,"react":565,"react-dom":407,"react-helmet":534,"stent/lib/react":585}],587:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _react3 = require('stent/lib/react');
+
+var _reactMediumEditor = require('react-medium-editor');
+
+var _reactMediumEditor2 = _interopRequireDefault(_reactMediumEditor);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var EDITOR_OPTIONS = {
+  toolbar: {
+    buttons: ['bold', 'italic', 'underline', 'anchor', 'h2', 'h3', 'quote']
+  },
+  placeholder: {
+    text: '',
+    hideOnClick: true
+  }
+};
+
+var Editor = function (_React$Component) {
+  _inherits(Editor, _React$Component);
+
+  function Editor(props) {
+    _classCallCheck(this, Editor);
+
+    var _this = _possibleConstructorReturn(this, (Editor.__proto__ || Object.getPrototypeOf(Editor)).call(this, props));
+
+    _this._onChange = _this._onChange.bind(_this);
+    _this._save = _this._save.bind(_this);
+    _this._exit = _this._exit.bind(_this);
+    _this.state = { text: '' };
+    return _this;
+  }
+
+  _createClass(Editor, [{
+    key: 'componentDidMount',
+    value: function componentDidMount() {
+      var _this2 = this;
+
+      setTimeout(function () {
+        _this2.editableArea && _this2.editableArea.focus();
+        _this2._setShortcuts();
+      }, 300);
+    }
+  }, {
+    key: 'componentWillUnmount',
+    value: function componentWillUnmount() {
+      Mousetrap.unbind('ctrl+enter');
+    }
+  }, {
+    key: '_save',
+    value: function _save() {
+      this.props.save(this.state.text);
+    }
+  }, {
+    key: '_exit',
+    value: function _exit() {
+      this.props.exit();
+    }
+  }, {
+    key: '_onChange',
+    value: function _onChange(text) {
+      this.setState({ text: text });
+    }
+  }, {
+    key: '_setShortcuts',
+    value: function _setShortcuts() {
+      var _this3 = this;
+
+      if (!this.medium) return;
+
+      this.medium.subscribe('editableKeydown', function (event) {
+        if (event.keyCode === 27) {
+          _this3._exit();
+        }
+        if (event.ctrlKey && event.keyCode === 13) {
+          _this3._save();
+        }
+      });
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var _this4 = this;
+
+      return _react2.default.createElement(
+        'div',
+        { className: 'editor', ref: function ref(editor) {
+            return _this4.editor = editor;
+          } },
+        _react2.default.createElement(_reactMediumEditor2.default, {
+          tag: 'div',
+          ref: function ref(editor) {
+            if (editor) _this4.medium = editor.medium;
+          },
+          text: this.state.text,
+          onChange: this._onChange,
+          options: EDITOR_OPTIONS
+        }),
+        _react2.default.createElement(
+          'nav',
+          null,
+          _react2.default.createElement(
+            'div',
+            null,
+            _react2.default.createElement(
+              'a',
+              { className: 'button close', onClick: this._exit },
+              _react2.default.createElement('i', { className: 'fa fa-close' })
+            )
+          ),
+          _react2.default.createElement(
+            'div',
+            null,
+            _react2.default.createElement(
+              'a',
+              { className: 'button save', onClick: this._save },
+              _react2.default.createElement('i', { className: 'fa fa-check' })
+            )
+          )
+        )
+      );
+    }
+  }, {
+    key: 'editableArea',
+    get: function get() {
+      if (this.editor) {
+        return this.editor.querySelector('[contenteditable]');
+      }
+      return null;
+    }
+  }]);
+
+  return Editor;
+}(_react2.default.Component);
+
+Editor.propTypes = {
+  exit: _propTypes2.default.func,
+  save: _propTypes2.default.func
+};
+
+exports.default = (0, _react3.connect)(Editor).with('Sidebar', 'Notes').map(function (sidebar, notes) {
+  return {
+    exit: function exit() {
+      return sidebar.close();
+    },
+    save: function save(content) {
+      notes.createNote(content);
+      sidebar.close();
+    }
+  };
+});
+
+},{"prop-types":405,"react":565,"react-medium-editor":538,"stent/lib/react":585}],588:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52231,7 +52241,7 @@ var Weather = function (_React$Component) {
       return _react2.default.createElement(
         'div',
         null,
-        data.hours.filter(function (item) {
+        data.hours.filter(function (item, i) {
           return item.time.isAfter(_this5.now, 'hour');
         }).map(function (item, i) {
           return _react2.default.createElement(
@@ -52501,9 +52511,9 @@ var _react2 = _interopRequireDefault(_react);
 
 var _stent = require('stent');
 
-var _AddNote = require('../AddNote');
+var _Editor = require('../Editor');
 
-var _AddNote2 = _interopRequireDefault(_AddNote);
+var _Editor2 = _interopRequireDefault(_Editor);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -52511,13 +52521,13 @@ Mousetrap.bind('ctrl+u', function (e) {
   _stent.Machine.get('Weather').refresh();
 });
 Mousetrap.bind('ctrl+n', function (e) {
-  _stent.Machine.get('Sidebar').open(_react2.default.createElement(_AddNote2.default, null));
+  _stent.Machine.get('Sidebar').open(_react2.default.createElement(_Editor2.default, null));
 });
 Mousetrap.bind('escape', function (e) {
   _stent.Machine.get('Sidebar').close();
 });
 
-},{"../AddNote":586,"react":565,"stent":583}],594:[function(require,module,exports){
+},{"../Editor":587,"react":565,"stent":583}],594:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52579,11 +52589,13 @@ var Notes = _stent.Machine.create('Notes', {
   transitions: {
     'idle': {
       'create note': function createNote(state, content) {
+        console.log(state);
         state.notes.push(new Note(content));
         storeData(state.notes);
         return state;
       },
       'fetch': /*#__PURE__*/regeneratorRuntime.mark(function fetch() {
+        var notes;
         return regeneratorRuntime.wrap(function fetch$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
@@ -52592,11 +52604,8 @@ var Notes = _stent.Machine.create('Notes', {
                 return (0, _helpers.call)(fetchData);
 
               case 2:
-                _context.t0 = _context.sent;
-                return _context.abrupt('return', {
-                  name: 'idle',
-                  notes: _context.t0
-                });
+                notes = _context.sent;
+                return _context.abrupt('return', { name: 'idle', notes: notes ? notes : [] });
 
               case 4:
               case 'end':
@@ -52635,9 +52644,6 @@ var Sidebar = _stent.Machine.create('Sidebar', {
         return { name: 'closed', content: null };
       },
       'open': function open(state, content) {
-        if (!content) {
-          return { name: 'closed', content: content };
-        }
         return { name: 'opened', content: content };
       }
     }
@@ -52894,4 +52900,4 @@ var _kukerEmitters = require('kuker-emitters');
 
 _stent.Machine.addMiddleware((0, _kukerEmitters.StentEmitter)());
 
-},{"kuker-emitters":377,"stent":583}]},{},[587]);
+},{"kuker-emitters":377,"stent":583}]},{},[586]);

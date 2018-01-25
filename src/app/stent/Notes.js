@@ -38,12 +38,15 @@ const Notes = Machine.create('Notes', {
   transitions: {
     'idle': {
       'create note': function (state, content) {
+        console.log(state);
         state.notes.push(new Note(content));
         storeData(state.notes);
         return state;
       },
       'fetch': function * () {
-        return { name: 'idle', notes: yield call(fetchData) };
+        const notes = yield call(fetchData);
+
+        return { name: 'idle', notes: notes ? notes : [] };
       }
     }
   }

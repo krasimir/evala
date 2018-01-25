@@ -23,6 +23,18 @@ iframe{
 [contenteditable]:focus {
   outline: 0px solid transparent;
 }
+.button {
+  display: inline-block;
+  cursor: pointer;
+  transition: opacity 300ms ease, transform 300ms ease-in-out, color 300ms ease-in-out;
+}
+.button:hover {
+  opacity: 1 !important;
+  transform: scale(1.2);
+}
+.button:active {
+  transform: translateY(20px);
+}
 
 
 .container {
@@ -128,19 +140,9 @@ iframe{
   text-align: center;
 }
 .notes .button {
-  cursor: pointer;
   font-size: 4em;
   opacity: 0.2;
-  transition: opacity 300ms ease, transform 300ms ease-in-out;
-  display: block;
   text-align: center;
-}
-.notes .button:hover {
-  opacity: 1;
-  transform: scale(1.2);
-}
-.notes .button:active {
-  transform: translateY(20px);
 }
 .notes .button small {
   font-size: 0.15em;
@@ -186,37 +188,43 @@ iframe{
   right: 0;
   width: 50%;
   height: 100%;
-  padding: 1em 2em 2em 2em;
+  padding: 2em;
   background: #FFF;
   line-height: 1.4em;
   overflow-y: scroll;
   animation: sidebarSlideIn 300ms ease-out;
-  display: grid;
-  grid-template-rows: 50px auto;
-  grid-row-gap: 1em;
 }
-.sidebar nav {
-  text-align: right;
-  border-bottom: dotted 1px #999;
-}
-.sidebar nav .close {
-  cursor: pointer;
-  font-size: 2em;
-  opacity: 0.2;
-  transition: opacity 200ms ease;
-}
-.sidebar nav .close:hover {
-  opacity: 1;
-}
+
 .editor {
   font-size: 1em;
   height: 100%;
+  display: grid;
+  grid-template-rows: auto 2em;
+  grid-row-gap: 1em;
 }
 .editor p {
   margin-top: 0;
   margin-bottom: 0.5em;
 }
 .editor [contenteditable] {
-  min-height: 100%;
-  padding-bottom: 1em;
+  
+}
+.editor nav {
+  border-top: dotted 1px #999;
+  padding-top: 1em;
+  display: grid;
+  grid-template-columns: 50% 50%;
+}
+.editor nav > div:last-of-type {
+  text-align: right;
+}
+.editor nav a {
+  font-size: 2em;
+  opacity: 0.2;
+}
+.editor nav a.close:hover {
+  color: red;
+}
+.editor nav a.save:hover {
+  color: green;
 }

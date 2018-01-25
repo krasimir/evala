@@ -58,10 +58,10 @@ class App extends React.Component {
   }
   render() {
     const newTitle = this._getNewTitle();
-    const { isSidebarOpen, sidebarContent, closeSidebar } = this.props;
+    const { sidebarContent } = this.props;
 
     return (
-      <div className={ `container ${ isSidebarOpen ? 'withSidebar' : '' }` }>
+      <div className={ `container ${ sidebarContent ? 'withSidebar' : '' }` }>
         <Helmet>
           <style>{ getGlobalStyles(this.props.today) }</style>
           { newTitle && <title>{ newTitle }</title> }
@@ -81,12 +81,7 @@ class App extends React.Component {
           </nav>
           { this._renderNotesSummary() }
         </div>
-        { isSidebarOpen && <div className='sidebar'>
-          <nav>
-            <a className='close' onClick={ () => closeSidebar() }><i className='fa fa-close'></i></a>
-          </nav>
-          { sidebarContent }
-        </div> }
+        { sidebarContent && <div className='sidebar'>{ sidebarContent }</div> }
       </div>
     );
   }
@@ -105,9 +100,7 @@ const AppConnected = connect(App)
   .with('Weather', 'Sidebar', 'Notes')
   .map((weather, sidebar, notes) => ({
     today: weather.today(),
-    isSidebarOpen: sidebar.isOpened(),
     sidebarContent: sidebar.state.content,
-    closeSidebar: () => sidebar.close(null),
     newNote: () => sidebar.open(<Editor />),
     notes: notes.state.notes
   }));

@@ -75,7 +75,7 @@ class Weather extends React.Component {
     return (
       <div>
         { data.hours
-          .filter(item => item.time.isAfter(this.now, 'hour'))
+          .filter((item, i) => item.time.isAfter(this.now, 'hour'))
           .map((item, i) => {
             return (
               <div key={ i }>
