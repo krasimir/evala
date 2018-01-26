@@ -1,8 +1,8 @@
 import { Machine } from 'stent';
-import linkifyHtml from 'linkifyjs/html';
 import moment from 'moment';
 import localforage from 'localforage';
 import { call } from 'stent/lib/helpers';
+import extractTags from '../helpers/extractTags';
 
 const NOTES_KEY = '__notes';
 
@@ -11,8 +11,8 @@ function hashCode(str) {
     ((prevHash << 5) - prevHash) + currVal.charCodeAt(0), 0);
 }
 function Note(content) {
-  this.content = linkifyHtml(content);
-  this.tags = content.match(/#[\wа-я]+/gi);
+  this.content = content;
+  this.tags = extractTags(content);
   this.created = moment().toString();
   this.id = hashCode(this.created);
 }
@@ -38,7 +38,6 @@ const Notes = Machine.create('Notes', {
   transitions: {
     'idle': {
       'create note': function (state, content) {
-        console.log(state);
         state.notes.push(new Note(content));
         storeData(state.notes);
         return state;

@@ -194,6 +194,32 @@ iframe{
   overflow-y: scroll;
   animation: sidebarSlideIn 300ms ease-out;
 }
+.sidebar nav {
+  border-top: dotted 1px #999;
+  padding-top: 1em;
+  display: grid;
+  grid-template-columns: 50% 50%;
+}
+.sidebar nav > div:last-of-type {
+  text-align: right;
+}
+.sidebar nav a {
+  font-size: 2em;
+  opacity: 0.2;
+}
+.sidebar nav a.close:hover {
+  color: red;
+}
+.sidebar nav a.save:hover {
+  color: green;
+}
+.sidebar hr {
+  border-top: none;
+  border-bottom: dotted 1px #999;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
 
 .editor {
   font-size: 1em;
@@ -206,25 +232,53 @@ iframe{
   margin-top: 0;
   margin-bottom: 0.5em;
 }
-.editor [contenteditable] {
-  
+.editor .mde-text {
+  height: 100%;
 }
-.editor nav {
-  border-top: dotted 1px #999;
-  padding-top: 1em;
+.editor #editorArea {
+  outline: none;
+  border: none;
+  font-family: inherit;
+  font-size: 1em;
+  height: 100%;
+}
+
+
+.search {
+  font-size: 1em;
+  height: 100%;
   display: grid;
-  grid-template-columns: 50% 50%;
+  grid-template-rows: auto 2em;
+  grid-row-gap: 1em;
 }
-.editor nav > div:last-of-type {
+.search .searchInput {
+  font-size: 1em;
+  font-family: inherit;
+  width: 100%;
+  outline: none;
+  border: none;
+}
+
+
+.note {
+  display: block;
+  margin-bottom: 2em;
+  border-bottom: solid 6px rgba(0, 0, 0, 0.2);
+}
+.note::after {
+  content: " ";
+  clear: both;
+  display: table;
+}
+.note a {
+  color: #000;
+  font-weight: bold;
+}
+.noteMeta {
+  float: right;
+  width: 33%;
   text-align: right;
-}
-.editor nav a {
-  font-size: 2em;
-  opacity: 0.2;
-}
-.editor nav a.close:hover {
-  color: red;
-}
-.editor nav a.save:hover {
-  color: green;
+  margin: 0.3em 0 1em 1em;
+  font-size: 0.7em;
+  line-height: 1.3;
 }

@@ -1,20 +1,21 @@
 import { Machine } from 'stent';
 
+function open(state, content) {
+  return { name: 'opened', content };
+}
+function close() {
+  return { name: 'closed', content: null };
+}
+
 const Sidebar = Machine.create('Sidebar', {
   state: { name: 'closed', content: null },
   transitions: {
     'closed': {
-      'open': function (state, content) {
-        return { name: 'opened', content };
-      }
+      'open': open
     },
     'opened': {
-      'close': function (state, content) {
-        return { name: 'closed', content: null };
-      },
-      'open': function (state, content) {
-        return { name: 'opened', content };
-      }
+      'close': close,
+      'open': open
     }
   }
 });
