@@ -12,9 +12,9 @@ function hashCode(str) {
 }
 function Note(content) {
   this.content = linkifyHtml(content);
-  this.tags = content.match(/#[a-z]+/gi);
+  this.tags = content.match(/#[\wа-я]+/gi);
   this.created = moment().toString();
-  this.id = hashCode(this.created + content);
+  this.id = hashCode(this.created);
 }
 
 function storeData(notes) {

@@ -30,6 +30,7 @@ class App extends React.Component {
   }
   _renderNotesSummary() {
     const { notes } = this.props;
+    console.log(notes);
 
     if (notes === null || notes.length === 0) return null;
 
@@ -50,7 +51,8 @@ class App extends React.Component {
       <div className='summary'>
         { Object.keys(groupedByTag).map((tag, i) =>
           <a key={ i } className='tagSummaryLink'>
-            <i className='fa fa-hashtag'></i>{ removeHash(tag) }<sup>{ groupedByTag[tag] }</sup>
+            <i className='fa fa-hashtag'></i>{ removeHash(tag) }
+            { groupedByTag[tag] > 1 && <sup>{ groupedByTag[tag] }</sup> }
           </a>
         )}
       </div>

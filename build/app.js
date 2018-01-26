@@ -51704,6 +51704,7 @@ var App = function (_React$Component) {
     value: function _renderNotesSummary() {
       var notes = this.props.notes;
 
+      console.log(notes);
 
       if (notes === null || notes.length === 0) return null;
 
@@ -51729,7 +51730,7 @@ var App = function (_React$Component) {
             { key: i, className: 'tagSummaryLink' },
             _react2.default.createElement('i', { className: 'fa fa-hashtag' }),
             removeHash(tag),
-            _react2.default.createElement(
+            groupedByTag[tag] > 1 && _react2.default.createElement(
               'sup',
               null,
               groupedByTag[tag]
@@ -52561,9 +52562,9 @@ function hashCode(str) {
 }
 function Note(content) {
   this.content = (0, _html2.default)(content);
-  this.tags = content.match(/#[a-z]+/gi);
+  this.tags = content.match(/#[\wа-я]+/gi);
   this.created = (0, _moment2.default)().toString();
-  this.id = hashCode(this.created + content);
+  this.id = hashCode(this.created);
 }
 
 function storeData(notes) {
