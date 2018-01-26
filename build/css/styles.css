@@ -20,9 +20,11 @@ iframe{
 .tal {
   text-align: left;
 }
-[contenteditable]:focus {
-  outline: 0px solid transparent;
+.green {
+  color: green !important;
 }
+
+
 .button {
   display: inline-block;
   cursor: pointer;
@@ -257,13 +259,18 @@ iframe{
   width: 100%;
   outline: none;
   border: none;
+  display: block;
+  margin-bottom: 1em;
 }
 
 
 .note {
   display: block;
-  margin-bottom: 2em;
-  border-bottom: solid 6px rgba(0, 0, 0, 0.2);
+  border-top: solid 1px rgba(0, 0, 0, 0.2);
+  padding: 1em;
+}
+.note-done {
+  background: rgba(21, 255, 0, 0.2);
 }
 .note::after {
   content: " ";
@@ -276,9 +283,17 @@ iframe{
 }
 .noteMeta {
   float: right;
-  width: 33%;
   text-align: right;
   margin: 0.3em 0 1em 1em;
   font-size: 0.7em;
   line-height: 1.3;
+}
+.noteMeta .button {
+  font-size: 2em;
+  opacity: 0.2;
+  margin-left: 0.4em;
+}
+.noteContent p {
+  margin-top: 0;
+  margin-bottom: 0.5em;
 }

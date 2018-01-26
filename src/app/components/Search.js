@@ -40,6 +40,11 @@ class Search extends React.Component {
   componentWillUnmount() {
     this._unsetShortcuts();
   }
+  componentWillReceiveProps(newProps) {
+    if (newProps.what !== this.state.text) {
+      this.setState({ text: newProps.what });
+    }
+  }
   _exit() {
     this.props.exit();
   }
@@ -89,10 +94,7 @@ class Search extends React.Component {
             ref={ input => (this.input = input) }
             value={ this.state.text }
             onChange={ event => this._onChange(event.target.value) } />
-          <hr />
-          {
-            filtered.map((data, i) => <Note key={ i } note={ data } />)
-          }
+          { filtered.map((data, i) => <Note key={ i } note={ data } />) }
         </div>
         <nav>
           <div>

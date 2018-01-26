@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { connect } from 'stent/lib/react';
 import ReactMde, { ReactMdeCommands } from 'react-mde';
 import Search from './Search';
+import moment from 'moment';
 
 const ENTER = 13;
 const ESCAPE = 27;
@@ -17,7 +18,7 @@ class Editor extends React.Component {
     this._save = this._save.bind(this);
     this._exit = this._exit.bind(this);
     this._onEditorAreaKeyDown = this._onEditorAreaKeyDown.bind(this);
-    this.state = { text: '' };
+    this.state = { text: { text: props.text } || '', id: props.id };
   }
   get editorArea() {
     if (!this._editorArea) {
@@ -35,13 +36,21 @@ class Editor extends React.Component {
     this._unsetShortcuts();
   }
   _save() {
-    this.props.save(this.state.text);
+    if (this.state.id) {
+      this.props.edit(this.state.text, this.state.id);
+    } else {
+      this.props.create(this.state.text, this.state.id);
+    }
+    this.props.exit();
   }
   _exit() {
     this.props.exit();
   }
   _onChange(text) {
     this.setState({ text });
+    if (this.state.id) {
+      this.props.edit(text, this.state.id);
+    }
   }
   _onEditorAreaKeyDown(event) {
     if (event.keyCode === ENTER && event.ctrlKey) {
@@ -90,18 +99,26 @@ class Editor extends React.Component {
 
 Editor.propTypes = {
   exit: PropTypes.func,
-  save: PropTypes.func,
+  create: PropTypes.func,
+  edit: PropTypes.func,
   search: PropTypes.func,
-  newNote: PropTypes.func
+  newNote: PropTypes.func,
+  text: PropTypes.string,
+  id: PropTypes.number
 };
 
 const WiredEditor = connect(Editor)
   .with('Sidebar', 'Notes')
   .map((sidebar, notes) => ({
     exit: () => sidebar.close(),
-    save: ({ text }) => {
-      notes.createNote(text);
-      sidebar.close();
+    create: ({ text }) => {
+      notes.create(text);
+    },
+    edit: ({ text }, id) => {
+      notes.edit(id, {
+        content: text,
+        edited: moment().toString()
+      });
     },
     newNote: () => sidebar.open(<WiredEditor />),
     search: () => sidebar.open(<Search />)
