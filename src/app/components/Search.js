@@ -15,6 +15,8 @@ class Search extends React.Component {
     this._onChange = this._onChange.bind(this);
     this._exit = this._exit.bind(this);
     this._onInputKeydown = this._onInputKeydown.bind(this);
+    this._nextPage = this._nextPage.bind(this);
+    this._prevPage = this._prevPage.bind(this);
     this.state = {
       text: props.what || '',
       page: 0
@@ -50,6 +52,12 @@ class Search extends React.Component {
   _unsetShortcuts() {
     this.input && this.input.removeEventListener('keydown', this._onInputKeydown);
   }
+  _nextPage() {
+    this.setState({ page: this.state.page + 1 });
+  }
+  _prevPage() {
+    this.setState({ page: this.state.page - 1 });
+  }
   render() {
     var { notes } = this.props;
     var done = 0;
@@ -81,7 +89,13 @@ class Search extends React.Component {
             .map((note, i) => <Note note={ note } key={ `${ getId() }_${ i }` } />)
           }
           { pagination && <div className='pagination'>
-            <p>{ this.state.page + 1 } / { totalPages }</p>
+            { this.state.page > 0 ? <a className='button' onClick={ this._prevPage }>
+              <i className='fa fa-long-arrow-left'></i>
+            </a> : <span></span> }
+            <span>{ this.state.page + 1 } / { totalPages }</span>
+            { this.state.page < totalPages - 1 ? <a className='button' onClick={ this._nextPage }>
+              <i className='fa fa-long-arrow-right'></i>
+            </a> : <span></span> }
           </div> }
         </div>
         <nav>

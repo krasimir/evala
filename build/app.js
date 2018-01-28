@@ -55039,6 +55039,8 @@ var Search = function (_React$Component) {
     _this._onChange = _this._onChange.bind(_this);
     _this._exit = _this._exit.bind(_this);
     _this._onInputKeydown = _this._onInputKeydown.bind(_this);
+    _this._nextPage = _this._nextPage.bind(_this);
+    _this._prevPage = _this._prevPage.bind(_this);
     _this.state = {
       text: props.what || '',
       page: 0
@@ -55095,6 +55097,16 @@ var Search = function (_React$Component) {
       this.input && this.input.removeEventListener('keydown', this._onInputKeydown);
     }
   }, {
+    key: '_nextPage',
+    value: function _nextPage() {
+      this.setState({ page: this.state.page + 1 });
+    }
+  }, {
+    key: '_prevPage',
+    value: function _prevPage() {
+      this.setState({ page: this.state.page - 1 });
+    }
+  }, {
     key: 'render',
     value: function render() {
       var _this4 = this;
@@ -55142,13 +55154,23 @@ var Search = function (_React$Component) {
           pagination && _react2.default.createElement(
             'div',
             { className: 'pagination' },
+            this.state.page > 0 ? _react2.default.createElement(
+              'a',
+              { className: 'button', onClick: this._prevPage },
+              _react2.default.createElement('i', { className: 'fa fa-long-arrow-left' })
+            ) : _react2.default.createElement('span', null),
             _react2.default.createElement(
-              'p',
+              'span',
               null,
               this.state.page + 1,
               ' / ',
               totalPages
-            )
+            ),
+            this.state.page < totalPages - 1 ? _react2.default.createElement(
+              'a',
+              { className: 'button', onClick: this._nextPage },
+              _react2.default.createElement('i', { className: 'fa fa-long-arrow-right' })
+            ) : _react2.default.createElement('span', null)
           )
         ),
         _react2.default.createElement(
