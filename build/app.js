@@ -57031,7 +57031,10 @@ var Editor = function (_React$Component) {
     _this._save = _this._save.bind(_this);
     _this._exit = _this._exit.bind(_this);
     _this._onEditorAreaKeyDown = _this._onEditorAreaKeyDown.bind(_this);
-    _this.state = { text: { text: props.text } || '', id: props.id };
+    _this.state = {
+      text: { text: props.text } || '',
+      id: props.id
+    };
     return _this;
   }
 
@@ -57069,9 +57072,6 @@ var Editor = function (_React$Component) {
     key: '_onChange',
     value: function _onChange(text) {
       this.setState({ text: text });
-      if (this.state.id) {
-        this.props.edit(text, this.state.id);
-      }
     }
   }, {
     key: '_onEditorAreaKeyDown',
@@ -57165,16 +57165,11 @@ var WiredEditor = (0, _react3.connect)(Editor).with('Sidebar', 'Notes').map(func
     },
     create: function create(_ref) {
       var text = _ref.text;
-
-      notes.create(text);
+      return notes.create(text);
     },
     edit: function edit(_ref2, id) {
       var text = _ref2.text;
-
-      notes.edit(id, {
-        content: text,
-        edited: (0, _moment2.default)().toString()
-      });
+      return notes.edit(id, text);
     },
     newNote: function newNote() {
       return sidebar.open(_react2.default.createElement(WiredEditor, null));
@@ -58256,30 +58251,29 @@ var Notes = _stent.Machine.create('Notes', {
           }
         }, search, this);
       }),
-      'edit': function edit(state, noteId, data) {
-        var found = state.notes.find(function (_ref2) {
-          var id = _ref2.id;
-          return id === noteId;
-        });
+      'edit': /*#__PURE__*/regeneratorRuntime.mark(function edit(state, id, content) {
+        return regeneratorRuntime.wrap(function edit$(_context3) {
+          while (1) {
+            switch (_context3.prev = _context3.next) {
+              case 0:
+                _context3.next = 2;
+                return (0, _helpers.call)(_db2.default.notes.update.bind(_db2.default.notes), id, {
+                  content: content,
+                  tags: (0, _extractTags2.default)(content) || [],
+                  edited: (0, _moment2.default)().toString()
+                });
 
-        if (found) {
-          Object.keys(data).forEach(function (prop) {
-            found[prop] = data[prop];
-            if (prop === 'content') {
-              found.tags = (0, _extractTags2.default)(data[prop]) || [];
+              case 2:
+                this.fetch();
+
+              case 3:
+              case 'end':
+                return _context3.stop();
             }
-          });
-        }
-        return state;
-      },
-      delete: function _delete(state, noteId) {
-        (0, _lodash2.default)(state.notes, function (_ref3) {
-          var id = _ref3.id;
-          return id === noteId;
-        });
-        this.sort();
-        return state;
-      }
+          }
+        }, edit, this);
+      }),
+      delete: function _delete(state, id) {}
     }
   },
   sort: function sort() {

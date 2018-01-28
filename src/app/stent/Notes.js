@@ -54,23 +54,16 @@ const Notes = Machine.create('Notes', {
 
         return { ...state, filtered };
       },
-      'edit': function (state, noteId, data) {
-        const found = state.notes.find(({ id }) => id === noteId);
-
-        if (found) {
-          Object.keys(data).forEach(prop => {
-            found[prop] = data[prop];
-            if (prop === 'content') {
-              found.tags = extractTags(data[prop]) || [];
-            }
-          });
-        }
-        return state;
+      'edit': function * (state, id, content) {
+        yield call(db.notes.update.bind(db.notes), id, {
+          content,
+          tags: extractTags(content) || [],
+          edited: moment().toString()
+        });
+        this.fetch();
       },
-      delete: function (state, noteId) {
-        remove(state.notes, ({ id }) => id === noteId);
-        this.sort();
-        return state;
+      delete: function (state, id) {
+        
       }
     }
   },

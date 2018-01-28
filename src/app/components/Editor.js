@@ -16,7 +16,10 @@ class Editor extends React.Component {
     this._save = this._save.bind(this);
     this._exit = this._exit.bind(this);
     this._onEditorAreaKeyDown = this._onEditorAreaKeyDown.bind(this);
-    this.state = { text: { text: props.text } || '', id: props.id };
+    this.state = {
+      text: { text: props.text } || '',
+      id: props.id
+    };
   }
   get editorArea() {
     if (!this._editorArea) {
@@ -46,9 +49,6 @@ class Editor extends React.Component {
   }
   _onChange(text) {
     this.setState({ text });
-    if (this.state.id) {
-      this.props.edit(text, this.state.id);
-    }
   }
   _onEditorAreaKeyDown(event) {
     if (event.keyCode === S && event.ctrlKey || event.keyCode === S && event.metaKey) {
@@ -106,15 +106,8 @@ const WiredEditor = connect(Editor)
   .with('Sidebar', 'Notes')
   .map((sidebar, notes) => ({
     exit: () => sidebar.close(),
-    create: ({ text }) => {
-      notes.create(text);
-    },
-    edit: ({ text }, id) => {
-      notes.edit(id, {
-        content: text,
-        edited: moment().toString()
-      });
-    },
+    create: ({ text }) => notes.create(text),
+    edit: ({ text }, id) => notes.edit(id, text),
     newNote: () => sidebar.open(<WiredEditor />),
     search: () => sidebar.open(<Search />)
   }));
