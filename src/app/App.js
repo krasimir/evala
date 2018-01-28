@@ -15,6 +15,7 @@ import './stent/Notes';
 import './helpers/shortcuts';
 import { connect } from 'stent/lib/react';
 import moment from 'moment';
+import { NO_TAG } from './constants';
 
 function removeHash(tag) {
   if (tag.charAt(0) === '#') {
@@ -36,34 +37,26 @@ class App extends React.Component {
     return today ? `${ today.temperature }℃ | ${ now.format('HH:mm') }` : null;
   }
   componentDidMount() {
-    setInterval(() => {
+    this._interval = setInterval(() => {
       this.setState({ now: moment() });
     }, 10000);
   }
+  componentWillUnmount() {
+    clearInterval(this._interval);
+  }
   _renderGroupedByTag() {
-    const { notes } = this.props;
+    const { notesByTag } = this.props;
 
-    if (notes === null || notes.length === 0) return null;
-
-    const groupedByTag = notes.reduce((result, note) => {
-      if (!note.tags || note.tags.length === 0) {
-        if (!result['#notag']) result['#notag'] = 0;
-        result['#notag'] += 1;
-      } else {
-        note.tags.forEach(tag => {
-          if (!result[tag]) result[tag] = 0;
-          result[tag] += 1;
-        });
-      }
-      return result;
-    }, {});
+    const sortedByCount = Object.keys(notesByTag)
+      .map(tag => ([ tag, notesByTag[tag]]))
+      .sort((a, b) => (b[1] - a[1]));
 
     return (
       <div className='summary'>
-        { Object.keys(groupedByTag).map((tag, i) =>
+        { sortedByCount.map(([tag, count], i) =>
           <a key={ i } className='tagSummaryLink' onClick={ () => this.props.search(tag) }>
             <i className='fa fa-hashtag'></i>{ removeHash(tag) }
-            { groupedByTag[tag] > 1 && <sup>{ groupedByTag[tag] }</sup> }
+            { count > 1 && <sup>{ count }</sup> }
           </a>
         )}
       </div>
@@ -85,12 +78,12 @@ class App extends React.Component {
           <nav>
             <a className='button' onClick={ () => this.props.newNote() }>
               <i className='fa fa-plus'></i>
-              <small>Ctrl + n</small>
+              <small>Enter</small>
             </a>
-            <a className='button' onClick={ () => this.props.search() }>
-              <i className='fa fa-search'></i>
-              <small>Ctrl + f</small>
-            </a>
+            { /* <a className='button' onClick={ () => this.props.search() }>
+              <i className='fa fa-list-ul'></i>
+              <small>Shift + Enter</small>
+              </a> */ }
           </nav>
           { this._renderGroupedByTag() }
         </div>
@@ -107,7 +100,7 @@ App.propTypes = {
   newNote: PropTypes.func,
   search: PropTypes.func,
   isSidebarOpen: PropTypes.bool,
-  notes: PropTypes.array
+  notesByTag: PropTypes.object
 };
 
 const AppConnected = connect(App)
@@ -117,7 +110,7 @@ const AppConnected = connect(App)
     sidebarContent: sidebar.state.content,
     newNote: () => sidebar.open(<Editor />),
     search: what => sidebar.open(<Search what={ what } />),
-    notes: notes.state.notes
+    notesByTag: notes.state.notesByTag
   }));
 
 ReactDOM.render(<AppConnected />, document.querySelector('#container'));

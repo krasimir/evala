@@ -6,10 +6,10 @@ import Search from '../components/Search';
 Mousetrap.bind('ctrl+u', function (e) {
   Machine.get('Weather').refresh();
 });
-Mousetrap.bind('ctrl+n', function (e) {
+Mousetrap.bind('enter', function (e) {
   Machine.get('Sidebar').open(<Editor />);
 });
-Mousetrap.bind('ctrl+f', function (e) {
+Mousetrap.bind('shift+enter', function (e) {
   Machine.get('Sidebar').open(<Search />);
 });
 Mousetrap.bind('escape', function (e) {

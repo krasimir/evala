@@ -29,7 +29,7 @@ define(String.prototype, "padRight", "".padEnd);
   [][key] && define(Array, key, Function.call.bind([][key]));
 });
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"core-js/fn/regexp/escape":9,"core-js/shim":332,"regenerator-runtime/runtime":579}],2:[function(require,module,exports){
+},{"core-js/fn/regexp/escape":9,"core-js/shim":332,"regenerator-runtime/runtime":581}],2:[function(require,module,exports){
 var Chromath = require('./src/chromath.js');
 module.exports = Chromath;
 
@@ -9849,7 +9849,7 @@ function factory(ReactComponent, isValidElement, ReactNoopUpdateQueue) {
 module.exports = factory;
 
 }).call(this,require('_process'))
-},{"_process":400,"fbjs/lib/emptyObject":346,"fbjs/lib/invariant":353,"fbjs/lib/warning":360,"object-assign":399}],334:[function(require,module,exports){
+},{"_process":402,"fbjs/lib/emptyObject":347,"fbjs/lib/invariant":354,"fbjs/lib/warning":361,"object-assign":401}],334:[function(require,module,exports){
 var pSlice = Array.prototype.slice;
 var objectKeys = require('./lib/keys.js');
 var isArguments = require('./lib/is_arguments.js');
@@ -9979,6 +9979,4521 @@ function shim (obj) {
 }
 
 },{}],337:[function(require,module,exports){
+(function (global){
+/*
+ * Dexie.js - a minimalistic wrapper for IndexedDB
+ * ===============================================
+ *
+ * By David Fahlander, david.fahlander@gmail.com
+ *
+ * Version 2.0.1, Mon Oct 02 2017
+ *
+ * http://dexie.org
+ *
+ * Apache License Version 2.0, January 2004, http://www.apache.org/licenses/
+ */
+ 
+(function (global, factory) {
+	typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
+	typeof define === 'function' && define.amd ? define(factory) :
+	(global.Dexie = factory());
+}(this, (function () { 'use strict';
+
+var keys = Object.keys;
+var isArray = Array.isArray;
+var _global = typeof self !== 'undefined' ? self :
+    typeof window !== 'undefined' ? window :
+        global;
+function extend(obj, extension) {
+    if (typeof extension !== 'object')
+        return obj;
+    keys(extension).forEach(function (key) {
+        obj[key] = extension[key];
+    });
+    return obj;
+}
+var getProto = Object.getPrototypeOf;
+var _hasOwn = {}.hasOwnProperty;
+function hasOwn(obj, prop) {
+    return _hasOwn.call(obj, prop);
+}
+function props(proto, extension) {
+    if (typeof extension === 'function')
+        extension = extension(getProto(proto));
+    keys(extension).forEach(function (key) {
+        setProp(proto, key, extension[key]);
+    });
+}
+var defineProperty = Object.defineProperty;
+function setProp(obj, prop, functionOrGetSet, options) {
+    defineProperty(obj, prop, extend(functionOrGetSet && hasOwn(functionOrGetSet, "get") && typeof functionOrGetSet.get === 'function' ?
+        { get: functionOrGetSet.get, set: functionOrGetSet.set, configurable: true } :
+        { value: functionOrGetSet, configurable: true, writable: true }, options));
+}
+function derive(Child) {
+    return {
+        from: function (Parent) {
+            Child.prototype = Object.create(Parent.prototype);
+            setProp(Child.prototype, "constructor", Child);
+            return {
+                extend: props.bind(null, Child.prototype)
+            };
+        }
+    };
+}
+var getOwnPropertyDescriptor = Object.getOwnPropertyDescriptor;
+function getPropertyDescriptor(obj, prop) {
+    var pd = getOwnPropertyDescriptor(obj, prop), proto;
+    return pd || (proto = getProto(obj)) && getPropertyDescriptor(proto, prop);
+}
+var _slice = [].slice;
+function slice(args, start, end) {
+    return _slice.call(args, start, end);
+}
+function override(origFunc, overridedFactory) {
+    return overridedFactory(origFunc);
+}
+function doFakeAutoComplete(fn) {
+    var to = setTimeout(fn, 1000);
+    clearTimeout(to);
+}
+function assert(b) {
+    if (!b)
+        throw new Error("Assertion Failed");
+}
+function asap(fn) {
+    if (_global.setImmediate)
+        setImmediate(fn);
+    else
+        setTimeout(fn, 0);
+}
+
+/** Generate an object (hash map) based on given array.
+ * @param extractor Function taking an array item and its index and returning an array of 2 items ([key, value]) to
+ *        instert on the resulting object for each item in the array. If this function returns a falsy value, the
+ *        current item wont affect the resulting object.
+ */
+function arrayToObject(array, extractor) {
+    return array.reduce(function (result, item, i) {
+        var nameAndValue = extractor(item, i);
+        if (nameAndValue)
+            result[nameAndValue[0]] = nameAndValue[1];
+        return result;
+    }, {});
+}
+function trycatcher(fn, reject) {
+    return function () {
+        try {
+            fn.apply(this, arguments);
+        }
+        catch (e) {
+            reject(e);
+        }
+    };
+}
+function tryCatch(fn, onerror, args) {
+    try {
+        fn.apply(null, args);
+    }
+    catch (ex) {
+        onerror && onerror(ex);
+    }
+}
+function getByKeyPath(obj, keyPath) {
+    // http://www.w3.org/TR/IndexedDB/#steps-for-extracting-a-key-from-a-value-using-a-key-path
+    if (hasOwn(obj, keyPath))
+        return obj[keyPath]; // This line is moved from last to first for optimization purpose.
+    if (!keyPath)
+        return obj;
+    if (typeof keyPath !== 'string') {
+        var rv = [];
+        for (var i = 0, l = keyPath.length; i < l; ++i) {
+            var val = getByKeyPath(obj, keyPath[i]);
+            rv.push(val);
+        }
+        return rv;
+    }
+    var period = keyPath.indexOf('.');
+    if (period !== -1) {
+        var innerObj = obj[keyPath.substr(0, period)];
+        return innerObj === undefined ? undefined : getByKeyPath(innerObj, keyPath.substr(period + 1));
+    }
+    return undefined;
+}
+function setByKeyPath(obj, keyPath, value) {
+    if (!obj || keyPath === undefined)
+        return;
+    if ('isFrozen' in Object && Object.isFrozen(obj))
+        return;
+    if (typeof keyPath !== 'string' && 'length' in keyPath) {
+        assert(typeof value !== 'string' && 'length' in value);
+        for (var i = 0, l = keyPath.length; i < l; ++i) {
+            setByKeyPath(obj, keyPath[i], value[i]);
+        }
+    }
+    else {
+        var period = keyPath.indexOf('.');
+        if (period !== -1) {
+            var currentKeyPath = keyPath.substr(0, period);
+            var remainingKeyPath = keyPath.substr(period + 1);
+            if (remainingKeyPath === "")
+                if (value === undefined)
+                    delete obj[currentKeyPath];
+                else
+                    obj[currentKeyPath] = value;
+            else {
+                var innerObj = obj[currentKeyPath];
+                if (!innerObj)
+                    innerObj = (obj[currentKeyPath] = {});
+                setByKeyPath(innerObj, remainingKeyPath, value);
+            }
+        }
+        else {
+            if (value === undefined)
+                delete obj[keyPath];
+            else
+                obj[keyPath] = value;
+        }
+    }
+}
+function delByKeyPath(obj, keyPath) {
+    if (typeof keyPath === 'string')
+        setByKeyPath(obj, keyPath, undefined);
+    else if ('length' in keyPath)
+        [].map.call(keyPath, function (kp) {
+            setByKeyPath(obj, kp, undefined);
+        });
+}
+function shallowClone(obj) {
+    var rv = {};
+    for (var m in obj) {
+        if (hasOwn(obj, m))
+            rv[m] = obj[m];
+    }
+    return rv;
+}
+var concat = [].concat;
+function flatten(a) {
+    return concat.apply([], a);
+}
+//https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API/Structured_clone_algorithm
+var intrinsicTypes = "Boolean,String,Date,RegExp,Blob,File,FileList,ArrayBuffer,DataView,Uint8ClampedArray,ImageData,Map,Set"
+    .split(',').concat(flatten([8, 16, 32, 64].map(function (num) { return ["Int", "Uint", "Float"].map(function (t) { return t + num + "Array"; }); }))).filter(function (t) { return _global[t]; }).map(function (t) { return _global[t]; });
+function deepClone(any) {
+    if (!any || typeof any !== 'object')
+        return any;
+    var rv;
+    if (isArray(any)) {
+        rv = [];
+        for (var i = 0, l = any.length; i < l; ++i) {
+            rv.push(deepClone(any[i]));
+        }
+    }
+    else if (intrinsicTypes.indexOf(any.constructor) >= 0) {
+        rv = any;
+    }
+    else {
+        rv = any.constructor ? Object.create(any.constructor.prototype) : {};
+        for (var prop in any) {
+            if (hasOwn(any, prop)) {
+                rv[prop] = deepClone(any[prop]);
+            }
+        }
+    }
+    return rv;
+}
+function getObjectDiff(a, b, rv, prfx) {
+    // Compares objects a and b and produces a diff object.
+    rv = rv || {};
+    prfx = prfx || '';
+    keys(a).forEach(function (prop) {
+        if (!hasOwn(b, prop))
+            rv[prfx + prop] = undefined; // Property removed
+        else {
+            var ap = a[prop], bp = b[prop];
+            if (typeof ap === 'object' && typeof bp === 'object' &&
+                ap && bp &&
+                // Now compare constructors are same (not equal because wont work in Safari)
+                ('' + ap.constructor) === ('' + bp.constructor))
+                // Same type of object but its properties may have changed
+                getObjectDiff(ap, bp, rv, prfx + prop + ".");
+            else if (ap !== bp)
+                rv[prfx + prop] = b[prop]; // Primitive value changed
+        }
+    });
+    keys(b).forEach(function (prop) {
+        if (!hasOwn(a, prop)) {
+            rv[prfx + prop] = b[prop]; // Property added
+        }
+    });
+    return rv;
+}
+// If first argument is iterable or array-like, return it as an array
+var iteratorSymbol = typeof Symbol !== 'undefined' && Symbol.iterator;
+var getIteratorOf = iteratorSymbol ? function (x) {
+    var i;
+    return x != null && (i = x[iteratorSymbol]) && i.apply(x);
+} : function () { return null; };
+var NO_CHAR_ARRAY = {};
+// Takes one or several arguments and returns an array based on the following criteras:
+// * If several arguments provided, return arguments converted to an array in a way that
+//   still allows javascript engine to optimize the code.
+// * If single argument is an array, return a clone of it.
+// * If this-pointer equals NO_CHAR_ARRAY, don't accept strings as valid iterables as a special
+//   case to the two bullets below.
+// * If single argument is an iterable, convert it to an array and return the resulting array.
+// * If single argument is array-like (has length of type number), convert it to an array.
+function getArrayOf(arrayLike) {
+    var i, a, x, it;
+    if (arguments.length === 1) {
+        if (isArray(arrayLike))
+            return arrayLike.slice();
+        if (this === NO_CHAR_ARRAY && typeof arrayLike === 'string')
+            return [arrayLike];
+        if ((it = getIteratorOf(arrayLike))) {
+            a = [];
+            while ((x = it.next()), !x.done)
+                a.push(x.value);
+            return a;
+        }
+        if (arrayLike == null)
+            return [arrayLike];
+        i = arrayLike.length;
+        if (typeof i === 'number') {
+            a = new Array(i);
+            while (i--)
+                a[i] = arrayLike[i];
+            return a;
+        }
+        return [arrayLike];
+    }
+    i = arguments.length;
+    a = new Array(i);
+    while (i--)
+        a[i] = arguments[i];
+    return a;
+}
+
+// By default, debug will be true only if platform is a web platform and its page is served from localhost.
+// When debug = true, error's stacks will contain asyncronic long stacks.
+// By default, debug will be true only if platform is a web platform and its page is served from localhost.
+var debug = typeof location !== 'undefined' &&
+    // By default, use debug mode if served from localhost.
+    /^(http|https):\/\/(localhost|127\.0\.0\.1)/.test(location.href);
+function setDebug(value, filter) {
+    debug = value;
+    libraryFilter = filter;
+}
+var libraryFilter = function () { return true; };
+var NEEDS_THROW_FOR_STACK = !new Error("").stack;
+function getErrorWithStack() {
+    "use strict";
+    if (NEEDS_THROW_FOR_STACK)
+        try {
+            // Doing something naughty in strict mode here to trigger a specific error
+            // that can be explicitely ignored in debugger's exception settings.
+            // If we'd just throw new Error() here, IE's debugger's exception settings
+            // will just consider it as "exception thrown by javascript code" which is
+            // something you wouldn't want it to ignore.
+            getErrorWithStack.arguments;
+            throw new Error(); // Fallback if above line don't throw.
+        }
+        catch (e) {
+            return e;
+        }
+    return new Error();
+}
+function prettyStack(exception, numIgnoredFrames) {
+    var stack = exception.stack;
+    if (!stack)
+        return "";
+    numIgnoredFrames = (numIgnoredFrames || 0);
+    if (stack.indexOf(exception.name) === 0)
+        numIgnoredFrames += (exception.name + exception.message).split('\n').length;
+    return stack.split('\n')
+        .slice(numIgnoredFrames)
+        .filter(libraryFilter)
+        .map(function (frame) { return "\n" + frame; })
+        .join('');
+}
+function deprecated(what, fn) {
+    return function () {
+        console.warn(what + " is deprecated. See https://github.com/dfahlander/Dexie.js/wiki/Deprecations. " + prettyStack(getErrorWithStack(), 1));
+        return fn.apply(this, arguments);
+    };
+}
+
+var dexieErrorNames = [
+    'Modify',
+    'Bulk',
+    'OpenFailed',
+    'VersionChange',
+    'Schema',
+    'Upgrade',
+    'InvalidTable',
+    'MissingAPI',
+    'NoSuchDatabase',
+    'InvalidArgument',
+    'SubTransaction',
+    'Unsupported',
+    'Internal',
+    'DatabaseClosed',
+    'PrematureCommit',
+    'ForeignAwait'
+];
+var idbDomErrorNames = [
+    'Unknown',
+    'Constraint',
+    'Data',
+    'TransactionInactive',
+    'ReadOnly',
+    'Version',
+    'NotFound',
+    'InvalidState',
+    'InvalidAccess',
+    'Abort',
+    'Timeout',
+    'QuotaExceeded',
+    'Syntax',
+    'DataClone'
+];
+var errorList = dexieErrorNames.concat(idbDomErrorNames);
+var defaultTexts = {
+    VersionChanged: "Database version changed by other database connection",
+    DatabaseClosed: "Database has been closed",
+    Abort: "Transaction aborted",
+    TransactionInactive: "Transaction has already completed or failed"
+};
+//
+// DexieError - base class of all out exceptions.
+//
+function DexieError(name, msg) {
+    // Reason we don't use ES6 classes is because:
+    // 1. It bloats transpiled code and increases size of minified code.
+    // 2. It doesn't give us much in this case.
+    // 3. It would require sub classes to call super(), which
+    //    is not needed when deriving from Error.
+    this._e = getErrorWithStack();
+    this.name = name;
+    this.message = msg;
+}
+derive(DexieError).from(Error).extend({
+    stack: {
+        get: function () {
+            return this._stack ||
+                (this._stack = this.name + ": " + this.message + prettyStack(this._e, 2));
+        }
+    },
+    toString: function () { return this.name + ": " + this.message; }
+});
+function getMultiErrorMessage(msg, failures) {
+    return msg + ". Errors: " + failures
+        .map(function (f) { return f.toString(); })
+        .filter(function (v, i, s) { return s.indexOf(v) === i; }) // Only unique error strings
+        .join('\n');
+}
+//
+// ModifyError - thrown in Collection.modify()
+// Specific constructor because it contains members failures and failedKeys.
+//
+function ModifyError(msg, failures, successCount, failedKeys) {
+    this._e = getErrorWithStack();
+    this.failures = failures;
+    this.failedKeys = failedKeys;
+    this.successCount = successCount;
+}
+derive(ModifyError).from(DexieError);
+function BulkError(msg, failures) {
+    this._e = getErrorWithStack();
+    this.name = "BulkError";
+    this.failures = failures;
+    this.message = getMultiErrorMessage(msg, failures);
+}
+derive(BulkError).from(DexieError);
+//
+//
+// Dynamically generate error names and exception classes based
+// on the names in errorList.
+//
+//
+// Map of {ErrorName -> ErrorName + "Error"}
+var errnames = errorList.reduce(function (obj, name) { return (obj[name] = name + "Error", obj); }, {});
+// Need an alias for DexieError because we're gonna create subclasses with the same name.
+var BaseException = DexieError;
+// Map of {ErrorName -> exception constructor}
+var exceptions = errorList.reduce(function (obj, name) {
+    // Let the name be "DexieError" because this name may
+    // be shown in call stack and when debugging. DexieError is
+    // the most true name because it derives from DexieError,
+    // and we cannot change Function.name programatically without
+    // dynamically create a Function object, which would be considered
+    // 'eval-evil'.
+    var fullName = name + "Error";
+    function DexieError(msgOrInner, inner) {
+        this._e = getErrorWithStack();
+        this.name = fullName;
+        if (!msgOrInner) {
+            this.message = defaultTexts[name] || fullName;
+            this.inner = null;
+        }
+        else if (typeof msgOrInner === 'string') {
+            this.message = msgOrInner;
+            this.inner = inner || null;
+        }
+        else if (typeof msgOrInner === 'object') {
+            this.message = msgOrInner.name + " " + msgOrInner.message;
+            this.inner = msgOrInner;
+        }
+    }
+    derive(DexieError).from(BaseException);
+    obj[name] = DexieError;
+    return obj;
+}, {});
+// Use ECMASCRIPT standard exceptions where applicable:
+exceptions.Syntax = SyntaxError;
+exceptions.Type = TypeError;
+exceptions.Range = RangeError;
+var exceptionMap = idbDomErrorNames.reduce(function (obj, name) {
+    obj[name + "Error"] = exceptions[name];
+    return obj;
+}, {});
+function mapError(domError, message) {
+    if (!domError || domError instanceof DexieError || domError instanceof TypeError || domError instanceof SyntaxError || !domError.name || !exceptionMap[domError.name])
+        return domError;
+    var rv = new exceptionMap[domError.name](message || domError.message, domError);
+    if ("stack" in domError) {
+        // Derive stack from inner exception if it has a stack
+        setProp(rv, "stack", { get: function () {
+                return this.inner.stack;
+            } });
+    }
+    return rv;
+}
+var fullNameExceptions = errorList.reduce(function (obj, name) {
+    if (["Syntax", "Type", "Range"].indexOf(name) === -1)
+        obj[name + "Error"] = exceptions[name];
+    return obj;
+}, {});
+fullNameExceptions.ModifyError = ModifyError;
+fullNameExceptions.DexieError = DexieError;
+fullNameExceptions.BulkError = BulkError;
+
+function nop() { }
+function mirror(val) { return val; }
+function pureFunctionChain(f1, f2) {
+    // Enables chained events that takes ONE argument and returns it to the next function in chain.
+    // This pattern is used in the hook("reading") event.
+    if (f1 == null || f1 === mirror)
+        return f2;
+    return function (val) {
+        return f2(f1(val));
+    };
+}
+function callBoth(on1, on2) {
+    return function () {
+        on1.apply(this, arguments);
+        on2.apply(this, arguments);
+    };
+}
+function hookCreatingChain(f1, f2) {
+    // Enables chained events that takes several arguments and may modify first argument by making a modification and then returning the same instance.
+    // This pattern is used in the hook("creating") event.
+    if (f1 === nop)
+        return f2;
+    return function () {
+        var res = f1.apply(this, arguments);
+        if (res !== undefined)
+            arguments[0] = res;
+        var onsuccess = this.onsuccess, // In case event listener has set this.onsuccess
+        onerror = this.onerror; // In case event listener has set this.onerror
+        this.onsuccess = null;
+        this.onerror = null;
+        var res2 = f2.apply(this, arguments);
+        if (onsuccess)
+            this.onsuccess = this.onsuccess ? callBoth(onsuccess, this.onsuccess) : onsuccess;
+        if (onerror)
+            this.onerror = this.onerror ? callBoth(onerror, this.onerror) : onerror;
+        return res2 !== undefined ? res2 : res;
+    };
+}
+function hookDeletingChain(f1, f2) {
+    if (f1 === nop)
+        return f2;
+    return function () {
+        f1.apply(this, arguments);
+        var onsuccess = this.onsuccess, // In case event listener has set this.onsuccess
+        onerror = this.onerror; // In case event listener has set this.onerror
+        this.onsuccess = this.onerror = null;
+        f2.apply(this, arguments);
+        if (onsuccess)
+            this.onsuccess = this.onsuccess ? callBoth(onsuccess, this.onsuccess) : onsuccess;
+        if (onerror)
+            this.onerror = this.onerror ? callBoth(onerror, this.onerror) : onerror;
+    };
+}
+function hookUpdatingChain(f1, f2) {
+    if (f1 === nop)
+        return f2;
+    return function (modifications) {
+        var res = f1.apply(this, arguments);
+        extend(modifications, res); // If f1 returns new modifications, extend caller's modifications with the result before calling next in chain.
+        var onsuccess = this.onsuccess, // In case event listener has set this.onsuccess
+        onerror = this.onerror; // In case event listener has set this.onerror
+        this.onsuccess = null;
+        this.onerror = null;
+        var res2 = f2.apply(this, arguments);
+        if (onsuccess)
+            this.onsuccess = this.onsuccess ? callBoth(onsuccess, this.onsuccess) : onsuccess;
+        if (onerror)
+            this.onerror = this.onerror ? callBoth(onerror, this.onerror) : onerror;
+        return res === undefined ?
+            (res2 === undefined ? undefined : res2) :
+            (extend(res, res2));
+    };
+}
+function reverseStoppableEventChain(f1, f2) {
+    if (f1 === nop)
+        return f2;
+    return function () {
+        if (f2.apply(this, arguments) === false)
+            return false;
+        return f1.apply(this, arguments);
+    };
+}
+
+function promisableChain(f1, f2) {
+    if (f1 === nop)
+        return f2;
+    return function () {
+        var res = f1.apply(this, arguments);
+        if (res && typeof res.then === 'function') {
+            var thiz = this, i = arguments.length, args = new Array(i);
+            while (i--)
+                args[i] = arguments[i];
+            return res.then(function () {
+                return f2.apply(thiz, args);
+            });
+        }
+        return f2.apply(this, arguments);
+    };
+}
+
+//
+// Promise and Zone (PSD) for Dexie library
+//
+// I started out writing this Promise class by copying promise-light (https://github.com/taylorhakes/promise-light) by
+// https://github.com/taylorhakes - an A+ and ECMASCRIPT 6 compliant Promise implementation.
+//
+// In previous versions this was fixed by not calling setTimeout when knowing that the resolve() or reject() came from another
+// tick. In Dexie v1.4.0, I've rewritten the Promise class entirely. Just some fragments of promise-light is left. I use
+// another strategy now that simplifies everything a lot: to always execute callbacks in a new micro-task, but have an own micro-task
+// engine that is indexedDB compliant across all browsers.
+// Promise class has also been optimized a lot with inspiration from bluebird - to avoid closures as much as possible.
+// Also with inspiration from bluebird, asyncronic stacks in debug mode.
+//
+// Specific non-standard features of this Promise class:
+// * Custom zone support (a.k.a. PSD) with ability to keep zones also when using native promises as well as
+//   native async / await.
+// * Promise.follow() method built upon the custom zone engine, that allows user to track all promises created from current stack frame
+//   and below + all promises that those promises creates or awaits.
+// * Detect any unhandled promise in a PSD-scope (PSD.onunhandled). 
+//
+// David Fahlander, https://github.com/dfahlander
+//
+// Just a pointer that only this module knows about.
+// Used in Promise constructor to emulate a private constructor.
+var INTERNAL = {};
+// Async stacks (long stacks) must not grow infinitely.
+var LONG_STACKS_CLIP_LIMIT = 100;
+var MAX_LONG_STACKS = 20;
+var ZONE_ECHO_LIMIT = 7;
+var nativePromiseInstanceAndProto = (function () {
+    try {
+        // Be able to patch native async functions
+        return new Function("let F=async ()=>{},p=F();return [p,Object.getPrototypeOf(p),Promise.resolve(),F.constructor];")();
+    }
+    catch (e) {
+        var P = _global.Promise;
+        return P ?
+            [P.resolve(), P.prototype, P.resolve()] :
+            [];
+    }
+})();
+var resolvedNativePromise = nativePromiseInstanceAndProto[0];
+var nativePromiseProto = nativePromiseInstanceAndProto[1];
+var resolvedGlobalPromise = nativePromiseInstanceAndProto[2];
+var nativePromiseThen = nativePromiseProto && nativePromiseProto.then;
+var NativePromise = resolvedNativePromise && resolvedNativePromise.constructor;
+var AsyncFunction = nativePromiseInstanceAndProto[3];
+var patchGlobalPromise = !!resolvedGlobalPromise;
+var stack_being_generated = false;
+/* The default function used only for the very first promise in a promise chain.
+   As soon as then promise is resolved or rejected, all next tasks will be executed in micro ticks
+   emulated in this module. For indexedDB compatibility, this means that every method needs to
+   execute at least one promise before doing an indexedDB operation. Dexie will always call
+   db.ready().then() for every operation to make sure the indexedDB event is started in an
+   indexedDB-compatible emulated micro task loop.
+*/
+var schedulePhysicalTick = resolvedGlobalPromise ?
+    function () { resolvedGlobalPromise.then(physicalTick); }
+    :
+        _global.setImmediate ?
+            // setImmediate supported. Those modern platforms also supports Function.bind().
+            setImmediate.bind(null, physicalTick) :
+            _global.MutationObserver ?
+                // MutationObserver supported
+                function () {
+                    var hiddenDiv = document.createElement("div");
+                    (new MutationObserver(function () {
+                        physicalTick();
+                        hiddenDiv = null;
+                    })).observe(hiddenDiv, { attributes: true });
+                    hiddenDiv.setAttribute('i', '1');
+                } :
+                // No support for setImmediate or MutationObserver. No worry, setTimeout is only called
+                // once time. Every tick that follows will be our emulated micro tick.
+                // Could have uses setTimeout.bind(null, 0, physicalTick) if it wasnt for that FF13 and below has a bug 
+                function () { setTimeout(physicalTick, 0); };
+// Configurable through Promise.scheduler.
+// Don't export because it would be unsafe to let unknown
+// code call it unless they do try..catch within their callback.
+// This function can be retrieved through getter of Promise.scheduler though,
+// but users must not do Promise.scheduler = myFuncThatThrowsException
+var asap$1 = function (callback, args) {
+    microtickQueue.push([callback, args]);
+    if (needsNewPhysicalTick) {
+        schedulePhysicalTick();
+        needsNewPhysicalTick = false;
+    }
+};
+var isOutsideMicroTick = true;
+var needsNewPhysicalTick = true;
+var unhandledErrors = [];
+var rejectingErrors = [];
+var currentFulfiller = null;
+var rejectionMapper = mirror; // Remove in next major when removing error mapping of DOMErrors and DOMExceptions
+// Remove in next major when removing error mapping of DOMErrors and DOMExceptions
+var globalPSD = {
+    id: 'global',
+    global: true,
+    ref: 0,
+    unhandleds: [],
+    onunhandled: globalError,
+    pgp: false,
+    env: {},
+    finalize: function () {
+        this.unhandleds.forEach(function (uh) {
+            try {
+                globalError(uh[0], uh[1]);
+            }
+            catch (e) { }
+        });
+    }
+};
+var PSD = globalPSD;
+var microtickQueue = []; // Callbacks to call in this or next physical tick.
+// Callbacks to call in this or next physical tick.
+var numScheduledCalls = 0; // Number of listener-calls left to do in this physical tick.
+// Number of listener-calls left to do in this physical tick.
+var tickFinalizers = []; // Finalizers to call when there are no more async calls scheduled within current physical tick.
+// Finalizers to call when there are no more async calls scheduled within current physical tick.
+function Promise(fn) {
+    if (typeof this !== 'object')
+        throw new TypeError('Promises must be constructed via new');
+    this._listeners = [];
+    this.onuncatched = nop; // Deprecate in next major. Not needed. Better to use global error handler.
+    // A library may set `promise._lib = true;` after promise is created to make resolve() or reject()
+    // execute the microtask engine implicitely within the call to resolve() or reject().
+    // To remain A+ compliant, a library must only set `_lib=true` if it can guarantee that the stack
+    // only contains library code when calling resolve() or reject().
+    // RULE OF THUMB: ONLY set _lib = true for promises explicitely resolving/rejecting directly from
+    // global scope (event handler, timer etc)!
+    this._lib = false;
+    // Current async scope
+    var psd = (this._PSD = PSD);
+    if (debug) {
+        this._stackHolder = getErrorWithStack();
+        this._prev = null;
+        this._numPrev = 0; // Number of previous promises (for long stacks)
+    }
+    if (typeof fn !== 'function') {
+        if (fn !== INTERNAL)
+            throw new TypeError('Not a function');
+        // Private constructor (INTERNAL, state, value).
+        // Used internally by Promise.resolve() and Promise.reject().
+        this._state = arguments[1];
+        this._value = arguments[2];
+        if (this._state === false)
+            handleRejection(this, this._value); // Map error, set stack and addPossiblyUnhandledError().
+        return;
+    }
+    this._state = null; // null (=pending), false (=rejected) or true (=resolved)
+    this._value = null; // error or result
+    ++psd.ref; // Refcounting current scope
+    executePromiseTask(this, fn);
+}
+// Prepare a property descriptor to put onto Promise.prototype.then
+var thenProp = {
+    get: function () {
+        var psd = PSD, microTaskId = totalEchoes;
+        function then(onFulfilled, onRejected) {
+            var _this = this;
+            var possibleAwait = !psd.global && (psd !== PSD || microTaskId !== totalEchoes);
+            if (possibleAwait)
+                decrementExpectedAwaits();
+            var rv = new Promise(function (resolve, reject) {
+                propagateToListener(_this, new Listener(nativeAwaitCompatibleWrap(onFulfilled, psd, possibleAwait), nativeAwaitCompatibleWrap(onRejected, psd, possibleAwait), resolve, reject, psd));
+            });
+            debug && linkToPreviousPromise(rv, this);
+            return rv;
+        }
+        then.prototype = INTERNAL; // For idempotense, see setter below.
+        return then;
+    },
+    // Be idempotent and allow another framework (such as zone.js or another instance of a Dexie.Promise module) to replace Promise.prototype.then
+    // and when that framework wants to restore the original property, we must identify that and restore the original property descriptor.
+    set: function (value) {
+        setProp(this, 'then', value && value.prototype === INTERNAL ?
+            thenProp :
+            {
+                get: function () {
+                    return value; // Getter returning provided value (behaves like value is just changed)
+                },
+                set: thenProp.set // Keep a setter that is prepared to restore original.
+            });
+    }
+};
+props(Promise.prototype, {
+    then: thenProp,
+    _then: function (onFulfilled, onRejected) {
+        // A little tinier version of then() that don't have to create a resulting promise.
+        propagateToListener(this, new Listener(null, null, onFulfilled, onRejected, PSD));
+    },
+    catch: function (onRejected) {
+        if (arguments.length === 1)
+            return this.then(null, onRejected);
+        // First argument is the Error type to catch
+        var type = arguments[0], handler = arguments[1];
+        return typeof type === 'function' ? this.then(null, function (err) {
+            // Catching errors by its constructor type (similar to java / c++ / c#)
+            // Sample: promise.catch(TypeError, function (e) { ... });
+            return err instanceof type ? handler(err) : PromiseReject(err);
+        })
+            : this.then(null, function (err) {
+                // Catching errors by the error.name property. Makes sense for indexedDB where error type
+                // is always DOMError but where e.name tells the actual error type.
+                // Sample: promise.catch('ConstraintError', function (e) { ... });
+                return err && err.name === type ? handler(err) : PromiseReject(err);
+            });
+    },
+    finally: function (onFinally) {
+        return this.then(function (value) {
+            onFinally();
+            return value;
+        }, function (err) {
+            onFinally();
+            return PromiseReject(err);
+        });
+    },
+    stack: {
+        get: function () {
+            if (this._stack)
+                return this._stack;
+            try {
+                stack_being_generated = true;
+                var stacks = getStack(this, [], MAX_LONG_STACKS);
+                var stack = stacks.join("\nFrom previous: ");
+                if (this._state !== null)
+                    this._stack = stack; // Stack may be updated on reject.
+                return stack;
+            }
+            finally {
+                stack_being_generated = false;
+            }
+        }
+    },
+    timeout: function (ms, msg) {
+        var _this = this;
+        return ms < Infinity ?
+            new Promise(function (resolve, reject) {
+                var handle = setTimeout(function () { return reject(new exceptions.Timeout(msg)); }, ms);
+                _this.then(resolve, reject).finally(clearTimeout.bind(null, handle));
+            }) : this;
+    }
+});
+if (typeof Symbol !== 'undefined' && Symbol.toStringTag)
+    setProp(Promise.prototype, Symbol.toStringTag, 'Promise');
+// Now that Promise.prototype is defined, we have all it takes to set globalPSD.env.
+// Environment globals snapshotted on leaving global zone
+globalPSD.env = snapShot();
+function Listener(onFulfilled, onRejected, resolve, reject, zone) {
+    this.onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : null;
+    this.onRejected = typeof onRejected === 'function' ? onRejected : null;
+    this.resolve = resolve;
+    this.reject = reject;
+    this.psd = zone;
+}
+// Promise Static Properties
+props(Promise, {
+    all: function () {
+        var values = getArrayOf.apply(null, arguments) // Supports iterables, implicit arguments and array-like.
+            .map(onPossibleParallellAsync); // Handle parallell async/awaits 
+        return new Promise(function (resolve, reject) {
+            if (values.length === 0)
+                resolve([]);
+            var remaining = values.length;
+            values.forEach(function (a, i) { return Promise.resolve(a).then(function (x) {
+                values[i] = x;
+                if (!--remaining)
+                    resolve(values);
+            }, reject); });
+        });
+    },
+    resolve: function (value) {
+        if (value instanceof Promise)
+            return value;
+        if (value && typeof value.then === 'function')
+            return new Promise(function (resolve, reject) {
+                value.then(resolve, reject);
+            });
+        var rv = new Promise(INTERNAL, true, value);
+        linkToPreviousPromise(rv, currentFulfiller);
+        return rv;
+    },
+    reject: PromiseReject,
+    race: function () {
+        var values = getArrayOf.apply(null, arguments).map(onPossibleParallellAsync);
+        return new Promise(function (resolve, reject) {
+            values.map(function (value) { return Promise.resolve(value).then(resolve, reject); });
+        });
+    },
+    PSD: {
+        get: function () { return PSD; },
+        set: function (value) { return PSD = value; }
+    },
+    //totalEchoes: {get: ()=>totalEchoes},
+    //task: {get: ()=>task},
+    newPSD: newScope,
+    usePSD: usePSD,
+    scheduler: {
+        get: function () { return asap$1; },
+        set: function (value) { asap$1 = value; }
+    },
+    rejectionMapper: {
+        get: function () { return rejectionMapper; },
+        set: function (value) { rejectionMapper = value; } // Map reject failures
+    },
+    follow: function (fn, zoneProps) {
+        return new Promise(function (resolve, reject) {
+            return newScope(function (resolve, reject) {
+                var psd = PSD;
+                psd.unhandleds = []; // For unhandled standard- or 3rd party Promises. Checked at psd.finalize()
+                psd.onunhandled = reject; // Triggered directly on unhandled promises of this library.
+                psd.finalize = callBoth(function () {
+                    var _this = this;
+                    // Unhandled standard or 3rd part promises are put in PSD.unhandleds and
+                    // examined upon scope completion while unhandled rejections in this Promise
+                    // will trigger directly through psd.onunhandled
+                    run_at_end_of_this_or_next_physical_tick(function () {
+                        _this.unhandleds.length === 0 ? resolve() : reject(_this.unhandleds[0]);
+                    });
+                }, psd.finalize);
+                fn();
+            }, zoneProps, resolve, reject);
+        });
+    }
+});
+/**
+* Take a potentially misbehaving resolver function and make sure
+* onFulfilled and onRejected are only called once.
+*
+* Makes no guarantees about asynchrony.
+*/
+function executePromiseTask(promise, fn) {
+    // Promise Resolution Procedure:
+    // https://github.com/promises-aplus/promises-spec#the-promise-resolution-procedure
+    try {
+        fn(function (value) {
+            if (promise._state !== null)
+                return; // Already settled
+            if (value === promise)
+                throw new TypeError('A promise cannot be resolved with itself.');
+            var shouldExecuteTick = promise._lib && beginMicroTickScope();
+            if (value && typeof value.then === 'function') {
+                executePromiseTask(promise, function (resolve, reject) {
+                    value instanceof Promise ?
+                        value._then(resolve, reject) :
+                        value.then(resolve, reject);
+                });
+            }
+            else {
+                promise._state = true;
+                promise._value = value;
+                propagateAllListeners(promise);
+            }
+            if (shouldExecuteTick)
+                endMicroTickScope();
+        }, handleRejection.bind(null, promise)); // If Function.bind is not supported. Exception is handled in catch below
+    }
+    catch (ex) {
+        handleRejection(promise, ex);
+    }
+}
+function handleRejection(promise, reason) {
+    rejectingErrors.push(reason);
+    if (promise._state !== null)
+        return;
+    var shouldExecuteTick = promise._lib && beginMicroTickScope();
+    reason = rejectionMapper(reason);
+    promise._state = false;
+    promise._value = reason;
+    debug && reason !== null && typeof reason === 'object' && !reason._promise && tryCatch(function () {
+        var origProp = getPropertyDescriptor(reason, "stack");
+        reason._promise = promise;
+        setProp(reason, "stack", {
+            get: function () {
+                return stack_being_generated ?
+                    origProp && (origProp.get ?
+                        origProp.get.apply(reason) :
+                        origProp.value) :
+                    promise.stack;
+            }
+        });
+    });
+    // Add the failure to a list of possibly uncaught errors
+    addPossiblyUnhandledError(promise);
+    propagateAllListeners(promise);
+    if (shouldExecuteTick)
+        endMicroTickScope();
+}
+function propagateAllListeners(promise) {
+    //debug && linkToPreviousPromise(promise);
+    var listeners = promise._listeners;
+    promise._listeners = [];
+    for (var i = 0, len = listeners.length; i < len; ++i) {
+        propagateToListener(promise, listeners[i]);
+    }
+    var psd = promise._PSD;
+    --psd.ref || psd.finalize(); // if psd.ref reaches zero, call psd.finalize();
+    if (numScheduledCalls === 0) {
+        // If numScheduledCalls is 0, it means that our stack is not in a callback of a scheduled call,
+        // and that no deferreds where listening to this rejection or success.
+        // Since there is a risk that our stack can contain application code that may
+        // do stuff after this code is finished that may generate new calls, we cannot
+        // call finalizers here.
+        ++numScheduledCalls;
+        asap$1(function () {
+            if (--numScheduledCalls === 0)
+                finalizePhysicalTick(); // Will detect unhandled errors
+        }, []);
+    }
+}
+function propagateToListener(promise, listener) {
+    if (promise._state === null) {
+        promise._listeners.push(listener);
+        return;
+    }
+    var cb = promise._state ? listener.onFulfilled : listener.onRejected;
+    if (cb === null) {
+        // This Listener doesnt have a listener for the event being triggered (onFulfilled or onReject) so lets forward the event to any eventual listeners on the Promise instance returned by then() or catch()
+        return (promise._state ? listener.resolve : listener.reject)(promise._value);
+    }
+    ++listener.psd.ref;
+    ++numScheduledCalls;
+    asap$1(callListener, [cb, promise, listener]);
+}
+function callListener(cb, promise, listener) {
+    try {
+        // Set static variable currentFulfiller to the promise that is being fullfilled,
+        // so that we connect the chain of promises (for long stacks support)
+        currentFulfiller = promise;
+        // Call callback and resolve our listener with it's return value.
+        var ret, value = promise._value;
+        if (promise._state) {
+            // cb is onResolved
+            ret = cb(value);
+        }
+        else {
+            // cb is onRejected
+            if (rejectingErrors.length)
+                rejectingErrors = [];
+            ret = cb(value);
+            if (rejectingErrors.indexOf(value) === -1)
+                markErrorAsHandled(promise); // Callback didnt do Promise.reject(err) nor reject(err) onto another promise.
+        }
+        listener.resolve(ret);
+    }
+    catch (e) {
+        // Exception thrown in callback. Reject our listener.
+        listener.reject(e);
+    }
+    finally {
+        // Restore env and currentFulfiller.
+        currentFulfiller = null;
+        if (--numScheduledCalls === 0)
+            finalizePhysicalTick();
+        --listener.psd.ref || listener.psd.finalize();
+    }
+}
+function getStack(promise, stacks, limit) {
+    if (stacks.length === limit)
+        return stacks;
+    var stack = "";
+    if (promise._state === false) {
+        var failure = promise._value, errorName, message;
+        if (failure != null) {
+            errorName = failure.name || "Error";
+            message = failure.message || failure;
+            stack = prettyStack(failure, 0);
+        }
+        else {
+            errorName = failure; // If error is undefined or null, show that.
+            message = "";
+        }
+        stacks.push(errorName + (message ? ": " + message : "") + stack);
+    }
+    if (debug) {
+        stack = prettyStack(promise._stackHolder, 2);
+        if (stack && stacks.indexOf(stack) === -1)
+            stacks.push(stack);
+        if (promise._prev)
+            getStack(promise._prev, stacks, limit);
+    }
+    return stacks;
+}
+function linkToPreviousPromise(promise, prev) {
+    // Support long stacks by linking to previous completed promise.
+    var numPrev = prev ? prev._numPrev + 1 : 0;
+    if (numPrev < LONG_STACKS_CLIP_LIMIT) {
+        promise._prev = prev;
+        promise._numPrev = numPrev;
+    }
+}
+/* The callback to schedule with setImmediate() or setTimeout().
+   It runs a virtual microtick and executes any callback registered in microtickQueue.
+ */
+function physicalTick() {
+    beginMicroTickScope() && endMicroTickScope();
+}
+function beginMicroTickScope() {
+    var wasRootExec = isOutsideMicroTick;
+    isOutsideMicroTick = false;
+    needsNewPhysicalTick = false;
+    return wasRootExec;
+}
+/* Executes micro-ticks without doing try..catch.
+   This can be possible because we only use this internally and
+   the registered functions are exception-safe (they do try..catch
+   internally before calling any external method). If registering
+   functions in the microtickQueue that are not exception-safe, this
+   would destroy the framework and make it instable. So we don't export
+   our asap method.
+*/
+function endMicroTickScope() {
+    var callbacks, i, l;
+    do {
+        while (microtickQueue.length > 0) {
+            callbacks = microtickQueue;
+            microtickQueue = [];
+            l = callbacks.length;
+            for (i = 0; i < l; ++i) {
+                var item = callbacks[i];
+                item[0].apply(null, item[1]);
+            }
+        }
+    } while (microtickQueue.length > 0);
+    isOutsideMicroTick = true;
+    needsNewPhysicalTick = true;
+}
+function finalizePhysicalTick() {
+    var unhandledErrs = unhandledErrors;
+    unhandledErrors = [];
+    unhandledErrs.forEach(function (p) {
+        p._PSD.onunhandled.call(null, p._value, p);
+    });
+    var finalizers = tickFinalizers.slice(0); // Clone first because finalizer may remove itself from list.
+    var i = finalizers.length;
+    while (i)
+        finalizers[--i]();
+}
+function run_at_end_of_this_or_next_physical_tick(fn) {
+    function finalizer() {
+        fn();
+        tickFinalizers.splice(tickFinalizers.indexOf(finalizer), 1);
+    }
+    tickFinalizers.push(finalizer);
+    ++numScheduledCalls;
+    asap$1(function () {
+        if (--numScheduledCalls === 0)
+            finalizePhysicalTick();
+    }, []);
+}
+function addPossiblyUnhandledError(promise) {
+    // Only add to unhandledErrors if not already there. The first one to add to this list
+    // will be upon the first rejection so that the root cause (first promise in the
+    // rejection chain) is the one listed.
+    if (!unhandledErrors.some(function (p) { return p._value === promise._value; }))
+        unhandledErrors.push(promise);
+}
+function markErrorAsHandled(promise) {
+    // Called when a reject handled is actually being called.
+    // Search in unhandledErrors for any promise whos _value is this promise_value (list
+    // contains only rejected promises, and only one item per error)
+    var i = unhandledErrors.length;
+    while (i)
+        if (unhandledErrors[--i]._value === promise._value) {
+            // Found a promise that failed with this same error object pointer,
+            // Remove that since there is a listener that actually takes care of it.
+            unhandledErrors.splice(i, 1);
+            return;
+        }
+}
+function PromiseReject(reason) {
+    return new Promise(INTERNAL, false, reason);
+}
+function wrap(fn, errorCatcher) {
+    var psd = PSD;
+    return function () {
+        var wasRootExec = beginMicroTickScope(), outerScope = PSD;
+        try {
+            switchToZone(psd, true);
+            return fn.apply(this, arguments);
+        }
+        catch (e) {
+            errorCatcher && errorCatcher(e);
+        }
+        finally {
+            switchToZone(outerScope, false);
+            if (wasRootExec)
+                endMicroTickScope();
+        }
+    };
+}
+//
+// variables used for native await support
+//
+var task = { awaits: 0, echoes: 0, id: 0 }; // The ongoing macro-task when using zone-echoing.
+var taskCounter = 0; // ID counter for macro tasks.
+var zoneStack = []; // Stack of left zones to restore asynchronically.
+var zoneEchoes = 0; // zoneEchoes is a must in order to persist zones between native await expressions.
+var totalEchoes = 0; // ID counter for micro-tasks. Used to detect possible native await in our Promise.prototype.then.
+var zone_id_counter = 0;
+function newScope(fn, props$$1, a1, a2) {
+    var parent = PSD, psd = Object.create(parent);
+    psd.parent = parent;
+    psd.ref = 0;
+    psd.global = false;
+    psd.id = ++zone_id_counter;
+    // Prepare for promise patching (done in usePSD):
+    var globalEnv = globalPSD.env;
+    psd.env = patchGlobalPromise ? {
+        Promise: Promise,
+        PromiseProp: { value: Promise, configurable: true, writable: true },
+        all: Promise.all,
+        race: Promise.race,
+        resolve: Promise.resolve,
+        reject: Promise.reject,
+        nthen: getPatchedPromiseThen(globalEnv.nthen, psd),
+        gthen: getPatchedPromiseThen(globalEnv.gthen, psd) // global then
+    } : {};
+    if (props$$1)
+        extend(psd, props$$1);
+    // unhandleds and onunhandled should not be specifically set here.
+    // Leave them on parent prototype.
+    // unhandleds.push(err) will push to parent's prototype
+    // onunhandled() will call parents onunhandled (with this scope's this-pointer though!)
+    ++parent.ref;
+    psd.finalize = function () {
+        --this.parent.ref || this.parent.finalize();
+    };
+    var rv = usePSD(psd, fn, a1, a2);
+    if (psd.ref === 0)
+        psd.finalize();
+    return rv;
+}
+// Function to call if scopeFunc returns NativePromise
+// Also for each NativePromise in the arguments to Promise.all()
+function incrementExpectedAwaits() {
+    if (!task.id)
+        task.id = ++taskCounter;
+    ++task.awaits;
+    task.echoes += ZONE_ECHO_LIMIT;
+    return task.id;
+}
+// Function to call when 'then' calls back on a native promise where onAwaitExpected() had been called.
+// Also call this when a native await calls then method on a promise. In that case, don't supply
+// sourceTaskId because we already know it refers to current task.
+function decrementExpectedAwaits(sourceTaskId) {
+    if (!task.awaits || (sourceTaskId && sourceTaskId !== task.id))
+        return;
+    if (--task.awaits === 0)
+        task.id = 0;
+    task.echoes = task.awaits * ZONE_ECHO_LIMIT; // Will reset echoes to 0 if awaits is 0.
+}
+// Call from Promise.all() and Promise.race()
+function onPossibleParallellAsync(possiblePromise) {
+    if (task.echoes && possiblePromise && possiblePromise.constructor === NativePromise) {
+        incrementExpectedAwaits();
+        return possiblePromise.then(function (x) {
+            decrementExpectedAwaits();
+            return x;
+        }, function (e) {
+            decrementExpectedAwaits();
+            return rejection(e);
+        });
+    }
+    return possiblePromise;
+}
+function zoneEnterEcho(targetZone) {
+    ++totalEchoes;
+    if (!task.echoes || --task.echoes === 0) {
+        task.echoes = task.id = 0; // Cancel zone echoing.
+    }
+    zoneStack.push(PSD);
+    switchToZone(targetZone, true);
+}
+function zoneLeaveEcho() {
+    var zone = zoneStack[zoneStack.length - 1];
+    zoneStack.pop();
+    switchToZone(zone, false);
+}
+function switchToZone(targetZone, bEnteringZone) {
+    var currentZone = PSD;
+    if (bEnteringZone ? task.echoes && (!zoneEchoes++ || targetZone !== PSD) : zoneEchoes && (!--zoneEchoes || targetZone !== PSD)) {
+        // Enter or leave zone asynchronically as well, so that tasks initiated during current tick
+        // will be surrounded by the zone when they are invoked.
+        enqueueNativeMicroTask(bEnteringZone ? zoneEnterEcho.bind(null, targetZone) : zoneLeaveEcho);
+    }
+    if (targetZone === PSD)
+        return;
+    PSD = targetZone; // The actual zone switch occurs at this line.
+    // Snapshot on every leave from global zone.
+    if (currentZone === globalPSD)
+        globalPSD.env = snapShot();
+    if (patchGlobalPromise) {
+        // Let's patch the global and native Promises (may be same or may be different)
+        var GlobalPromise = globalPSD.env.Promise;
+        // Swich environments (may be PSD-zone or the global zone. Both apply.)
+        var targetEnv = targetZone.env;
+        // Change Promise.prototype.then for native and global Promise (they MAY differ on polyfilled environments, but both can be accessed)
+        // Must be done on each zone change because the patched method contains targetZone in its closure.
+        nativePromiseProto.then = targetEnv.nthen;
+        GlobalPromise.prototype.then = targetEnv.gthen;
+        if (currentZone.global || targetZone.global) {
+            // Leaving or entering global zone. It's time to patch / restore global Promise.
+            // Set this Promise to window.Promise so that transiled async functions will work on Firefox, Safari and IE, as well as with Zonejs and angular.
+            Object.defineProperty(_global, 'Promise', targetEnv.PromiseProp);
+            // Support Promise.all() etc to work indexedDB-safe also when people are including es6-promise as a module (they might
+            // not be accessing global.Promise but a local reference to it)
+            GlobalPromise.all = targetEnv.all;
+            GlobalPromise.race = targetEnv.race;
+            GlobalPromise.resolve = targetEnv.resolve;
+            GlobalPromise.reject = targetEnv.reject;
+        }
+    }
+}
+function snapShot() {
+    var GlobalPromise = _global.Promise;
+    return patchGlobalPromise ? {
+        Promise: GlobalPromise,
+        PromiseProp: Object.getOwnPropertyDescriptor(_global, "Promise"),
+        all: GlobalPromise.all,
+        race: GlobalPromise.race,
+        resolve: GlobalPromise.resolve,
+        reject: GlobalPromise.reject,
+        nthen: nativePromiseProto.then,
+        gthen: GlobalPromise.prototype.then
+    } : {};
+}
+function usePSD(psd, fn, a1, a2, a3) {
+    var outerScope = PSD;
+    try {
+        switchToZone(psd, true);
+        return fn(a1, a2, a3);
+    }
+    finally {
+        switchToZone(outerScope, false);
+    }
+}
+function enqueueNativeMicroTask(job) {
+    //
+    // Precondition: nativePromiseThen !== undefined
+    //
+    nativePromiseThen.call(resolvedNativePromise, job);
+}
+function nativeAwaitCompatibleWrap(fn, zone, possibleAwait) {
+    return typeof fn !== 'function' ? fn : function () {
+        var outerZone = PSD;
+        if (possibleAwait)
+            incrementExpectedAwaits();
+        switchToZone(zone, true);
+        try {
+            return fn.apply(this, arguments);
+        }
+        finally {
+            switchToZone(outerZone, false);
+        }
+    };
+}
+function getPatchedPromiseThen(origThen, zone) {
+    return function (onResolved, onRejected) {
+        return origThen.call(this, nativeAwaitCompatibleWrap(onResolved, zone, false), nativeAwaitCompatibleWrap(onRejected, zone, false));
+    };
+}
+var UNHANDLEDREJECTION = "unhandledrejection";
+function globalError(err, promise) {
+    var rv;
+    try {
+        rv = promise.onuncatched(err);
+    }
+    catch (e) { }
+    if (rv !== false)
+        try {
+            var event, eventData = { promise: promise, reason: err };
+            if (_global.document && document.createEvent) {
+                event = document.createEvent('Event');
+                event.initEvent(UNHANDLEDREJECTION, true, true);
+                extend(event, eventData);
+            }
+            else if (_global.CustomEvent) {
+                event = new CustomEvent(UNHANDLEDREJECTION, { detail: eventData });
+                extend(event, eventData);
+            }
+            if (event && _global.dispatchEvent) {
+                dispatchEvent(event);
+                if (!_global.PromiseRejectionEvent && _global.onunhandledrejection)
+                    // No native support for PromiseRejectionEvent but user has set window.onunhandledrejection. Manually call it.
+                    try {
+                        _global.onunhandledrejection(event);
+                    }
+                    catch (_) { }
+            }
+            if (!event.defaultPrevented) {
+                console.warn("Unhandled rejection: " + (err.stack || err));
+            }
+        }
+        catch (e) { }
+}
+doFakeAutoComplete(function () {
+    // Simplify the job for VS Intellisense. This piece of code is one of the keys to the new marvellous intellisense support in Dexie.
+    asap$1 = function (fn, args) {
+        setTimeout(function () { fn.apply(null, args); }, 0);
+    };
+});
+var rejection = Promise.reject;
+
+function Events(ctx) {
+    var evs = {};
+    var rv = function (eventName, subscriber) {
+        if (subscriber) {
+            // Subscribe. If additional arguments than just the subscriber was provided, forward them as well.
+            var i = arguments.length, args = new Array(i - 1);
+            while (--i)
+                args[i - 1] = arguments[i];
+            evs[eventName].subscribe.apply(null, args);
+            return ctx;
+        }
+        else if (typeof (eventName) === 'string') {
+            // Return interface allowing to fire or unsubscribe from event
+            return evs[eventName];
+        }
+    };
+    rv.addEventType = add;
+    for (var i = 1, l = arguments.length; i < l; ++i) {
+        add(arguments[i]);
+    }
+    return rv;
+    function add(eventName, chainFunction, defaultFunction) {
+        if (typeof eventName === 'object')
+            return addConfiguredEvents(eventName);
+        if (!chainFunction)
+            chainFunction = reverseStoppableEventChain;
+        if (!defaultFunction)
+            defaultFunction = nop;
+        var context = {
+            subscribers: [],
+            fire: defaultFunction,
+            subscribe: function (cb) {
+                if (context.subscribers.indexOf(cb) === -1) {
+                    context.subscribers.push(cb);
+                    context.fire = chainFunction(context.fire, cb);
+                }
+            },
+            unsubscribe: function (cb) {
+                context.subscribers = context.subscribers.filter(function (fn) { return fn !== cb; });
+                context.fire = context.subscribers.reduce(chainFunction, defaultFunction);
+            }
+        };
+        evs[eventName] = rv[eventName] = context;
+        return context;
+    }
+    function addConfiguredEvents(cfg) {
+        // events(this, {reading: [functionChain, nop]});
+        keys(cfg).forEach(function (eventName) {
+            var args = cfg[eventName];
+            if (isArray(args)) {
+                add(eventName, cfg[eventName][0], cfg[eventName][1]);
+            }
+            else if (args === 'asap') {
+                // Rather than approaching event subscription using a functional approach, we here do it in a for-loop where subscriber is executed in its own stack
+                // enabling that any exception that occur wont disturb the initiator and also not nescessary be catched and forgotten.
+                var context = add(eventName, mirror, function fire() {
+                    // Optimazation-safe cloning of arguments into args.
+                    var i = arguments.length, args = new Array(i);
+                    while (i--)
+                        args[i] = arguments[i];
+                    // All each subscriber:
+                    context.subscribers.forEach(function (fn) {
+                        asap(function fireEvent() {
+                            fn.apply(null, args);
+                        });
+                    });
+                });
+            }
+            else
+                throw new exceptions.InvalidArgument("Invalid event config");
+        });
+    }
+}
+
+/*
+ * Dexie.js - a minimalistic wrapper for IndexedDB
+ * ===============================================
+ *
+ * By David Fahlander, david.fahlander@gmail.com
+ *
+ * Version 2.0.1, Mon Oct 02 2017
+ *
+ * http://dexie.org
+ *
+ * Apache License Version 2.0, January 2004, http://www.apache.org/licenses/
+ */
+var DEXIE_VERSION = '2.0.1';
+var maxString = String.fromCharCode(65535);
+var maxKey = (function () { try {
+    IDBKeyRange.only([[]]);
+    return [[]];
+}
+catch (e) {
+    return maxString;
+} })();
+var minKey = -Infinity;
+var INVALID_KEY_ARGUMENT = "Invalid key provided. Keys must be of type string, number, Date or Array<string | number | Date>.";
+var STRING_EXPECTED = "String expected.";
+var connections = [];
+var isIEOrEdge = typeof navigator !== 'undefined' && /(MSIE|Trident|Edge)/.test(navigator.userAgent);
+var hasIEDeleteObjectStoreBug = isIEOrEdge;
+var hangsOnDeleteLargeKeyRange = isIEOrEdge;
+var dexieStackFrameFilter = function (frame) { return !/(dexie\.js|dexie\.min\.js)/.test(frame); };
+var dbNamesDB; // Global database for backing Dexie.getDatabaseNames() on browser without indexedDB.webkitGetDatabaseNames() 
+// Init debug
+setDebug(debug, dexieStackFrameFilter);
+function Dexie(dbName, options) {
+    /// <param name="options" type="Object" optional="true">Specify only if you wich to control which addons that should run on this instance</param>
+    var deps = Dexie.dependencies;
+    var opts = extend({
+        // Default Options
+        addons: Dexie.addons,
+        autoOpen: true,
+        indexedDB: deps.indexedDB,
+        IDBKeyRange: deps.IDBKeyRange // Backend IDBKeyRange api. Default to browser env.
+    }, options);
+    var addons = opts.addons, autoOpen = opts.autoOpen, indexedDB = opts.indexedDB, IDBKeyRange = opts.IDBKeyRange;
+    var globalSchema = this._dbSchema = {};
+    var versions = [];
+    var dbStoreNames = [];
+    var allTables = {};
+    ///<var type="IDBDatabase" />
+    var idbdb = null; // Instance of IDBDatabase
+    var dbOpenError = null;
+    var isBeingOpened = false;
+    var onReadyBeingFired = null;
+    var openComplete = false;
+    var READONLY = "readonly", READWRITE = "readwrite";
+    var db = this;
+    var dbReadyResolve, dbReadyPromise = new Promise(function (resolve) {
+        dbReadyResolve = resolve;
+    }), cancelOpen, openCanceller = new Promise(function (_, reject) {
+        cancelOpen = reject;
+    });
+    var autoSchema = true;
+    var hasNativeGetDatabaseNames = !!getNativeGetDatabaseNamesFn(indexedDB), hasGetAll;
+    function init() {
+        // Default subscribers to "versionchange" and "blocked".
+        // Can be overridden by custom handlers. If custom handlers return false, these default
+        // behaviours will be prevented.
+        db.on("versionchange", function (ev) {
+            // Default behavior for versionchange event is to close database connection.
+            // Caller can override this behavior by doing db.on("versionchange", function(){ return false; });
+            // Let's not block the other window from making it's delete() or open() call.
+            // NOTE! This event is never fired in IE,Edge or Safari.
+            if (ev.newVersion > 0)
+                console.warn("Another connection wants to upgrade database '" + db.name + "'. Closing db now to resume the upgrade.");
+            else
+                console.warn("Another connection wants to delete database '" + db.name + "'. Closing db now to resume the delete request.");
+            db.close();
+            // In many web applications, it would be recommended to force window.reload()
+            // when this event occurs. To do that, subscribe to the versionchange event
+            // and call window.location.reload(true) if ev.newVersion > 0 (not a deletion)
+            // The reason for this is that your current web app obviously has old schema code that needs
+            // to be updated. Another window got a newer version of the app and needs to upgrade DB but
+            // your window is blocking it unless we close it here.
+        });
+        db.on("blocked", function (ev) {
+            if (!ev.newVersion || ev.newVersion < ev.oldVersion)
+                console.warn("Dexie.delete('" + db.name + "') was blocked");
+            else
+                console.warn("Upgrade '" + db.name + "' blocked by other connection holding version " + ev.oldVersion / 10);
+        });
+    }
+    //
+    //
+    //
+    // ------------------------- Versioning Framework---------------------------
+    //
+    //
+    //
+    this.version = function (versionNumber) {
+        /// <param name="versionNumber" type="Number"></param>
+        /// <returns type="Version"></returns>
+        if (idbdb || isBeingOpened)
+            throw new exceptions.Schema("Cannot add version when database is open");
+        this.verno = Math.max(this.verno, versionNumber);
+        var versionInstance = versions.filter(function (v) { return v._cfg.version === versionNumber; })[0];
+        if (versionInstance)
+            return versionInstance;
+        versionInstance = new Version(versionNumber);
+        versions.push(versionInstance);
+        versions.sort(lowerVersionFirst);
+        // Disable autoschema mode, as at least one version is specified.
+        autoSchema = false;
+        return versionInstance;
+    };
+    function Version(versionNumber) {
+        this._cfg = {
+            version: versionNumber,
+            storesSource: null,
+            dbschema: {},
+            tables: {},
+            contentUpgrade: null
+        };
+        this.stores({}); // Derive earlier schemas by default.
+    }
+    extend(Version.prototype, {
+        stores: function (stores) {
+            /// <summary>
+            ///   Defines the schema for a particular version
+            /// </summary>
+            /// <param name="stores" type="Object">
+            /// Example: <br/>
+            ///   {users: "id++,first,last,&amp;username,*email", <br/>
+            ///   passwords: "id++,&amp;username"}<br/>
+            /// <br/>
+            /// Syntax: {Table: "[primaryKey][++],[&amp;][*]index1,[&amp;][*]index2,..."}<br/><br/>
+            /// Special characters:<br/>
+            ///  "&amp;"  means unique key, <br/>
+            ///  "*"  means value is multiEntry, <br/>
+            ///  "++" means auto-increment and only applicable for primary key <br/>
+            /// </param>
+            this._cfg.storesSource = this._cfg.storesSource ? extend(this._cfg.storesSource, stores) : stores;
+            // Derive stores from earlier versions if they are not explicitely specified as null or a new syntax.
+            var storesSpec = {};
+            versions.forEach(function (version) {
+                extend(storesSpec, version._cfg.storesSource);
+            });
+            var dbschema = (this._cfg.dbschema = {});
+            this._parseStoresSpec(storesSpec, dbschema);
+            // Update the latest schema to this version
+            // Update API
+            globalSchema = db._dbSchema = dbschema;
+            removeTablesApi([allTables, db, Transaction.prototype]); // Keep Transaction.prototype even though it should be depr.
+            setApiOnPlace([allTables, db, Transaction.prototype, this._cfg.tables], keys(dbschema), dbschema);
+            dbStoreNames = keys(dbschema);
+            return this;
+        },
+        upgrade: function (upgradeFunction) {
+            /// <param name="upgradeFunction" optional="true">Function that performs upgrading actions.</param>
+            var self = this;
+            fakeAutoComplete(function () {
+                upgradeFunction(db._createTransaction(READWRITE, keys(self._cfg.dbschema), self._cfg.dbschema)); // BUGBUG: No code completion for prev version's tables wont appear.
+            });
+            this._cfg.contentUpgrade = upgradeFunction;
+            return this;
+        },
+        _parseStoresSpec: function (stores, outSchema) {
+            keys(stores).forEach(function (tableName) {
+                if (stores[tableName] !== null) {
+                    var instanceTemplate = {};
+                    var indexes = parseIndexSyntax(stores[tableName]);
+                    var primKey = indexes.shift();
+                    if (primKey.multi)
+                        throw new exceptions.Schema("Primary key cannot be multi-valued");
+                    if (primKey.keyPath)
+                        setByKeyPath(instanceTemplate, primKey.keyPath, primKey.auto ? 0 : primKey.keyPath);
+                    indexes.forEach(function (idx) {
+                        if (idx.auto)
+                            throw new exceptions.Schema("Only primary key can be marked as autoIncrement (++)");
+                        if (!idx.keyPath)
+                            throw new exceptions.Schema("Index must have a name and cannot be an empty string");
+                        setByKeyPath(instanceTemplate, idx.keyPath, idx.compound ? idx.keyPath.map(function () { return ""; }) : "");
+                    });
+                    outSchema[tableName] = new TableSchema(tableName, primKey, indexes, instanceTemplate);
+                }
+            });
+        }
+    });
+    function runUpgraders(oldVersion, idbtrans, reject) {
+        var trans = db._createTransaction(READWRITE, dbStoreNames, globalSchema);
+        trans.create(idbtrans);
+        trans._completion.catch(reject);
+        var rejectTransaction = trans._reject.bind(trans);
+        newScope(function () {
+            PSD.trans = trans;
+            if (oldVersion === 0) {
+                // Create tables:
+                keys(globalSchema).forEach(function (tableName) {
+                    createTable(idbtrans, tableName, globalSchema[tableName].primKey, globalSchema[tableName].indexes);
+                });
+                Promise.follow(function () { return db.on.populate.fire(trans); }).catch(rejectTransaction);
+            }
+            else
+                updateTablesAndIndexes(oldVersion, trans, idbtrans).catch(rejectTransaction);
+        });
+    }
+    function updateTablesAndIndexes(oldVersion, trans, idbtrans) {
+        // Upgrade version to version, step-by-step from oldest to newest version.
+        // Each transaction object will contain the table set that was current in that version (but also not-yet-deleted tables from its previous version)
+        var queue = [];
+        var oldVersionStruct = versions.filter(function (version) { return version._cfg.version === oldVersion; })[0];
+        if (!oldVersionStruct)
+            throw new exceptions.Upgrade("Dexie specification of currently installed DB version is missing");
+        globalSchema = db._dbSchema = oldVersionStruct._cfg.dbschema;
+        var anyContentUpgraderHasRun = false;
+        var versToRun = versions.filter(function (v) { return v._cfg.version > oldVersion; });
+        versToRun.forEach(function (version) {
+            /// <param name="version" type="Version"></param>
+            queue.push(function () {
+                var oldSchema = globalSchema;
+                var newSchema = version._cfg.dbschema;
+                adjustToExistingIndexNames(oldSchema, idbtrans);
+                adjustToExistingIndexNames(newSchema, idbtrans);
+                globalSchema = db._dbSchema = newSchema;
+                var diff = getSchemaDiff(oldSchema, newSchema);
+                // Add tables           
+                diff.add.forEach(function (tuple) {
+                    createTable(idbtrans, tuple[0], tuple[1].primKey, tuple[1].indexes);
+                });
+                // Change tables
+                diff.change.forEach(function (change) {
+                    if (change.recreate) {
+                        throw new exceptions.Upgrade("Not yet support for changing primary key");
+                    }
+                    else {
+                        var store = idbtrans.objectStore(change.name);
+                        // Add indexes
+                        change.add.forEach(function (idx) {
+                            addIndex(store, idx);
+                        });
+                        // Update indexes
+                        change.change.forEach(function (idx) {
+                            store.deleteIndex(idx.name);
+                            addIndex(store, idx);
+                        });
+                        // Delete indexes
+                        change.del.forEach(function (idxName) {
+                            store.deleteIndex(idxName);
+                        });
+                    }
+                });
+                if (version._cfg.contentUpgrade) {
+                    anyContentUpgraderHasRun = true;
+                    return Promise.follow(function () {
+                        version._cfg.contentUpgrade(trans);
+                    });
+                }
+            });
+            queue.push(function (idbtrans) {
+                if (!anyContentUpgraderHasRun || !hasIEDeleteObjectStoreBug) {
+                    var newSchema = version._cfg.dbschema;
+                    // Delete old tables
+                    deleteRemovedTables(newSchema, idbtrans);
+                }
+            });
+        });
+        // Now, create a queue execution engine
+        function runQueue() {
+            return queue.length ? Promise.resolve(queue.shift()(trans.idbtrans)).then(runQueue) :
+                Promise.resolve();
+        }
+        return runQueue().then(function () {
+            createMissingTables(globalSchema, idbtrans); // At last, make sure to create any missing tables. (Needed by addons that add stores to DB without specifying version)
+        });
+    }
+    function getSchemaDiff(oldSchema, newSchema) {
+        var diff = {
+            del: [],
+            add: [],
+            change: [] // Array of {name: tableName, recreate: newDefinition, del: delIndexNames, add: newIndexDefs, change: changedIndexDefs}
+        };
+        for (var table in oldSchema) {
+            if (!newSchema[table])
+                diff.del.push(table);
+        }
+        for (table in newSchema) {
+            var oldDef = oldSchema[table], newDef = newSchema[table];
+            if (!oldDef) {
+                diff.add.push([table, newDef]);
+            }
+            else {
+                var change = {
+                    name: table,
+                    def: newDef,
+                    recreate: false,
+                    del: [],
+                    add: [],
+                    change: []
+                };
+                if (oldDef.primKey.src !== newDef.primKey.src) {
+                    // Primary key has changed. Remove and re-add table.
+                    change.recreate = true;
+                    diff.change.push(change);
+                }
+                else {
+                    // Same primary key. Just find out what differs:
+                    var oldIndexes = oldDef.idxByName;
+                    var newIndexes = newDef.idxByName;
+                    for (var idxName in oldIndexes) {
+                        if (!newIndexes[idxName])
+                            change.del.push(idxName);
+                    }
+                    for (idxName in newIndexes) {
+                        var oldIdx = oldIndexes[idxName], newIdx = newIndexes[idxName];
+                        if (!oldIdx)
+                            change.add.push(newIdx);
+                        else if (oldIdx.src !== newIdx.src)
+                            change.change.push(newIdx);
+                    }
+                    if (change.del.length > 0 || change.add.length > 0 || change.change.length > 0) {
+                        diff.change.push(change);
+                    }
+                }
+            }
+        }
+        return diff;
+    }
+    function createTable(idbtrans, tableName, primKey, indexes) {
+        /// <param name="idbtrans" type="IDBTransaction"></param>
+        var store = idbtrans.db.createObjectStore(tableName, primKey.keyPath ? { keyPath: primKey.keyPath, autoIncrement: primKey.auto } : { autoIncrement: primKey.auto });
+        indexes.forEach(function (idx) { addIndex(store, idx); });
+        return store;
+    }
+    function createMissingTables(newSchema, idbtrans) {
+        keys(newSchema).forEach(function (tableName) {
+            if (!idbtrans.db.objectStoreNames.contains(tableName)) {
+                createTable(idbtrans, tableName, newSchema[tableName].primKey, newSchema[tableName].indexes);
+            }
+        });
+    }
+    function deleteRemovedTables(newSchema, idbtrans) {
+        for (var i = 0; i < idbtrans.db.objectStoreNames.length; ++i) {
+            var storeName = idbtrans.db.objectStoreNames[i];
+            if (newSchema[storeName] == null) {
+                idbtrans.db.deleteObjectStore(storeName);
+            }
+        }
+    }
+    function addIndex(store, idx) {
+        store.createIndex(idx.name, idx.keyPath, { unique: idx.unique, multiEntry: idx.multi });
+    }
+    //
+    //
+    //      Dexie Protected API
+    //
+    //
+    this._allTables = allTables;
+    this._createTransaction = function (mode, storeNames, dbschema, parentTransaction) {
+        return new Transaction(mode, storeNames, dbschema, parentTransaction);
+    };
+    /* Generate a temporary transaction when db operations are done outside a transaction scope.
+    */
+    function tempTransaction(mode, storeNames, fn) {
+        if (!openComplete && (!PSD.letThrough)) {
+            if (!isBeingOpened) {
+                if (!autoOpen)
+                    return rejection(new exceptions.DatabaseClosed());
+                db.open().catch(nop); // Open in background. If if fails, it will be catched by the final promise anyway.
+            }
+            return dbReadyPromise.then(function () { return tempTransaction(mode, storeNames, fn); });
+        }
+        else {
+            var trans = db._createTransaction(mode, storeNames, globalSchema);
+            try {
+                trans.create();
+            }
+            catch (ex) {
+                return rejection(ex);
+            }
+            return trans._promise(mode, function (resolve, reject) {
+                return newScope(function () {
+                    PSD.trans = trans;
+                    return fn(resolve, reject, trans);
+                });
+            }).then(function (result) {
+                // Instead of resolving value directly, wait with resolving it until transaction has completed.
+                // Otherwise the data would not be in the DB if requesting it in the then() operation.
+                // Specifically, to ensure that the following expression will work:
+                //
+                //   db.friends.put({name: "Arne"}).then(function () {
+                //       db.friends.where("name").equals("Arne").count(function(count) {
+                //           assert (count === 1);
+                //       });
+                //   });
+                //
+                return trans._completion.then(function () { return result; });
+            }); /*.catch(err => { // Don't do this as of now. If would affect bulk- and modify methods in a way that could be more intuitive. But wait! Maybe change in next major.
+                trans._reject(err);
+                return rejection(err);
+            });*/
+        }
+    }
+    this._whenReady = function (fn) {
+        return fake || openComplete || PSD.letThrough ? fn() : new Promise(function (resolve, reject) {
+            if (!isBeingOpened) {
+                if (!autoOpen) {
+                    reject(new exceptions.DatabaseClosed());
+                    return;
+                }
+                db.open().catch(nop); // Open in background. If if fails, it will be catched by the final promise anyway.
+            }
+            dbReadyPromise.then(resolve, reject);
+        }).then(fn);
+    };
+    //
+    //
+    //
+    //
+    //      Dexie API
+    //
+    //
+    //
+    this.verno = 0;
+    this.open = function () {
+        if (isBeingOpened || idbdb)
+            return dbReadyPromise.then(function () { return dbOpenError ? rejection(dbOpenError) : db; });
+        debug && (openCanceller._stackHolder = getErrorWithStack()); // Let stacks point to when open() was called rather than where new Dexie() was called.
+        isBeingOpened = true;
+        dbOpenError = null;
+        openComplete = false;
+        // Function pointers to call when the core opening process completes.
+        var resolveDbReady = dbReadyResolve, 
+        // upgradeTransaction to abort on failure.
+        upgradeTransaction = null;
+        return Promise.race([openCanceller, new Promise(function (resolve, reject) {
+                doFakeAutoComplete(function () { return resolve(); });
+                // Multiply db.verno with 10 will be needed to workaround upgrading bug in IE:
+                // IE fails when deleting objectStore after reading from it.
+                // A future version of Dexie.js will stopover an intermediate version to workaround this.
+                // At that point, we want to be backward compatible. Could have been multiplied with 2, but by using 10, it is easier to map the number to the real version number.
+                // If no API, throw!
+                if (!indexedDB)
+                    throw new exceptions.MissingAPI("indexedDB API not found. If using IE10+, make sure to run your code on a server URL " +
+                        "(not locally). If using old Safari versions, make sure to include indexedDB polyfill.");
+                var req = autoSchema ? indexedDB.open(dbName) : indexedDB.open(dbName, Math.round(db.verno * 10));
+                if (!req)
+                    throw new exceptions.MissingAPI("IndexedDB API not available"); // May happen in Safari private mode, see https://github.com/dfahlander/Dexie.js/issues/134
+                req.onerror = eventRejectHandler(reject);
+                req.onblocked = wrap(fireOnBlocked);
+                req.onupgradeneeded = wrap(function (e) {
+                    upgradeTransaction = req.transaction;
+                    if (autoSchema && !db._allowEmptyDB) {
+                        // Caller did not specify a version or schema. Doing that is only acceptable for opening alread existing databases.
+                        // If onupgradeneeded is called it means database did not exist. Reject the open() promise and make sure that we
+                        // do not create a new database by accident here.
+                        req.onerror = preventDefault; // Prohibit onabort error from firing before we're done!
+                        upgradeTransaction.abort(); // Abort transaction (would hope that this would make DB disappear but it doesnt.)
+                        // Close database and delete it.
+                        req.result.close();
+                        var delreq = indexedDB.deleteDatabase(dbName); // The upgrade transaction is atomic, and javascript is single threaded - meaning that there is no risk that we delete someone elses database here!
+                        delreq.onsuccess = delreq.onerror = wrap(function () {
+                            reject(new exceptions.NoSuchDatabase("Database " + dbName + " doesnt exist"));
+                        });
+                    }
+                    else {
+                        upgradeTransaction.onerror = eventRejectHandler(reject);
+                        var oldVer = e.oldVersion > Math.pow(2, 62) ? 0 : e.oldVersion; // Safari 8 fix.
+                        runUpgraders(oldVer / 10, upgradeTransaction, reject, req);
+                    }
+                }, reject);
+                req.onsuccess = wrap(function () {
+                    // Core opening procedure complete. Now let's just record some stuff.
+                    upgradeTransaction = null;
+                    idbdb = req.result;
+                    connections.push(db); // Used for emulating versionchange event on IE/Edge/Safari.
+                    if (autoSchema)
+                        readGlobalSchema();
+                    else if (idbdb.objectStoreNames.length > 0) {
+                        try {
+                            adjustToExistingIndexNames(globalSchema, idbdb.transaction(safariMultiStoreFix(idbdb.objectStoreNames), READONLY));
+                        }
+                        catch (e) {
+                        }
+                    }
+                    idbdb.onversionchange = wrap(function (ev) {
+                        db._vcFired = true; // detect implementations that not support versionchange (IE/Edge/Safari)
+                        db.on("versionchange").fire(ev);
+                    });
+                    if (!hasNativeGetDatabaseNames && dbName !== '__dbnames') {
+                        dbNamesDB.dbnames.put({ name: dbName }).catch(nop);
+                    }
+                    resolve();
+                }, reject);
+            })]).then(function () {
+            // Before finally resolving the dbReadyPromise and this promise,
+            // call and await all on('ready') subscribers:
+            // Dexie.vip() makes subscribers able to use the database while being opened.
+            // This is a must since these subscribers take part of the opening procedure.
+            onReadyBeingFired = [];
+            return Promise.resolve(Dexie.vip(db.on.ready.fire)).then(function fireRemainders() {
+                if (onReadyBeingFired.length > 0) {
+                    // In case additional subscribers to db.on('ready') were added during the time db.on.ready.fire was executed.
+                    var remainders = onReadyBeingFired.reduce(promisableChain, nop);
+                    onReadyBeingFired = [];
+                    return Promise.resolve(Dexie.vip(remainders)).then(fireRemainders);
+                }
+            });
+        }).finally(function () {
+            onReadyBeingFired = null;
+        }).then(function () {
+            // Resolve the db.open() with the db instance.
+            isBeingOpened = false;
+            return db;
+        }).catch(function (err) {
+            try {
+                // Did we fail within onupgradeneeded? Make sure to abort the upgrade transaction so it doesnt commit.
+                upgradeTransaction && upgradeTransaction.abort();
+            }
+            catch (e) { }
+            isBeingOpened = false; // Set before calling db.close() so that it doesnt reject openCanceller again (leads to unhandled rejection event).
+            db.close(); // Closes and resets idbdb, removes connections, resets dbReadyPromise and openCanceller so that a later db.open() is fresh.
+            // A call to db.close() may have made on-ready subscribers fail. Use dbOpenError if set, since err could be a follow-up error on that.
+            dbOpenError = err; // Record the error. It will be used to reject further promises of db operations.
+            return rejection(dbOpenError);
+        }).finally(function () {
+            openComplete = true;
+            resolveDbReady(); // dbReadyPromise is resolved no matter if open() rejects or resolved. It's just to wake up waiters.
+        });
+    };
+    this.close = function () {
+        var idx = connections.indexOf(db);
+        if (idx >= 0)
+            connections.splice(idx, 1);
+        if (idbdb) {
+            try {
+                idbdb.close();
+            }
+            catch (e) { }
+            idbdb = null;
+        }
+        autoOpen = false;
+        dbOpenError = new exceptions.DatabaseClosed();
+        if (isBeingOpened)
+            cancelOpen(dbOpenError);
+        // Reset dbReadyPromise promise:
+        dbReadyPromise = new Promise(function (resolve) {
+            dbReadyResolve = resolve;
+        });
+        openCanceller = new Promise(function (_, reject) {
+            cancelOpen = reject;
+        });
+    };
+    this.delete = function () {
+        var hasArguments = arguments.length > 0;
+        return new Promise(function (resolve, reject) {
+            if (hasArguments)
+                throw new exceptions.InvalidArgument("Arguments not allowed in db.delete()");
+            if (isBeingOpened) {
+                dbReadyPromise.then(doDelete);
+            }
+            else {
+                doDelete();
+            }
+            function doDelete() {
+                db.close();
+                var req = indexedDB.deleteDatabase(dbName);
+                req.onsuccess = wrap(function () {
+                    if (!hasNativeGetDatabaseNames) {
+                        dbNamesDB.dbnames.delete(dbName).catch(nop);
+                    }
+                    resolve();
+                });
+                req.onerror = eventRejectHandler(reject);
+                req.onblocked = fireOnBlocked;
+            }
+        });
+    };
+    this.backendDB = function () {
+        return idbdb;
+    };
+    this.isOpen = function () {
+        return idbdb !== null;
+    };
+    this.hasBeenClosed = function () {
+        return dbOpenError && (dbOpenError instanceof exceptions.DatabaseClosed);
+    };
+    this.hasFailed = function () {
+        return dbOpenError !== null;
+    };
+    this.dynamicallyOpened = function () {
+        return autoSchema;
+    };
+    //
+    // Properties
+    //
+    this.name = dbName;
+    // db.tables - an array of all Table instances.
+    props(this, {
+        tables: {
+            get: function () {
+                /// <returns type="Array" elementType="Table" />
+                return keys(allTables).map(function (name) { return allTables[name]; });
+            }
+        }
+    });
+    //
+    // Events
+    //
+    this.on = Events(this, "populate", "blocked", "versionchange", { ready: [promisableChain, nop] });
+    this.on.ready.subscribe = override(this.on.ready.subscribe, function (subscribe) {
+        return function (subscriber, bSticky) {
+            Dexie.vip(function () {
+                if (openComplete) {
+                    // Database already open. Call subscriber asap.
+                    if (!dbOpenError)
+                        Promise.resolve().then(subscriber);
+                    // bSticky: Also subscribe to future open sucesses (after close / reopen) 
+                    if (bSticky)
+                        subscribe(subscriber);
+                }
+                else if (onReadyBeingFired) {
+                    // db.on('ready') subscribers are currently being executed and have not yet resolved or rejected
+                    onReadyBeingFired.push(subscriber);
+                    if (bSticky)
+                        subscribe(subscriber);
+                }
+                else {
+                    // Database not yet open. Subscribe to it.
+                    subscribe(subscriber);
+                    // If bSticky is falsy, make sure to unsubscribe subscriber when fired once.
+                    if (!bSticky)
+                        subscribe(function unsubscribe() {
+                            db.on.ready.unsubscribe(subscriber);
+                            db.on.ready.unsubscribe(unsubscribe);
+                        });
+                }
+            });
+        };
+    });
+    fakeAutoComplete(function () {
+        db.on("populate").fire(db._createTransaction(READWRITE, dbStoreNames, globalSchema));
+    });
+    this.transaction = function () {
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="mode" type="String">"r" for readonly, or "rw" for readwrite</param>
+        /// <param name="tableInstances">Table instance, Array of Table instances, String or String Array of object stores to include in the transaction</param>
+        /// <param name="scopeFunc" type="Function">Function to execute with transaction</param>
+        var args = extractTransactionArgs.apply(this, arguments);
+        return this._transaction.apply(this, args);
+    };
+    function extractTransactionArgs(mode, _tableArgs_, scopeFunc) {
+        // Let table arguments be all arguments between mode and last argument.
+        var i = arguments.length;
+        if (i < 2)
+            throw new exceptions.InvalidArgument("Too few arguments");
+        // Prevent optimzation killer (https://github.com/petkaantonov/bluebird/wiki/Optimization-killers#32-leaking-arguments)
+        // and clone arguments except the first one into local var 'args'.
+        var args = new Array(i - 1);
+        while (--i)
+            args[i - 1] = arguments[i];
+        // Let scopeFunc be the last argument and pop it so that args now only contain the table arguments.
+        scopeFunc = args.pop();
+        var tables = flatten(args); // Support using array as middle argument, or a mix of arrays and non-arrays.
+        return [mode, tables, scopeFunc];
+    }
+    this._transaction = function (mode, tables, scopeFunc) {
+        var parentTransaction = PSD.trans;
+        // Check if parent transactions is bound to this db instance, and if caller wants to reuse it
+        if (!parentTransaction || parentTransaction.db !== db || mode.indexOf('!') !== -1)
+            parentTransaction = null;
+        var onlyIfCompatible = mode.indexOf('?') !== -1;
+        mode = mode.replace('!', '').replace('?', ''); // Ok. Will change arguments[0] as well but we wont touch arguments henceforth.
+        try {
+            //
+            // Get storeNames from arguments. Either through given table instances, or through given table names.
+            //
+            var storeNames = tables.map(function (table) {
+                var storeName = table instanceof Table ? table.name : table;
+                if (typeof storeName !== 'string')
+                    throw new TypeError("Invalid table argument to Dexie.transaction(). Only Table or String are allowed");
+                return storeName;
+            });
+            //
+            // Resolve mode. Allow shortcuts "r" and "rw".
+            //
+            if (mode == "r" || mode == READONLY)
+                mode = READONLY;
+            else if (mode == "rw" || mode == READWRITE)
+                mode = READWRITE;
+            else
+                throw new exceptions.InvalidArgument("Invalid transaction mode: " + mode);
+            if (parentTransaction) {
+                // Basic checks
+                if (parentTransaction.mode === READONLY && mode === READWRITE) {
+                    if (onlyIfCompatible) {
+                        // Spawn new transaction instead.
+                        parentTransaction = null;
+                    }
+                    else
+                        throw new exceptions.SubTransaction("Cannot enter a sub-transaction with READWRITE mode when parent transaction is READONLY");
+                }
+                if (parentTransaction) {
+                    storeNames.forEach(function (storeName) {
+                        if (parentTransaction && parentTransaction.storeNames.indexOf(storeName) === -1) {
+                            if (onlyIfCompatible) {
+                                // Spawn new transaction instead.
+                                parentTransaction = null;
+                            }
+                            else
+                                throw new exceptions.SubTransaction("Table " + storeName +
+                                    " not included in parent transaction.");
+                        }
+                    });
+                }
+                if (onlyIfCompatible && parentTransaction && !parentTransaction.active) {
+                    // '?' mode should not keep using an inactive transaction.
+                    parentTransaction = null;
+                }
+            }
+        }
+        catch (e) {
+            return parentTransaction ?
+                parentTransaction._promise(null, function (_, reject) { reject(e); }) :
+                rejection(e);
+        }
+        // If this is a sub-transaction, lock the parent and then launch the sub-transaction.
+        return (parentTransaction ?
+            parentTransaction._promise(mode, enterTransactionScope, "lock") :
+            PSD.trans ?
+                // no parent transaction despite PSD.trans exists. Make sure also
+                // that the zone we create is not a sub-zone of current, because
+                // Promise.follow() should not wait for it if so.
+                usePSD(PSD.transless, function () { return db._whenReady(enterTransactionScope); }) :
+                db._whenReady(enterTransactionScope));
+        function enterTransactionScope() {
+            return Promise.resolve().then(function () {
+                // Keep a pointer to last non-transactional PSD to use if someone calls Dexie.ignoreTransaction().
+                var transless = PSD.transless || PSD;
+                // Our transaction.
+                //return new Promise((resolve, reject) => {
+                var trans = db._createTransaction(mode, storeNames, globalSchema, parentTransaction);
+                // Let the transaction instance be part of a Promise-specific data (PSD) value.
+                var zoneProps = {
+                    trans: trans,
+                    transless: transless
+                };
+                if (parentTransaction) {
+                    // Emulate transaction commit awareness for inner transaction (must 'commit' when the inner transaction has no more operations ongoing)
+                    trans.idbtrans = parentTransaction.idbtrans;
+                }
+                else {
+                    trans.create(); // Create the backend transaction so that complete() or error() will trigger even if no operation is made upon it.
+                }
+                // Support for native async await.
+                if (scopeFunc.constructor === AsyncFunction) {
+                    incrementExpectedAwaits();
+                }
+                var returnValue;
+                var promiseFollowed = Promise.follow(function () {
+                    // Finally, call the scope function with our table and transaction arguments.
+                    returnValue = scopeFunc.call(trans, trans);
+                    if (returnValue) {
+                        if (returnValue.constructor === NativePromise) {
+                            var decrementor = decrementExpectedAwaits.bind(null, null);
+                            returnValue.then(decrementor, decrementor);
+                        }
+                        else if (typeof returnValue.next === 'function' && typeof returnValue.throw === 'function') {
+                            // scopeFunc returned an iterator with throw-support. Handle yield as await.
+                            returnValue = awaitIterator(returnValue);
+                        }
+                    }
+                }, zoneProps);
+                return (returnValue && typeof returnValue.then === 'function' ?
+                    // Promise returned. User uses promise-style transactions.
+                    Promise.resolve(returnValue).then(function (x) { return trans.active ?
+                        x // Transaction still active. Continue.
+                        : rejection(new exceptions.PrematureCommit("Transaction committed too early. See http://bit.ly/2kdckMn")); })
+                    : promiseFollowed.then(function () { return returnValue; })).then(function (x) {
+                    // sub transactions don't react to idbtrans.oncomplete. We must trigger a completion:
+                    if (parentTransaction)
+                        trans._resolve();
+                    // wait for trans._completion
+                    // (if root transaction, this means 'complete' event. If sub-transaction, we've just fired it ourselves)
+                    return trans._completion.then(function () { return x; });
+                }).catch(function (e) {
+                    trans._reject(e); // Yes, above then-handler were maybe not called because of an unhandled rejection in scopeFunc!
+                    return rejection(e);
+                });
+            });
+        }
+    };
+    this.table = function (tableName) {
+        /// <returns type="Table"></returns>
+        if (fake && autoSchema)
+            return new Table(tableName);
+        if (!hasOwn(allTables, tableName)) {
+            throw new exceptions.InvalidTable("Table " + tableName + " does not exist");
+        }
+        return allTables[tableName];
+    };
+    //
+    //
+    //
+    // Table Class
+    //
+    //
+    //
+    function Table(name, tableSchema, optionalTrans) {
+        /// <param name="name" type="String"></param>
+        this.name = name;
+        this.schema = tableSchema;
+        this._tx = optionalTrans;
+        this.hook = allTables[name] ? allTables[name].hook : Events(null, {
+            "creating": [hookCreatingChain, nop],
+            "reading": [pureFunctionChain, mirror],
+            "updating": [hookUpdatingChain, nop],
+            "deleting": [hookDeletingChain, nop]
+        });
+    }
+    function BulkErrorHandlerCatchAll(errorList, done, supportHooks) {
+        return (supportHooks ? hookedEventRejectHandler : eventRejectHandler)(function (e) {
+            errorList.push(e);
+            done && done();
+        });
+    }
+    function bulkDelete(idbstore, trans, keysOrTuples, hasDeleteHook, deletingHook) {
+        // If hasDeleteHook, keysOrTuples must be an array of tuples: [[key1, value2],[key2,value2],...],
+        // else keysOrTuples must be just an array of keys: [key1, key2, ...].
+        return new Promise(function (resolve, reject) {
+            var len = keysOrTuples.length, lastItem = len - 1;
+            if (len === 0)
+                return resolve();
+            if (!hasDeleteHook) {
+                for (var i = 0; i < len; ++i) {
+                    var req = idbstore.delete(keysOrTuples[i]);
+                    req.onerror = eventRejectHandler(reject);
+                    if (i === lastItem)
+                        req.onsuccess = wrap(function () { return resolve(); });
+                }
+            }
+            else {
+                var hookCtx, errorHandler = hookedEventRejectHandler(reject), successHandler = hookedEventSuccessHandler(null);
+                tryCatch(function () {
+                    for (var i = 0; i < len; ++i) {
+                        hookCtx = { onsuccess: null, onerror: null };
+                        var tuple = keysOrTuples[i];
+                        deletingHook.call(hookCtx, tuple[0], tuple[1], trans);
+                        var req = idbstore.delete(tuple[0]);
+                        req._hookCtx = hookCtx;
+                        req.onerror = errorHandler;
+                        if (i === lastItem)
+                            req.onsuccess = hookedEventSuccessHandler(resolve);
+                        else
+                            req.onsuccess = successHandler;
+                    }
+                }, function (err) {
+                    hookCtx.onerror && hookCtx.onerror(err);
+                    throw err;
+                });
+            }
+        });
+    }
+    props(Table.prototype, {
+        //
+        // Table Protected Methods
+        //
+        _trans: function getTransaction(mode, fn, writeLocked) {
+            var trans = this._tx || PSD.trans;
+            return trans && trans.db === db ?
+                trans === PSD.trans ?
+                    trans._promise(mode, fn, writeLocked) :
+                    newScope(function () { return trans._promise(mode, fn, writeLocked); }, { trans: trans, transless: PSD.transless || PSD }) :
+                tempTransaction(mode, [this.name], fn);
+        },
+        _idbstore: function getIDBObjectStore(mode, fn, writeLocked) {
+            if (fake)
+                return new Promise(fn); // Simplify the work for Intellisense/Code completion.
+            var tableName = this.name;
+            function supplyIdbStore(resolve, reject, trans) {
+                if (trans.storeNames.indexOf(tableName) === -1)
+                    throw new exceptions.NotFound("Table" + tableName + " not part of transaction");
+                return fn(resolve, reject, trans.idbtrans.objectStore(tableName), trans);
+            }
+            return this._trans(mode, supplyIdbStore, writeLocked);
+        },
+        //
+        // Table Public Methods
+        //
+        get: function (keyOrCrit, cb) {
+            if (keyOrCrit && keyOrCrit.constructor === Object)
+                return this.where(keyOrCrit).first(cb);
+            var self = this;
+            return this._idbstore(READONLY, function (resolve, reject, idbstore) {
+                fake && resolve(self.schema.instanceTemplate);
+                var req = idbstore.get(keyOrCrit);
+                req.onerror = eventRejectHandler(reject);
+                req.onsuccess = wrap(function () {
+                    resolve(self.hook.reading.fire(req.result));
+                }, reject);
+            }).then(cb);
+        },
+        where: function (indexOrCrit) {
+            if (typeof indexOrCrit === 'string')
+                return new WhereClause(this, indexOrCrit);
+            if (isArray(indexOrCrit))
+                return new WhereClause(this, "[" + indexOrCrit.join('+') + "]");
+            // indexOrCrit is an object map of {[keyPath]:value} 
+            var keyPaths = keys(indexOrCrit);
+            if (keyPaths.length === 1)
+                // Only one critera. This was the easy case:
+                return this
+                    .where(keyPaths[0])
+                    .equals(indexOrCrit[keyPaths[0]]);
+            // Multiple criterias.
+            // Let's try finding a compound index that matches all keyPaths in
+            // arbritary order:
+            var compoundIndex = this.schema.indexes.concat(this.schema.primKey).filter(function (ix) {
+                return ix.compound &&
+                    keyPaths.every(function (keyPath) { return ix.keyPath.indexOf(keyPath) >= 0; }) &&
+                    ix.keyPath.every(function (keyPath) { return keyPaths.indexOf(keyPath) >= 0; });
+            })[0];
+            if (compoundIndex && maxKey !== maxString)
+                // Cool! We found such compound index
+                // and this browser supports compound indexes (maxKey !== maxString)!
+                return this
+                    .where(compoundIndex.name)
+                    .equals(compoundIndex.keyPath.map(function (kp) { return indexOrCrit[kp]; }));
+            if (!compoundIndex)
+                console.warn("The query " + JSON.stringify(indexOrCrit) + " on " + this.name + " would benefit of a " +
+                    ("compound index [" + keyPaths.join('+') + "]"));
+            // Ok, now let's fallback to finding at least one matching index
+            // and filter the rest.
+            var idxByName = this.schema.idxByName;
+            var simpleIndex = keyPaths.reduce(function (r, keyPath) { return [
+                r[0] || idxByName[keyPath],
+                r[0] || !idxByName[keyPath] ?
+                    combine(r[1], function (x) { return '' + getByKeyPath(x, keyPath) ==
+                        '' + indexOrCrit[keyPath]; })
+                    : r[1]
+            ]; }, [null, null]);
+            var idx = simpleIndex[0];
+            return idx ?
+                this.where(idx.name).equals(indexOrCrit[idx.keyPath])
+                    .filter(simpleIndex[1]) :
+                compoundIndex ?
+                    this.filter(simpleIndex[1]) :
+                    this.where(keyPaths).equals(''); // No index at all. Fail lazily.
+        },
+        count: function (cb) {
+            return this.toCollection().count(cb);
+        },
+        offset: function (offset) {
+            return this.toCollection().offset(offset);
+        },
+        limit: function (numRows) {
+            return this.toCollection().limit(numRows);
+        },
+        reverse: function () {
+            return this.toCollection().reverse();
+        },
+        filter: function (filterFunction) {
+            return this.toCollection().and(filterFunction);
+        },
+        each: function (fn) {
+            return this.toCollection().each(fn);
+        },
+        toArray: function (cb) {
+            return this.toCollection().toArray(cb);
+        },
+        orderBy: function (index) {
+            return new Collection(new WhereClause(this, isArray(index) ?
+                "[" + index.join('+') + "]" :
+                index));
+        },
+        toCollection: function () {
+            return new Collection(new WhereClause(this));
+        },
+        mapToClass: function (constructor, structure) {
+            /// <summary>
+            ///     Map table to a javascript constructor function. Objects returned from the database will be instances of this class, making
+            ///     it possible to the instanceOf operator as well as extending the class using constructor.prototype.method = function(){...}.
+            /// </summary>
+            /// <param name="constructor">Constructor function representing the class.</param>
+            /// <param name="structure" optional="true">Helps IDE code completion by knowing the members that objects contain and not just the indexes. Also
+            /// know what type each member has. Example: {name: String, emailAddresses: [String], password}</param>
+            this.schema.mappedClass = constructor;
+            var instanceTemplate = Object.create(constructor.prototype);
+            if (structure) {
+                // structure and instanceTemplate is for IDE code competion only while constructor.prototype is for actual inheritance.
+                applyStructure(instanceTemplate, structure);
+            }
+            this.schema.instanceTemplate = instanceTemplate;
+            // Now, subscribe to the when("reading") event to make all objects that come out from this table inherit from given class
+            // no matter which method to use for reading (Table.get() or Table.where(...)... )
+            var readHook = function (obj) {
+                if (!obj)
+                    return obj; // No valid object. (Value is null). Return as is.
+                // Create a new object that derives from constructor:
+                var res = Object.create(constructor.prototype);
+                // Clone members:
+                for (var m in obj)
+                    if (hasOwn(obj, m))
+                        try {
+                            res[m] = obj[m];
+                        }
+                        catch (_) { }
+                return res;
+            };
+            if (this.schema.readHook) {
+                this.hook.reading.unsubscribe(this.schema.readHook);
+            }
+            this.schema.readHook = readHook;
+            this.hook("reading", readHook);
+            return constructor;
+        },
+        defineClass: function (structure) {
+            /// <summary>
+            ///     Define all members of the class that represents the table. This will help code completion of when objects are read from the database
+            ///     as well as making it possible to extend the prototype of the returned constructor function.
+            /// </summary>
+            /// <param name="structure">Helps IDE code completion by knowing the members that objects contain and not just the indexes. Also
+            /// know what type each member has. Example: {name: String, emailAddresses: [String], properties: {shoeSize: Number}}</param>
+            return this.mapToClass(Dexie.defineClass(structure), structure);
+        },
+        bulkDelete: function (keys$$1) {
+            if (this.hook.deleting.fire === nop) {
+                return this._idbstore(READWRITE, function (resolve, reject, idbstore, trans) {
+                    resolve(bulkDelete(idbstore, trans, keys$$1, false, nop));
+                });
+            }
+            else {
+                return this
+                    .where(':id')
+                    .anyOf(keys$$1)
+                    .delete()
+                    .then(function () { }); // Resolve with undefined.
+            }
+        },
+        bulkPut: function (objects, keys$$1) {
+            var _this = this;
+            return this._idbstore(READWRITE, function (resolve, reject, idbstore) {
+                if (!idbstore.keyPath && !_this.schema.primKey.auto && !keys$$1)
+                    throw new exceptions.InvalidArgument("bulkPut() with non-inbound keys requires keys array in second argument");
+                if (idbstore.keyPath && keys$$1)
+                    throw new exceptions.InvalidArgument("bulkPut(): keys argument invalid on tables with inbound keys");
+                if (keys$$1 && keys$$1.length !== objects.length)
+                    throw new exceptions.InvalidArgument("Arguments objects and keys must have the same length");
+                if (objects.length === 0)
+                    return resolve(); // Caller provided empty list.
+                var done = function (result) {
+                    if (errorList.length === 0)
+                        resolve(result);
+                    else
+                        reject(new BulkError(_this.name + ".bulkPut(): " + errorList.length + " of " + numObjs + " operations failed", errorList));
+                };
+                var req, errorList = [], errorHandler, numObjs = objects.length, table = _this;
+                if (_this.hook.creating.fire === nop && _this.hook.updating.fire === nop) {
+                    //
+                    // Standard Bulk (no 'creating' or 'updating' hooks to care about)
+                    //
+                    errorHandler = BulkErrorHandlerCatchAll(errorList);
+                    for (var i = 0, l = objects.length; i < l; ++i) {
+                        req = keys$$1 ? idbstore.put(objects[i], keys$$1[i]) : idbstore.put(objects[i]);
+                        req.onerror = errorHandler;
+                    }
+                    // Only need to catch success or error on the last operation
+                    // according to the IDB spec.
+                    req.onerror = BulkErrorHandlerCatchAll(errorList, done);
+                    req.onsuccess = eventSuccessHandler(done);
+                }
+                else {
+                    var effectiveKeys = keys$$1 || idbstore.keyPath && objects.map(function (o) { return getByKeyPath(o, idbstore.keyPath); });
+                    // Generate map of {[key]: object}
+                    var objectLookup = effectiveKeys && arrayToObject(effectiveKeys, function (key, i) { return key != null && [key, objects[i]]; });
+                    var promise = !effectiveKeys ?
+                        // Auto-incremented key-less objects only without any keys argument.
+                        table.bulkAdd(objects) :
+                        // Keys provided. Either as inbound in provided objects, or as a keys argument.
+                        // Begin with updating those that exists in DB:
+                        table.where(':id').anyOf(effectiveKeys.filter(function (key) { return key != null; })).modify(function () {
+                            this.value = objectLookup[this.primKey];
+                            objectLookup[this.primKey] = null; // Mark as "don't add this"
+                        }).catch(ModifyError, function (e) {
+                            errorList = e.failures; // No need to concat here. These are the first errors added.
+                        }).then(function () {
+                            // Now, let's examine which items didnt exist so we can add them:
+                            var objsToAdd = [], keysToAdd = keys$$1 && [];
+                            // Iterate backwards. Why? Because if same key was used twice, just add the last one.
+                            for (var i = effectiveKeys.length - 1; i >= 0; --i) {
+                                var key = effectiveKeys[i];
+                                if (key == null || objectLookup[key]) {
+                                    objsToAdd.push(objects[i]);
+                                    keys$$1 && keysToAdd.push(key);
+                                    if (key != null)
+                                        objectLookup[key] = null; // Mark as "dont add again"
+                                }
+                            }
+                            // The items are in reverse order so reverse them before adding.
+                            // Could be important in order to get auto-incremented keys the way the caller
+                            // would expect. Could have used unshift instead of push()/reverse(),
+                            // but: http://jsperf.com/unshift-vs-reverse
+                            objsToAdd.reverse();
+                            keys$$1 && keysToAdd.reverse();
+                            return table.bulkAdd(objsToAdd, keysToAdd);
+                        }).then(function (lastAddedKey) {
+                            // Resolve with key of the last object in given arguments to bulkPut():
+                            var lastEffectiveKey = effectiveKeys[effectiveKeys.length - 1]; // Key was provided.
+                            return lastEffectiveKey != null ? lastEffectiveKey : lastAddedKey;
+                        });
+                    promise.then(done).catch(BulkError, function (e) {
+                        // Concat failure from ModifyError and reject using our 'done' method.
+                        errorList = errorList.concat(e.failures);
+                        done();
+                    }).catch(reject);
+                }
+            }, "locked"); // If called from transaction scope, lock transaction til all steps are done.
+        },
+        bulkAdd: function (objects, keys$$1) {
+            var self = this, creatingHook = this.hook.creating.fire;
+            return this._idbstore(READWRITE, function (resolve, reject, idbstore, trans) {
+                if (!idbstore.keyPath && !self.schema.primKey.auto && !keys$$1)
+                    throw new exceptions.InvalidArgument("bulkAdd() with non-inbound keys requires keys array in second argument");
+                if (idbstore.keyPath && keys$$1)
+                    throw new exceptions.InvalidArgument("bulkAdd(): keys argument invalid on tables with inbound keys");
+                if (keys$$1 && keys$$1.length !== objects.length)
+                    throw new exceptions.InvalidArgument("Arguments objects and keys must have the same length");
+                if (objects.length === 0)
+                    return resolve(); // Caller provided empty list.
+                function done(result) {
+                    if (errorList.length === 0)
+                        resolve(result);
+                    else
+                        reject(new BulkError(self.name + ".bulkAdd(): " + errorList.length + " of " + numObjs + " operations failed", errorList));
+                }
+                var req, errorList = [], errorHandler, successHandler, numObjs = objects.length;
+                if (creatingHook !== nop) {
+                    //
+                    // There are subscribers to hook('creating')
+                    // Must behave as documented.
+                    //
+                    var keyPath = idbstore.keyPath, hookCtx;
+                    errorHandler = BulkErrorHandlerCatchAll(errorList, null, true);
+                    successHandler = hookedEventSuccessHandler(null);
+                    tryCatch(function () {
+                        for (var i = 0, l = objects.length; i < l; ++i) {
+                            hookCtx = { onerror: null, onsuccess: null };
+                            var key = keys$$1 && keys$$1[i];
+                            var obj = objects[i], effectiveKey = keys$$1 ? key : keyPath ? getByKeyPath(obj, keyPath) : undefined, keyToUse = creatingHook.call(hookCtx, effectiveKey, obj, trans);
+                            if (effectiveKey == null && keyToUse != null) {
+                                if (keyPath) {
+                                    obj = deepClone(obj);
+                                    setByKeyPath(obj, keyPath, keyToUse);
+                                }
+                                else {
+                                    key = keyToUse;
+                                }
+                            }
+                            req = key != null ? idbstore.add(obj, key) : idbstore.add(obj);
+                            req._hookCtx = hookCtx;
+                            if (i < l - 1) {
+                                req.onerror = errorHandler;
+                                if (hookCtx.onsuccess)
+                                    req.onsuccess = successHandler;
+                            }
+                        }
+                    }, function (err) {
+                        hookCtx.onerror && hookCtx.onerror(err);
+                        throw err;
+                    });
+                    req.onerror = BulkErrorHandlerCatchAll(errorList, done, true);
+                    req.onsuccess = hookedEventSuccessHandler(done);
+                }
+                else {
+                    //
+                    // Standard Bulk (no 'creating' hook to care about)
+                    //
+                    errorHandler = BulkErrorHandlerCatchAll(errorList);
+                    for (var i = 0, l = objects.length; i < l; ++i) {
+                        req = keys$$1 ? idbstore.add(objects[i], keys$$1[i]) : idbstore.add(objects[i]);
+                        req.onerror = errorHandler;
+                    }
+                    // Only need to catch success or error on the last operation
+                    // according to the IDB spec.
+                    req.onerror = BulkErrorHandlerCatchAll(errorList, done);
+                    req.onsuccess = eventSuccessHandler(done);
+                }
+            });
+        },
+        add: function (obj, key) {
+            /// <summary>
+            ///   Add an object to the database. In case an object with same primary key already exists, the object will not be added.
+            /// </summary>
+            /// <param name="obj" type="Object">A javascript object to insert</param>
+            /// <param name="key" optional="true">Primary key</param>
+            var creatingHook = this.hook.creating.fire;
+            return this._idbstore(READWRITE, function (resolve, reject, idbstore, trans) {
+                var hookCtx = { onsuccess: null, onerror: null };
+                if (creatingHook !== nop) {
+                    var effectiveKey = (key != null) ? key : (idbstore.keyPath ? getByKeyPath(obj, idbstore.keyPath) : undefined);
+                    var keyToUse = creatingHook.call(hookCtx, effectiveKey, obj, trans); // Allow subscribers to when("creating") to generate the key.
+                    if (effectiveKey == null && keyToUse != null) {
+                        if (idbstore.keyPath)
+                            setByKeyPath(obj, idbstore.keyPath, keyToUse);
+                        else
+                            key = keyToUse;
+                    }
+                }
+                try {
+                    var req = key != null ? idbstore.add(obj, key) : idbstore.add(obj);
+                    req._hookCtx = hookCtx;
+                    req.onerror = hookedEventRejectHandler(reject);
+                    req.onsuccess = hookedEventSuccessHandler(function (result) {
+                        // TODO: Remove these two lines in next major release (2.0?)
+                        // It's no good practice to have side effects on provided parameters
+                        var keyPath = idbstore.keyPath;
+                        if (keyPath)
+                            setByKeyPath(obj, keyPath, result);
+                        resolve(result);
+                    });
+                }
+                catch (e) {
+                    if (hookCtx.onerror)
+                        hookCtx.onerror(e);
+                    throw e;
+                }
+            });
+        },
+        put: function (obj, key) {
+            var _this = this;
+            /// <summary>
+            ///   Add an object to the database but in case an object with same primary key alread exists, the existing one will get updated.
+            /// </summary>
+            /// <param name="obj" type="Object">A javascript object to insert or update</param>
+            /// <param name="key" optional="true">Primary key</param>
+            var creatingHook = this.hook.creating.fire, updatingHook = this.hook.updating.fire;
+            if (creatingHook !== nop || updatingHook !== nop) {
+                //
+                // People listens to when("creating") or when("updating") events!
+                // We must know whether the put operation results in an CREATE or UPDATE.
+                //
+                var keyPath = this.schema.primKey.keyPath;
+                var effectiveKey = (key !== undefined) ? key : (keyPath && getByKeyPath(obj, keyPath));
+                if (effectiveKey == null)
+                    return this.add(obj);
+                // Since key is optional, make sure we get it from obj if not provided
+                // Primary key exist. Lock transaction and try modifying existing. If nothing modified, call add().
+                // clone obj before this async call. If caller modifies obj the line after put(), the IDB spec requires that it should not affect operation.
+                obj = deepClone(obj);
+                return this._trans(READWRITE, function () {
+                    return _this.where(":id").equals(effectiveKey).modify(function () {
+                        // Replace extisting value with our object
+                        // CRUD event firing handled in Collection.modify()
+                        this.value = obj;
+                    }).then(function (count) { return count === 0 ? _this.add(obj, key) : effectiveKey; });
+                }, "locked"); // Lock needed because operation is splitted into modify() and add().
+            }
+            else {
+                // Use the standard IDB put() method.
+                return this._idbstore(READWRITE, function (resolve, reject, idbstore) {
+                    var req = key !== undefined ? idbstore.put(obj, key) : idbstore.put(obj);
+                    req.onerror = eventRejectHandler(reject);
+                    req.onsuccess = wrap(function (ev) {
+                        var keyPath = idbstore.keyPath;
+                        if (keyPath)
+                            setByKeyPath(obj, keyPath, ev.target.result);
+                        resolve(req.result);
+                    });
+                });
+            }
+        },
+        'delete': function (key) {
+            /// <param name="key">Primary key of the object to delete</param>
+            if (this.hook.deleting.subscribers.length) {
+                // People listens to when("deleting") event. Must implement delete using Collection.delete() that will
+                // call the CRUD event. Only Collection.delete() will know whether an object was actually deleted.
+                return this.where(":id").equals(key).delete();
+            }
+            else {
+                // No one listens. Use standard IDB delete() method.
+                return this._idbstore(READWRITE, function (resolve, reject, idbstore) {
+                    var req = idbstore.delete(key);
+                    req.onerror = eventRejectHandler(reject);
+                    req.onsuccess = wrap(function () {
+                        resolve(req.result);
+                    });
+                });
+            }
+        },
+        clear: function () {
+            if (this.hook.deleting.subscribers.length) {
+                // People listens to when("deleting") event. Must implement delete using Collection.delete() that will
+                // call the CRUD event. Only Collection.delete() will knows which objects that are actually deleted.
+                return this.toCollection().delete();
+            }
+            else {
+                return this._idbstore(READWRITE, function (resolve, reject, idbstore) {
+                    var req = idbstore.clear();
+                    req.onerror = eventRejectHandler(reject);
+                    req.onsuccess = wrap(function () {
+                        resolve(req.result);
+                    });
+                });
+            }
+        },
+        update: function (keyOrObject, modifications) {
+            if (typeof modifications !== 'object' || isArray(modifications))
+                throw new exceptions.InvalidArgument("Modifications must be an object.");
+            if (typeof keyOrObject === 'object' && !isArray(keyOrObject)) {
+                // object to modify. Also modify given object with the modifications:
+                keys(modifications).forEach(function (keyPath) {
+                    setByKeyPath(keyOrObject, keyPath, modifications[keyPath]);
+                });
+                var key = getByKeyPath(keyOrObject, this.schema.primKey.keyPath);
+                if (key === undefined)
+                    return rejection(new exceptions.InvalidArgument("Given object does not contain its primary key"));
+                return this.where(":id").equals(key).modify(modifications);
+            }
+            else {
+                // key to modify
+                return this.where(":id").equals(keyOrObject).modify(modifications);
+            }
+        }
+    });
+    //
+    //
+    //
+    // Transaction Class
+    //
+    //
+    //
+    function Transaction(mode, storeNames, dbschema, parent) {
+        var _this = this;
+        /// <summary>
+        ///    Transaction class. Represents a database transaction. All operations on db goes through a Transaction.
+        /// </summary>
+        /// <param name="mode" type="String">Any of "readwrite" or "readonly"</param>
+        /// <param name="storeNames" type="Array">Array of table names to operate on</param>
+        this.db = db;
+        this.mode = mode;
+        this.storeNames = storeNames;
+        this.idbtrans = null;
+        this.on = Events(this, "complete", "error", "abort");
+        this.parent = parent || null;
+        this.active = true;
+        this._reculock = 0;
+        this._blockedFuncs = [];
+        this._resolve = null;
+        this._reject = null;
+        this._waitingFor = null;
+        this._waitingQueue = null;
+        this._spinCount = 0; // Just for debugging waitFor()
+        this._completion = new Promise(function (resolve, reject) {
+            _this._resolve = resolve;
+            _this._reject = reject;
+        });
+        this._completion.then(function () {
+            _this.active = false;
+            _this.on.complete.fire();
+        }, function (e) {
+            var wasActive = _this.active;
+            _this.active = false;
+            _this.on.error.fire(e);
+            _this.parent ?
+                _this.parent._reject(e) :
+                wasActive && _this.idbtrans && _this.idbtrans.abort();
+            return rejection(e); // Indicate we actually DO NOT catch this error.
+        });
+    }
+    props(Transaction.prototype, {
+        //
+        // Transaction Protected Methods (not required by API users, but needed internally and eventually by dexie extensions)
+        //
+        _lock: function () {
+            assert(!PSD.global); // Locking and unlocking reuires to be within a PSD scope.
+            // Temporary set all requests into a pending queue if they are called before database is ready.
+            ++this._reculock; // Recursive read/write lock pattern using PSD (Promise Specific Data) instead of TLS (Thread Local Storage)
+            if (this._reculock === 1 && !PSD.global)
+                PSD.lockOwnerFor = this;
+            return this;
+        },
+        _unlock: function () {
+            assert(!PSD.global); // Locking and unlocking reuires to be within a PSD scope.
+            if (--this._reculock === 0) {
+                if (!PSD.global)
+                    PSD.lockOwnerFor = null;
+                while (this._blockedFuncs.length > 0 && !this._locked()) {
+                    var fnAndPSD = this._blockedFuncs.shift();
+                    try {
+                        usePSD(fnAndPSD[1], fnAndPSD[0]);
+                    }
+                    catch (e) { }
+                }
+            }
+            return this;
+        },
+        _locked: function () {
+            // Checks if any write-lock is applied on this transaction.
+            // To simplify the Dexie API for extension implementations, we support recursive locks.
+            // This is accomplished by using "Promise Specific Data" (PSD).
+            // PSD data is bound to a Promise and any child Promise emitted through then() or resolve( new Promise() ).
+            // PSD is local to code executing on top of the call stacks of any of any code executed by Promise():
+            //         * callback given to the Promise() constructor  (function (resolve, reject){...})
+            //         * callbacks given to then()/catch()/finally() methods (function (value){...})
+            // If creating a new independant Promise instance from within a Promise call stack, the new Promise will derive the PSD from the call stack of the parent Promise.
+            // Derivation is done so that the inner PSD __proto__ points to the outer PSD.
+            // PSD.lockOwnerFor will point to current transaction object if the currently executing PSD scope owns the lock.
+            return this._reculock && PSD.lockOwnerFor !== this;
+        },
+        create: function (idbtrans) {
+            var _this = this;
+            if (!this.mode)
+                return this;
+            assert(!this.idbtrans);
+            if (!idbtrans && !idbdb) {
+                switch (dbOpenError && dbOpenError.name) {
+                    case "DatabaseClosedError":
+                        // Errors where it is no difference whether it was caused by the user operation or an earlier call to db.open()
+                        throw new exceptions.DatabaseClosed(dbOpenError);
+                    case "MissingAPIError":
+                        // Errors where it is no difference whether it was caused by the user operation or an earlier call to db.open()
+                        throw new exceptions.MissingAPI(dbOpenError.message, dbOpenError);
+                    default:
+                        // Make it clear that the user operation was not what caused the error - the error had occurred earlier on db.open()!
+                        throw new exceptions.OpenFailed(dbOpenError);
+                }
+            }
+            if (!this.active)
+                throw new exceptions.TransactionInactive();
+            assert(this._completion._state === null);
+            idbtrans = this.idbtrans = idbtrans || idbdb.transaction(safariMultiStoreFix(this.storeNames), this.mode);
+            idbtrans.onerror = wrap(function (ev) {
+                preventDefault(ev); // Prohibit default bubbling to window.error
+                _this._reject(idbtrans.error);
+            });
+            idbtrans.onabort = wrap(function (ev) {
+                preventDefault(ev);
+                _this.active && _this._reject(new exceptions.Abort(idbtrans.error));
+                _this.active = false;
+                _this.on("abort").fire(ev);
+            });
+            idbtrans.oncomplete = wrap(function () {
+                _this.active = false;
+                _this._resolve();
+            });
+            return this;
+        },
+        _promise: function (mode, fn, bWriteLock) {
+            var _this = this;
+            if (mode === READWRITE && this.mode !== READWRITE)
+                return rejection(new exceptions.ReadOnly("Transaction is readonly"));
+            if (!this.active)
+                return rejection(new exceptions.TransactionInactive());
+            if (this._locked()) {
+                return new Promise(function (resolve, reject) {
+                    _this._blockedFuncs.push([function () {
+                            _this._promise(mode, fn, bWriteLock).then(resolve, reject);
+                        }, PSD]);
+                });
+            }
+            else if (bWriteLock) {
+                return newScope(function () {
+                    var p = new Promise(function (resolve, reject) {
+                        _this._lock();
+                        var rv = fn(resolve, reject, _this);
+                        if (rv && rv.then)
+                            rv.then(resolve, reject);
+                    });
+                    p.finally(function () { return _this._unlock(); });
+                    p._lib = true;
+                    return p;
+                });
+            }
+            else {
+                var p = new Promise(function (resolve, reject) {
+                    var rv = fn(resolve, reject, _this);
+                    if (rv && rv.then)
+                        rv.then(resolve, reject);
+                });
+                p._lib = true;
+                return p;
+            }
+        },
+        _root: function () {
+            return this.parent ? this.parent._root() : this;
+        },
+        waitFor: function (promise) {
+            // Always operate on the root transaction (in case this is a sub stransaction)
+            var root = this._root();
+            // For stability reasons, convert parameter to promise no matter what type is passed to waitFor().
+            // (We must be able to call .then() on it.)
+            promise = Promise.resolve(promise);
+            if (root._waitingFor) {
+                // Already called waitFor(). Wait for both to complete.
+                root._waitingFor = root._waitingFor.then(function () { return promise; });
+            }
+            else {
+                // We're not in waiting state. Start waiting state.
+                root._waitingFor = promise;
+                root._waitingQueue = [];
+                // Start interacting with indexedDB until promise completes:
+                var store = root.idbtrans.objectStore(root.storeNames[0]);
+                (function spin() {
+                    ++root._spinCount; // For debugging only
+                    while (root._waitingQueue.length)
+                        (root._waitingQueue.shift())();
+                    if (root._waitingFor)
+                        store.get(-Infinity).onsuccess = spin;
+                }());
+            }
+            var currentWaitPromise = root._waitingFor;
+            return new Promise(function (resolve, reject) {
+                promise.then(function (res) { return root._waitingQueue.push(wrap(resolve.bind(null, res))); }, function (err) { return root._waitingQueue.push(wrap(reject.bind(null, err))); }).finally(function () {
+                    if (root._waitingFor === currentWaitPromise) {
+                        // No one added a wait after us. Safe to stop the spinning.
+                        root._waitingFor = null;
+                    }
+                });
+            });
+        },
+        //
+        // Transaction Public Properties and Methods
+        //
+        abort: function () {
+            this.active && this._reject(new exceptions.Abort());
+            this.active = false;
+        },
+        tables: {
+            get: deprecated("Transaction.tables", function () { return allTables; })
+        },
+        table: function (name) {
+            var table = db.table(name); // Don't check that table is part of transaction. It must fail lazily!
+            return new Table(name, table.schema, this);
+        }
+    });
+    //
+    //
+    //
+    // WhereClause
+    //
+    //
+    //
+    function WhereClause(table, index, orCollection) {
+        /// <param name="table" type="Table"></param>
+        /// <param name="index" type="String" optional="true"></param>
+        /// <param name="orCollection" type="Collection" optional="true"></param>
+        this._ctx = {
+            table: table,
+            index: index === ":id" ? null : index,
+            or: orCollection
+        };
+    }
+    props(WhereClause.prototype, function () {
+        // WhereClause private methods
+        function fail(collectionOrWhereClause, err, T) {
+            var collection = collectionOrWhereClause instanceof WhereClause ?
+                new Collection(collectionOrWhereClause) :
+                collectionOrWhereClause;
+            collection._ctx.error = T ? new T(err) : new TypeError(err);
+            return collection;
+        }
+        function emptyCollection(whereClause) {
+            return new Collection(whereClause, function () { return IDBKeyRange.only(""); }).limit(0);
+        }
+        function upperFactory(dir) {
+            return dir === "next" ? function (s) { return s.toUpperCase(); } : function (s) { return s.toLowerCase(); };
+        }
+        function lowerFactory(dir) {
+            return dir === "next" ? function (s) { return s.toLowerCase(); } : function (s) { return s.toUpperCase(); };
+        }
+        function nextCasing(key, lowerKey, upperNeedle, lowerNeedle, cmp, dir) {
+            var length = Math.min(key.length, lowerNeedle.length);
+            var llp = -1;
+            for (var i = 0; i < length; ++i) {
+                var lwrKeyChar = lowerKey[i];
+                if (lwrKeyChar !== lowerNeedle[i]) {
+                    if (cmp(key[i], upperNeedle[i]) < 0)
+                        return key.substr(0, i) + upperNeedle[i] + upperNeedle.substr(i + 1);
+                    if (cmp(key[i], lowerNeedle[i]) < 0)
+                        return key.substr(0, i) + lowerNeedle[i] + upperNeedle.substr(i + 1);
+                    if (llp >= 0)
+                        return key.substr(0, llp) + lowerKey[llp] + upperNeedle.substr(llp + 1);
+                    return null;
+                }
+                if (cmp(key[i], lwrKeyChar) < 0)
+                    llp = i;
+            }
+            if (length < lowerNeedle.length && dir === "next")
+                return key + upperNeedle.substr(key.length);
+            if (length < key.length && dir === "prev")
+                return key.substr(0, upperNeedle.length);
+            return (llp < 0 ? null : key.substr(0, llp) + lowerNeedle[llp] + upperNeedle.substr(llp + 1));
+        }
+        function addIgnoreCaseAlgorithm(whereClause, match, needles, suffix) {
+            /// <param name="needles" type="Array" elementType="String"></param>
+            var upper, lower, compare, upperNeedles, lowerNeedles, direction, nextKeySuffix, needlesLen = needles.length;
+            if (!needles.every(function (s) { return typeof s === 'string'; })) {
+                return fail(whereClause, STRING_EXPECTED);
+            }
+            function initDirection(dir) {
+                upper = upperFactory(dir);
+                lower = lowerFactory(dir);
+                compare = (dir === "next" ? simpleCompare : simpleCompareReverse);
+                var needleBounds = needles.map(function (needle) {
+                    return { lower: lower(needle), upper: upper(needle) };
+                }).sort(function (a, b) {
+                    return compare(a.lower, b.lower);
+                });
+                upperNeedles = needleBounds.map(function (nb) { return nb.upper; });
+                lowerNeedles = needleBounds.map(function (nb) { return nb.lower; });
+                direction = dir;
+                nextKeySuffix = (dir === "next" ? "" : suffix);
+            }
+            initDirection("next");
+            var c = new Collection(whereClause, function () {
+                return IDBKeyRange.bound(upperNeedles[0], lowerNeedles[needlesLen - 1] + suffix);
+            });
+            c._ondirectionchange = function (direction) {
+                // This event onlys occur before filter is called the first time.
+                initDirection(direction);
+            };
+            var firstPossibleNeedle = 0;
+            c._addAlgorithm(function (cursor, advance, resolve) {
+                /// <param name="cursor" type="IDBCursor"></param>
+                /// <param name="advance" type="Function"></param>
+                /// <param name="resolve" type="Function"></param>
+                var key = cursor.key;
+                if (typeof key !== 'string')
+                    return false;
+                var lowerKey = lower(key);
+                if (match(lowerKey, lowerNeedles, firstPossibleNeedle)) {
+                    return true;
+                }
+                else {
+                    var lowestPossibleCasing = null;
+                    for (var i = firstPossibleNeedle; i < needlesLen; ++i) {
+                        var casing = nextCasing(key, lowerKey, upperNeedles[i], lowerNeedles[i], compare, direction);
+                        if (casing === null && lowestPossibleCasing === null)
+                            firstPossibleNeedle = i + 1;
+                        else if (lowestPossibleCasing === null || compare(lowestPossibleCasing, casing) > 0) {
+                            lowestPossibleCasing = casing;
+                        }
+                    }
+                    if (lowestPossibleCasing !== null) {
+                        advance(function () { cursor.continue(lowestPossibleCasing + nextKeySuffix); });
+                    }
+                    else {
+                        advance(resolve);
+                    }
+                    return false;
+                }
+            });
+            return c;
+        }
+        //
+        // WhereClause public methods
+        //
+        return {
+            between: function (lower, upper, includeLower, includeUpper) {
+                /// <summary>
+                ///     Filter out records whose where-field lays between given lower and upper values. Applies to Strings, Numbers and Dates.
+                /// </summary>
+                /// <param name="lower"></param>
+                /// <param name="upper"></param>
+                /// <param name="includeLower" optional="true">Whether items that equals lower should be included. Default true.</param>
+                /// <param name="includeUpper" optional="true">Whether items that equals upper should be included. Default false.</param>
+                /// <returns type="Collection"></returns>
+                includeLower = includeLower !== false; // Default to true
+                includeUpper = includeUpper === true; // Default to false
+                try {
+                    if ((cmp(lower, upper) > 0) ||
+                        (cmp(lower, upper) === 0 && (includeLower || includeUpper) && !(includeLower && includeUpper)))
+                        return emptyCollection(this); // Workaround for idiotic W3C Specification that DataError must be thrown if lower > upper. The natural result would be to return an empty collection.
+                    return new Collection(this, function () { return IDBKeyRange.bound(lower, upper, !includeLower, !includeUpper); });
+                }
+                catch (e) {
+                    return fail(this, INVALID_KEY_ARGUMENT);
+                }
+            },
+            equals: function (value) {
+                return new Collection(this, function () { return IDBKeyRange.only(value); });
+            },
+            above: function (value) {
+                return new Collection(this, function () { return IDBKeyRange.lowerBound(value, true); });
+            },
+            aboveOrEqual: function (value) {
+                return new Collection(this, function () { return IDBKeyRange.lowerBound(value); });
+            },
+            below: function (value) {
+                return new Collection(this, function () { return IDBKeyRange.upperBound(value, true); });
+            },
+            belowOrEqual: function (value) {
+                return new Collection(this, function () { return IDBKeyRange.upperBound(value); });
+            },
+            startsWith: function (str) {
+                /// <param name="str" type="String"></param>
+                if (typeof str !== 'string')
+                    return fail(this, STRING_EXPECTED);
+                return this.between(str, str + maxString, true, true);
+            },
+            startsWithIgnoreCase: function (str) {
+                /// <param name="str" type="String"></param>
+                if (str === "")
+                    return this.startsWith(str);
+                return addIgnoreCaseAlgorithm(this, function (x, a) { return x.indexOf(a[0]) === 0; }, [str], maxString);
+            },
+            equalsIgnoreCase: function (str) {
+                /// <param name="str" type="String"></param>
+                return addIgnoreCaseAlgorithm(this, function (x, a) { return x === a[0]; }, [str], "");
+            },
+            anyOfIgnoreCase: function () {
+                var set = getArrayOf.apply(NO_CHAR_ARRAY, arguments);
+                if (set.length === 0)
+                    return emptyCollection(this);
+                return addIgnoreCaseAlgorithm(this, function (x, a) { return a.indexOf(x) !== -1; }, set, "");
+            },
+            startsWithAnyOfIgnoreCase: function () {
+                var set = getArrayOf.apply(NO_CHAR_ARRAY, arguments);
+                if (set.length === 0)
+                    return emptyCollection(this);
+                return addIgnoreCaseAlgorithm(this, function (x, a) {
+                    return a.some(function (n) {
+                        return x.indexOf(n) === 0;
+                    });
+                }, set, maxString);
+            },
+            anyOf: function () {
+                var set = getArrayOf.apply(NO_CHAR_ARRAY, arguments);
+                var compare = ascending;
+                try {
+                    set.sort(compare);
+                }
+                catch (e) {
+                    return fail(this, INVALID_KEY_ARGUMENT);
+                }
+                if (set.length === 0)
+                    return emptyCollection(this);
+                var c = new Collection(this, function () { return IDBKeyRange.bound(set[0], set[set.length - 1]); });
+                c._ondirectionchange = function (direction) {
+                    compare = (direction === "next" ? ascending : descending);
+                    set.sort(compare);
+                };
+                var i = 0;
+                c._addAlgorithm(function (cursor, advance, resolve) {
+                    var key = cursor.key;
+                    while (compare(key, set[i]) > 0) {
+                        // The cursor has passed beyond this key. Check next.
+                        ++i;
+                        if (i === set.length) {
+                            // There is no next. Stop searching.
+                            advance(resolve);
+                            return false;
+                        }
+                    }
+                    if (compare(key, set[i]) === 0) {
+                        // The current cursor value should be included and we should continue a single step in case next item has the same key or possibly our next key in set.
+                        return true;
+                    }
+                    else {
+                        // cursor.key not yet at set[i]. Forward cursor to the next key to hunt for.
+                        advance(function () { cursor.continue(set[i]); });
+                        return false;
+                    }
+                });
+                return c;
+            },
+            notEqual: function (value) {
+                return this.inAnyRange([[minKey, value], [value, maxKey]], { includeLowers: false, includeUppers: false });
+            },
+            noneOf: function () {
+                var set = getArrayOf.apply(NO_CHAR_ARRAY, arguments);
+                if (set.length === 0)
+                    return new Collection(this); // Return entire collection.
+                try {
+                    set.sort(ascending);
+                }
+                catch (e) {
+                    return fail(this, INVALID_KEY_ARGUMENT);
+                }
+                // Transform ["a","b","c"] to a set of ranges for between/above/below: [[minKey,"a"], ["a","b"], ["b","c"], ["c",maxKey]]
+                var ranges = set.reduce(function (res, val) { return res ? res.concat([[res[res.length - 1][1], val]]) : [[minKey, val]]; }, null);
+                ranges.push([set[set.length - 1], maxKey]);
+                return this.inAnyRange(ranges, { includeLowers: false, includeUppers: false });
+            },
+            /** Filter out values withing given set of ranges.
+            * Example, give children and elders a rebate of 50%:
+            *
+            *   db.friends.where('age').inAnyRange([[0,18],[65,Infinity]]).modify({Rebate: 1/2});
+            *
+            * @param {(string|number|Date|Array)[][]} ranges
+            * @param {{includeLowers: boolean, includeUppers: boolean}} options
+            */
+            inAnyRange: function (ranges, options) {
+                if (ranges.length === 0)
+                    return emptyCollection(this);
+                if (!ranges.every(function (range) { return range[0] !== undefined && range[1] !== undefined && ascending(range[0], range[1]) <= 0; })) {
+                    return fail(this, "First argument to inAnyRange() must be an Array of two-value Arrays [lower,upper] where upper must not be lower than lower", exceptions.InvalidArgument);
+                }
+                var includeLowers = !options || options.includeLowers !== false; // Default to true
+                var includeUppers = options && options.includeUppers === true; // Default to false
+                function addRange(ranges, newRange) {
+                    for (var i = 0, l = ranges.length; i < l; ++i) {
+                        var range = ranges[i];
+                        if (cmp(newRange[0], range[1]) < 0 && cmp(newRange[1], range[0]) > 0) {
+                            range[0] = min(range[0], newRange[0]);
+                            range[1] = max(range[1], newRange[1]);
+                            break;
+                        }
+                    }
+                    if (i === l)
+                        ranges.push(newRange);
+                    return ranges;
+                }
+                var sortDirection = ascending;
+                function rangeSorter(a, b) { return sortDirection(a[0], b[0]); }
+                // Join overlapping ranges
+                var set;
+                try {
+                    set = ranges.reduce(addRange, []);
+                    set.sort(rangeSorter);
+                }
+                catch (ex) {
+                    return fail(this, INVALID_KEY_ARGUMENT);
+                }
+                var i = 0;
+                var keyIsBeyondCurrentEntry = includeUppers ?
+                    function (key) { return ascending(key, set[i][1]) > 0; } :
+                    function (key) { return ascending(key, set[i][1]) >= 0; };
+                var keyIsBeforeCurrentEntry = includeLowers ?
+                    function (key) { return descending(key, set[i][0]) > 0; } :
+                    function (key) { return descending(key, set[i][0]) >= 0; };
+                function keyWithinCurrentRange(key) {
+                    return !keyIsBeyondCurrentEntry(key) && !keyIsBeforeCurrentEntry(key);
+                }
+                var checkKey = keyIsBeyondCurrentEntry;
+                var c = new Collection(this, function () {
+                    return IDBKeyRange.bound(set[0][0], set[set.length - 1][1], !includeLowers, !includeUppers);
+                });
+                c._ondirectionchange = function (direction) {
+                    if (direction === "next") {
+                        checkKey = keyIsBeyondCurrentEntry;
+                        sortDirection = ascending;
+                    }
+                    else {
+                        checkKey = keyIsBeforeCurrentEntry;
+                        sortDirection = descending;
+                    }
+                    set.sort(rangeSorter);
+                };
+                c._addAlgorithm(function (cursor, advance, resolve) {
+                    var key = cursor.key;
+                    while (checkKey(key)) {
+                        // The cursor has passed beyond this key. Check next.
+                        ++i;
+                        if (i === set.length) {
+                            // There is no next. Stop searching.
+                            advance(resolve);
+                            return false;
+                        }
+                    }
+                    if (keyWithinCurrentRange(key)) {
+                        // The current cursor value should be included and we should continue a single step in case next item has the same key or possibly our next key in set.
+                        return true;
+                    }
+                    else if (cmp(key, set[i][1]) === 0 || cmp(key, set[i][0]) === 0) {
+                        // includeUpper or includeLower is false so keyWithinCurrentRange() returns false even though we are at range border.
+                        // Continue to next key but don't include this one.
+                        return false;
+                    }
+                    else {
+                        // cursor.key not yet at set[i]. Forward cursor to the next key to hunt for.
+                        advance(function () {
+                            if (sortDirection === ascending)
+                                cursor.continue(set[i][0]);
+                            else
+                                cursor.continue(set[i][1]);
+                        });
+                        return false;
+                    }
+                });
+                return c;
+            },
+            startsWithAnyOf: function () {
+                var set = getArrayOf.apply(NO_CHAR_ARRAY, arguments);
+                if (!set.every(function (s) { return typeof s === 'string'; })) {
+                    return fail(this, "startsWithAnyOf() only works with strings");
+                }
+                if (set.length === 0)
+                    return emptyCollection(this);
+                return this.inAnyRange(set.map(function (str) {
+                    return [str, str + maxString];
+                }));
+            }
+        };
+    });
+    //
+    //
+    //
+    // Collection Class
+    //
+    //
+    //
+    function Collection(whereClause, keyRangeGenerator) {
+        /// <summary>
+        ///
+        /// </summary>
+        /// <param name="whereClause" type="WhereClause">Where clause instance</param>
+        /// <param name="keyRangeGenerator" value="function(){ return IDBKeyRange.bound(0,1);}" optional="true"></param>
+        var keyRange = null, error = null;
+        if (keyRangeGenerator)
+            try {
+                keyRange = keyRangeGenerator();
+            }
+            catch (ex) {
+                error = ex;
+            }
+        var whereCtx = whereClause._ctx, table = whereCtx.table;
+        this._ctx = {
+            table: table,
+            index: whereCtx.index,
+            isPrimKey: (!whereCtx.index || (table.schema.primKey.keyPath && whereCtx.index === table.schema.primKey.name)),
+            range: keyRange,
+            keysOnly: false,
+            dir: "next",
+            unique: "",
+            algorithm: null,
+            filter: null,
+            replayFilter: null,
+            justLimit: true,
+            isMatch: null,
+            offset: 0,
+            limit: Infinity,
+            error: error,
+            or: whereCtx.or,
+            valueMapper: table.hook.reading.fire
+        };
+    }
+    function isPlainKeyRange(ctx, ignoreLimitFilter) {
+        return !(ctx.filter || ctx.algorithm || ctx.or) &&
+            (ignoreLimitFilter ? ctx.justLimit : !ctx.replayFilter);
+    }
+    props(Collection.prototype, function () {
+        //
+        // Collection Private Functions
+        //
+        function addFilter(ctx, fn) {
+            ctx.filter = combine(ctx.filter, fn);
+        }
+        function addReplayFilter(ctx, factory, isLimitFilter) {
+            var curr = ctx.replayFilter;
+            ctx.replayFilter = curr ? function () { return combine(curr(), factory()); } : factory;
+            ctx.justLimit = isLimitFilter && !curr;
+        }
+        function addMatchFilter(ctx, fn) {
+            ctx.isMatch = combine(ctx.isMatch, fn);
+        }
+        /** @param ctx {
+         *      isPrimKey: boolean,
+         *      table: Table,
+         *      index: string
+         * }
+         * @param store IDBObjectStore
+         **/
+        function getIndexOrStore(ctx, store) {
+            if (ctx.isPrimKey)
+                return store;
+            var indexSpec = ctx.table.schema.idxByName[ctx.index];
+            if (!indexSpec)
+                throw new exceptions.Schema("KeyPath " + ctx.index + " on object store " + store.name + " is not indexed");
+            return store.index(indexSpec.name);
+        }
+        /** @param ctx {
+         *      isPrimKey: boolean,
+         *      table: Table,
+         *      index: string,
+         *      keysOnly: boolean,
+         *      range?: IDBKeyRange,
+         *      dir: "next" | "prev"
+         * }
+         */
+        function openCursor(ctx, store) {
+            var idxOrStore = getIndexOrStore(ctx, store);
+            return ctx.keysOnly && 'openKeyCursor' in idxOrStore ?
+                idxOrStore.openKeyCursor(ctx.range || null, ctx.dir + ctx.unique) :
+                idxOrStore.openCursor(ctx.range || null, ctx.dir + ctx.unique);
+        }
+        function iter(ctx, fn, resolve, reject, idbstore) {
+            var filter = ctx.replayFilter ? combine(ctx.filter, ctx.replayFilter()) : ctx.filter;
+            if (!ctx.or) {
+                iterate(openCursor(ctx, idbstore), combine(ctx.algorithm, filter), fn, resolve, reject, !ctx.keysOnly && ctx.valueMapper);
+            }
+            else
+                (function () {
+                    var set = {};
+                    var resolved = 0;
+                    function resolveboth() {
+                        if (++resolved === 2)
+                            resolve(); // Seems like we just support or btwn max 2 expressions, but there are no limit because we do recursion.
+                    }
+                    function union(item, cursor, advance) {
+                        if (!filter || filter(cursor, advance, resolveboth, reject)) {
+                            var primaryKey = cursor.primaryKey;
+                            var key = '' + primaryKey;
+                            if (key === '[object ArrayBuffer]')
+                                key = '' + new Uint8Array(primaryKey);
+                            if (!hasOwn(set, key)) {
+                                set[key] = true;
+                                fn(item, cursor, advance);
+                            }
+                        }
+                    }
+                    ctx.or._iterate(union, resolveboth, reject, idbstore);
+                    iterate(openCursor(ctx, idbstore), ctx.algorithm, union, resolveboth, reject, !ctx.keysOnly && ctx.valueMapper);
+                })();
+        }
+        function getInstanceTemplate(ctx) {
+            return ctx.table.schema.instanceTemplate;
+        }
+        return {
+            //
+            // Collection Protected Functions
+            //
+            _read: function (fn, cb) {
+                var ctx = this._ctx;
+                return ctx.error ?
+                    ctx.table._trans(null, rejection.bind(null, ctx.error)) :
+                    ctx.table._idbstore(READONLY, fn).then(cb);
+            },
+            _write: function (fn) {
+                var ctx = this._ctx;
+                return ctx.error ?
+                    ctx.table._trans(null, rejection.bind(null, ctx.error)) :
+                    ctx.table._idbstore(READWRITE, fn, "locked"); // When doing write operations on collections, always lock the operation so that upcoming operations gets queued.
+            },
+            _addAlgorithm: function (fn) {
+                var ctx = this._ctx;
+                ctx.algorithm = combine(ctx.algorithm, fn);
+            },
+            _iterate: function (fn, resolve, reject, idbstore) {
+                return iter(this._ctx, fn, resolve, reject, idbstore);
+            },
+            clone: function (props$$1) {
+                var rv = Object.create(this.constructor.prototype), ctx = Object.create(this._ctx);
+                if (props$$1)
+                    extend(ctx, props$$1);
+                rv._ctx = ctx;
+                return rv;
+            },
+            raw: function () {
+                this._ctx.valueMapper = null;
+                return this;
+            },
+            //
+            // Collection Public methods
+            //
+            each: function (fn) {
+                var ctx = this._ctx;
+                if (fake) {
+                    var item = getInstanceTemplate(ctx), primKeyPath = ctx.table.schema.primKey.keyPath, key = getByKeyPath(item, ctx.index ? ctx.table.schema.idxByName[ctx.index].keyPath : primKeyPath), primaryKey = getByKeyPath(item, primKeyPath);
+                    fn(item, { key: key, primaryKey: primaryKey });
+                }
+                return this._read(function (resolve, reject, idbstore) {
+                    iter(ctx, fn, resolve, reject, idbstore);
+                });
+            },
+            count: function (cb) {
+                if (fake)
+                    return Promise.resolve(0).then(cb);
+                var ctx = this._ctx;
+                if (isPlainKeyRange(ctx, true)) {
+                    // This is a plain key range. We can use the count() method if the index.
+                    return this._read(function (resolve, reject, idbstore) {
+                        var idx = getIndexOrStore(ctx, idbstore);
+                        var req = (ctx.range ? idx.count(ctx.range) : idx.count());
+                        req.onerror = eventRejectHandler(reject);
+                        req.onsuccess = function (e) {
+                            resolve(Math.min(e.target.result, ctx.limit));
+                        };
+                    }, cb);
+                }
+                else {
+                    // Algorithms, filters or expressions are applied. Need to count manually.
+                    var count = 0;
+                    return this._read(function (resolve, reject, idbstore) {
+                        iter(ctx, function () { ++count; return false; }, function () { resolve(count); }, reject, idbstore);
+                    }, cb);
+                }
+            },
+            sortBy: function (keyPath, cb) {
+                /// <param name="keyPath" type="String"></param>
+                var parts = keyPath.split('.').reverse(), lastPart = parts[0], lastIndex = parts.length - 1;
+                function getval(obj, i) {
+                    if (i)
+                        return getval(obj[parts[i]], i - 1);
+                    return obj[lastPart];
+                }
+                var order = this._ctx.dir === "next" ? 1 : -1;
+                function sorter(a, b) {
+                    var aVal = getval(a, lastIndex), bVal = getval(b, lastIndex);
+                    return aVal < bVal ? -order : aVal > bVal ? order : 0;
+                }
+                return this.toArray(function (a) {
+                    return a.sort(sorter);
+                }).then(cb);
+            },
+            toArray: function (cb) {
+                var ctx = this._ctx;
+                return this._read(function (resolve, reject, idbstore) {
+                    fake && resolve([getInstanceTemplate(ctx)]);
+                    if (hasGetAll && ctx.dir === 'next' && isPlainKeyRange(ctx, true) && ctx.limit > 0) {
+                        // Special optimation if we could use IDBObjectStore.getAll() or
+                        // IDBKeyRange.getAll():
+                        var readingHook = ctx.table.hook.reading.fire;
+                        var idxOrStore = getIndexOrStore(ctx, idbstore);
+                        var req = ctx.limit < Infinity ?
+                            idxOrStore.getAll(ctx.range, ctx.limit) :
+                            idxOrStore.getAll(ctx.range);
+                        req.onerror = eventRejectHandler(reject);
+                        req.onsuccess = readingHook === mirror ?
+                            eventSuccessHandler(resolve) :
+                            eventSuccessHandler(function (res) {
+                                try {
+                                    resolve(res.map(readingHook));
+                                }
+                                catch (e) {
+                                    reject(e);
+                                }
+                            });
+                    }
+                    else {
+                        // Getting array through a cursor.
+                        var a = [];
+                        iter(ctx, function (item) { a.push(item); }, function arrayComplete() {
+                            resolve(a);
+                        }, reject, idbstore);
+                    }
+                }, cb);
+            },
+            offset: function (offset) {
+                var ctx = this._ctx;
+                if (offset <= 0)
+                    return this;
+                ctx.offset += offset; // For count()
+                if (isPlainKeyRange(ctx)) {
+                    addReplayFilter(ctx, function () {
+                        var offsetLeft = offset;
+                        return function (cursor, advance) {
+                            if (offsetLeft === 0)
+                                return true;
+                            if (offsetLeft === 1) {
+                                --offsetLeft;
+                                return false;
+                            }
+                            advance(function () {
+                                cursor.advance(offsetLeft);
+                                offsetLeft = 0;
+                            });
+                            return false;
+                        };
+                    });
+                }
+                else {
+                    addReplayFilter(ctx, function () {
+                        var offsetLeft = offset;
+                        return function () { return (--offsetLeft < 0); };
+                    });
+                }
+                return this;
+            },
+            limit: function (numRows) {
+                this._ctx.limit = Math.min(this._ctx.limit, numRows); // For count()
+                addReplayFilter(this._ctx, function () {
+                    var rowsLeft = numRows;
+                    return function (cursor, advance, resolve) {
+                        if (--rowsLeft <= 0)
+                            advance(resolve); // Stop after this item has been included
+                        return rowsLeft >= 0; // If numRows is already below 0, return false because then 0 was passed to numRows initially. Otherwise we wouldnt come here.
+                    };
+                }, true);
+                return this;
+            },
+            until: function (filterFunction, bIncludeStopEntry) {
+                var ctx = this._ctx;
+                fake && filterFunction(getInstanceTemplate(ctx));
+                addFilter(this._ctx, function (cursor, advance, resolve) {
+                    if (filterFunction(cursor.value)) {
+                        advance(resolve);
+                        return bIncludeStopEntry;
+                    }
+                    else {
+                        return true;
+                    }
+                });
+                return this;
+            },
+            first: function (cb) {
+                return this.limit(1).toArray(function (a) { return a[0]; }).then(cb);
+            },
+            last: function (cb) {
+                return this.reverse().first(cb);
+            },
+            filter: function (filterFunction) {
+                /// <param name="jsFunctionFilter" type="Function">function(val){return true/false}</param>
+                fake && filterFunction(getInstanceTemplate(this._ctx));
+                addFilter(this._ctx, function (cursor) {
+                    return filterFunction(cursor.value);
+                });
+                // match filters not used in Dexie.js but can be used by 3rd part libraries to test a
+                // collection for a match without querying DB. Used by Dexie.Observable.
+                addMatchFilter(this._ctx, filterFunction);
+                return this;
+            },
+            and: function (filterFunction) {
+                return this.filter(filterFunction);
+            },
+            or: function (indexName) {
+                return new WhereClause(this._ctx.table, indexName, this);
+            },
+            reverse: function () {
+                this._ctx.dir = (this._ctx.dir === "prev" ? "next" : "prev");
+                if (this._ondirectionchange)
+                    this._ondirectionchange(this._ctx.dir);
+                return this;
+            },
+            desc: function () {
+                return this.reverse();
+            },
+            eachKey: function (cb) {
+                var ctx = this._ctx;
+                ctx.keysOnly = !ctx.isMatch;
+                return this.each(function (val, cursor) { cb(cursor.key, cursor); });
+            },
+            eachUniqueKey: function (cb) {
+                this._ctx.unique = "unique";
+                return this.eachKey(cb);
+            },
+            eachPrimaryKey: function (cb) {
+                var ctx = this._ctx;
+                ctx.keysOnly = !ctx.isMatch;
+                return this.each(function (val, cursor) { cb(cursor.primaryKey, cursor); });
+            },
+            keys: function (cb) {
+                var ctx = this._ctx;
+                ctx.keysOnly = !ctx.isMatch;
+                var a = [];
+                return this.each(function (item, cursor) {
+                    a.push(cursor.key);
+                }).then(function () {
+                    return a;
+                }).then(cb);
+            },
+            primaryKeys: function (cb) {
+                var ctx = this._ctx;
+                if (hasGetAll && ctx.dir === 'next' && isPlainKeyRange(ctx, true) && ctx.limit > 0) {
+                    // Special optimation if we could use IDBObjectStore.getAllKeys() or
+                    // IDBKeyRange.getAllKeys():
+                    return this._read(function (resolve, reject, idbstore) {
+                        var idxOrStore = getIndexOrStore(ctx, idbstore);
+                        var req = ctx.limit < Infinity ?
+                            idxOrStore.getAllKeys(ctx.range, ctx.limit) :
+                            idxOrStore.getAllKeys(ctx.range);
+                        req.onerror = eventRejectHandler(reject);
+                        req.onsuccess = eventSuccessHandler(resolve);
+                    }).then(cb);
+                }
+                ctx.keysOnly = !ctx.isMatch;
+                var a = [];
+                return this.each(function (item, cursor) {
+                    a.push(cursor.primaryKey);
+                }).then(function () {
+                    return a;
+                }).then(cb);
+            },
+            uniqueKeys: function (cb) {
+                this._ctx.unique = "unique";
+                return this.keys(cb);
+            },
+            firstKey: function (cb) {
+                return this.limit(1).keys(function (a) { return a[0]; }).then(cb);
+            },
+            lastKey: function (cb) {
+                return this.reverse().firstKey(cb);
+            },
+            distinct: function () {
+                var ctx = this._ctx, idx = ctx.index && ctx.table.schema.idxByName[ctx.index];
+                if (!idx || !idx.multi)
+                    return this; // distinct() only makes differencies on multiEntry indexes.
+                var set = {};
+                addFilter(this._ctx, function (cursor) {
+                    var strKey = cursor.primaryKey.toString(); // Converts any Date to String, String to String, Number to String and Array to comma-separated string
+                    var found = hasOwn(set, strKey);
+                    set[strKey] = true;
+                    return !found;
+                });
+                return this;
+            },
+            //
+            // Methods that mutate storage
+            //
+            modify: function (changes) {
+                var self = this, ctx = this._ctx, hook = ctx.table.hook, updatingHook = hook.updating.fire, deletingHook = hook.deleting.fire;
+                fake && typeof changes === 'function' && changes.call({ value: ctx.table.schema.instanceTemplate }, ctx.table.schema.instanceTemplate);
+                return this._write(function (resolve, reject, idbstore, trans) {
+                    var modifyer;
+                    if (typeof changes === 'function') {
+                        // Changes is a function that may update, add or delete propterties or even require a deletion the object itself (delete this.item)
+                        if (updatingHook === nop && deletingHook === nop) {
+                            // Noone cares about what is being changed. Just let the modifier function be the given argument as is.
+                            modifyer = changes;
+                        }
+                        else {
+                            // People want to know exactly what is being modified or deleted.
+                            // Let modifyer be a proxy function that finds out what changes the caller is actually doing
+                            // and call the hooks accordingly!
+                            modifyer = function (item) {
+                                var origItem = deepClone(item); // Clone the item first so we can compare laters.
+                                if (changes.call(this, item, this) === false)
+                                    return false; // Call the real modifyer function (If it returns false explicitely, it means it dont want to modify anyting on this object)
+                                if (!hasOwn(this, "value")) {
+                                    // The real modifyer function requests a deletion of the object. Inform the deletingHook that a deletion is taking place.
+                                    deletingHook.call(this, this.primKey, item, trans);
+                                }
+                                else {
+                                    // No deletion. Check what was changed
+                                    var objectDiff = getObjectDiff(origItem, this.value);
+                                    var additionalChanges = updatingHook.call(this, objectDiff, this.primKey, origItem, trans);
+                                    if (additionalChanges) {
+                                        // Hook want to apply additional modifications. Make sure to fullfill the will of the hook.
+                                        item = this.value;
+                                        keys(additionalChanges).forEach(function (keyPath) {
+                                            setByKeyPath(item, keyPath, additionalChanges[keyPath]); // Adding {keyPath: undefined} means that the keyPath should be deleted. Handled by setByKeyPath
+                                        });
+                                    }
+                                }
+                            };
+                        }
+                    }
+                    else if (updatingHook === nop) {
+                        // changes is a set of {keyPath: value} and no one is listening to the updating hook.
+                        var keyPaths = keys(changes);
+                        var numKeys = keyPaths.length;
+                        modifyer = function (item) {
+                            var anythingModified = false;
+                            for (var i = 0; i < numKeys; ++i) {
+                                var keyPath = keyPaths[i], val = changes[keyPath];
+                                if (getByKeyPath(item, keyPath) !== val) {
+                                    setByKeyPath(item, keyPath, val); // Adding {keyPath: undefined} means that the keyPath should be deleted. Handled by setByKeyPath
+                                    anythingModified = true;
+                                }
+                            }
+                            return anythingModified;
+                        };
+                    }
+                    else {
+                        // changes is a set of {keyPath: value} and people are listening to the updating hook so we need to call it and
+                        // allow it to add additional modifications to make.
+                        var origChanges = changes;
+                        changes = shallowClone(origChanges); // Let's work with a clone of the changes keyPath/value set so that we can restore it in case a hook extends it.
+                        modifyer = function (item) {
+                            var anythingModified = false;
+                            var additionalChanges = updatingHook.call(this, changes, this.primKey, deepClone(item), trans);
+                            if (additionalChanges)
+                                extend(changes, additionalChanges);
+                            keys(changes).forEach(function (keyPath) {
+                                var val = changes[keyPath];
+                                if (getByKeyPath(item, keyPath) !== val) {
+                                    setByKeyPath(item, keyPath, val);
+                                    anythingModified = true;
+                                }
+                            });
+                            if (additionalChanges)
+                                changes = shallowClone(origChanges); // Restore original changes for next iteration
+                            return anythingModified;
+                        };
+                    }
+                    var count = 0;
+                    var successCount = 0;
+                    var iterationComplete = false;
+                    var failures = [];
+                    var failKeys = [];
+                    var currentKey = null;
+                    function modifyItem(item, cursor) {
+                        currentKey = cursor.primaryKey;
+                        var thisContext = {
+                            primKey: cursor.primaryKey,
+                            value: item,
+                            onsuccess: null,
+                            onerror: null
+                        };
+                        function onerror(e) {
+                            failures.push(e);
+                            failKeys.push(thisContext.primKey);
+                            checkFinished();
+                            return true; // Catch these errors and let a final rejection decide whether or not to abort entire transaction
+                        }
+                        if (modifyer.call(thisContext, item, thisContext) !== false) {
+                            var bDelete = !hasOwn(thisContext, "value");
+                            ++count;
+                            tryCatch(function () {
+                                var req = (bDelete ? cursor.delete() : cursor.update(thisContext.value));
+                                req._hookCtx = thisContext;
+                                req.onerror = hookedEventRejectHandler(onerror);
+                                req.onsuccess = hookedEventSuccessHandler(function () {
+                                    ++successCount;
+                                    checkFinished();
+                                });
+                            }, onerror);
+                        }
+                        else if (thisContext.onsuccess) {
+                            // Hook will expect either onerror or onsuccess to always be called!
+                            thisContext.onsuccess(thisContext.value);
+                        }
+                    }
+                    function doReject(e) {
+                        if (e) {
+                            failures.push(e);
+                            failKeys.push(currentKey);
+                        }
+                        return reject(new ModifyError("Error modifying one or more objects", failures, successCount, failKeys));
+                    }
+                    function checkFinished() {
+                        if (iterationComplete && successCount + failures.length === count) {
+                            if (failures.length > 0)
+                                doReject();
+                            else
+                                resolve(successCount);
+                        }
+                    }
+                    self.clone().raw()._iterate(modifyItem, function () {
+                        iterationComplete = true;
+                        checkFinished();
+                    }, doReject, idbstore);
+                });
+            },
+            'delete': function () {
+                var _this = this;
+                var ctx = this._ctx, range = ctx.range, deletingHook = ctx.table.hook.deleting.fire, hasDeleteHook = deletingHook !== nop;
+                if (!hasDeleteHook &&
+                    isPlainKeyRange(ctx) &&
+                    ((ctx.isPrimKey && !hangsOnDeleteLargeKeyRange) || !range)) {
+                    // May use IDBObjectStore.delete(IDBKeyRange) in this case (Issue #208)
+                    // For chromium, this is the way most optimized version.
+                    // For IE/Edge, this could hang the indexedDB engine and make operating system instable
+                    // (https://gist.github.com/dfahlander/5a39328f029de18222cf2125d56c38f7)
+                    return this._write(function (resolve, reject, idbstore) {
+                        // Our API contract is to return a count of deleted items, so we have to count() before delete().
+                        var onerror = eventRejectHandler(reject), countReq = (range ? idbstore.count(range) : idbstore.count());
+                        countReq.onerror = onerror;
+                        countReq.onsuccess = function () {
+                            var count = countReq.result;
+                            tryCatch(function () {
+                                var delReq = (range ? idbstore.delete(range) : idbstore.clear());
+                                delReq.onerror = onerror;
+                                delReq.onsuccess = function () { return resolve(count); };
+                            }, function (err) { return reject(err); });
+                        };
+                    });
+                }
+                // Default version to use when collection is not a vanilla IDBKeyRange on the primary key.
+                // Divide into chunks to not starve RAM.
+                // If has delete hook, we will have to collect not just keys but also objects, so it will use
+                // more memory and need lower chunk size.
+                var CHUNKSIZE = hasDeleteHook ? 2000 : 10000;
+                return this._write(function (resolve, reject, idbstore, trans) {
+                    var totalCount = 0;
+                    // Clone collection and change its table and set a limit of CHUNKSIZE on the cloned Collection instance.
+                    var collection = _this
+                        .clone({
+                        keysOnly: !ctx.isMatch && !hasDeleteHook
+                    }) // load just keys (unless filter() or and() or deleteHook has subscribers)
+                        .distinct() // In case multiEntry is used, never delete same key twice because resulting count
+                        .limit(CHUNKSIZE)
+                        .raw(); // Don't filter through reading-hooks (like mapped classes etc)
+                    var keysOrTuples = [];
+                    // We're gonna do things on as many chunks that are needed.
+                    // Use recursion of nextChunk function:
+                    var nextChunk = function () { return collection.each(hasDeleteHook ? function (val, cursor) {
+                        // Somebody subscribes to hook('deleting'). Collect all primary keys and their values,
+                        // so that the hook can be called with its values in bulkDelete().
+                        keysOrTuples.push([cursor.primaryKey, cursor.value]);
+                    } : function (val, cursor) {
+                        // No one subscribes to hook('deleting'). Collect only primary keys:
+                        keysOrTuples.push(cursor.primaryKey);
+                    }).then(function () {
+                        // Chromium deletes faster when doing it in sort order.
+                        hasDeleteHook ?
+                            keysOrTuples.sort(function (a, b) { return ascending(a[0], b[0]); }) :
+                            keysOrTuples.sort(ascending);
+                        return bulkDelete(idbstore, trans, keysOrTuples, hasDeleteHook, deletingHook);
+                    }).then(function () {
+                        var count = keysOrTuples.length;
+                        totalCount += count;
+                        keysOrTuples = [];
+                        return count < CHUNKSIZE ? totalCount : nextChunk();
+                    }); };
+                    resolve(nextChunk());
+                });
+            }
+        };
+    });
+    //
+    //
+    //
+    // ------------------------- Help functions ---------------------------
+    //
+    //
+    //
+    function lowerVersionFirst(a, b) {
+        return a._cfg.version - b._cfg.version;
+    }
+    function setApiOnPlace(objs, tableNames, dbschema) {
+        tableNames.forEach(function (tableName) {
+            var schema = dbschema[tableName];
+            objs.forEach(function (obj) {
+                if (!(tableName in obj)) {
+                    if (obj === Transaction.prototype || obj instanceof Transaction) {
+                        // obj is a Transaction prototype (or prototype of a subclass to Transaction)
+                        // Make the API a getter that returns this.table(tableName)
+                        setProp(obj, tableName, { get: function () { return this.table(tableName); } });
+                    }
+                    else {
+                        // Table will not be bound to a transaction (will use Dexie.currentTransaction)
+                        obj[tableName] = new Table(tableName, schema);
+                    }
+                }
+            });
+        });
+    }
+    function removeTablesApi(objs) {
+        objs.forEach(function (obj) {
+            for (var key in obj) {
+                if (obj[key] instanceof Table)
+                    delete obj[key];
+            }
+        });
+    }
+    function iterate(req, filter, fn, resolve, reject, valueMapper) {
+        // Apply valueMapper (hook('reading') or mappped class)
+        var mappedFn = valueMapper ? function (x, c, a) { return fn(valueMapper(x), c, a); } : fn;
+        // Wrap fn with PSD and microtick stuff from Promise.
+        var wrappedFn = wrap(mappedFn, reject);
+        if (!req.onerror)
+            req.onerror = eventRejectHandler(reject);
+        if (filter) {
+            req.onsuccess = trycatcher(function filter_record() {
+                var cursor = req.result;
+                if (cursor) {
+                    var c = function () { cursor.continue(); };
+                    if (filter(cursor, function (advancer) { c = advancer; }, resolve, reject))
+                        wrappedFn(cursor.value, cursor, function (advancer) { c = advancer; });
+                    c();
+                }
+                else {
+                    resolve();
+                }
+            }, reject);
+        }
+        else {
+            req.onsuccess = trycatcher(function filter_record() {
+                var cursor = req.result;
+                if (cursor) {
+                    var c = function () { cursor.continue(); };
+                    wrappedFn(cursor.value, cursor, function (advancer) { c = advancer; });
+                    c();
+                }
+                else {
+                    resolve();
+                }
+            }, reject);
+        }
+    }
+    function parseIndexSyntax(indexes) {
+        /// <param name="indexes" type="String"></param>
+        /// <returns type="Array" elementType="IndexSpec"></returns>
+        var rv = [];
+        indexes.split(',').forEach(function (index) {
+            index = index.trim();
+            var name = index.replace(/([&*]|\+\+)/g, ""); // Remove "&", "++" and "*"
+            // Let keyPath of "[a+b]" be ["a","b"]:
+            var keyPath = /^\[/.test(name) ? name.match(/^\[(.*)\]$/)[1].split('+') : name;
+            rv.push(new IndexSpec(name, keyPath || null, /\&/.test(index), /\*/.test(index), /\+\+/.test(index), isArray(keyPath), /\./.test(index)));
+        });
+        return rv;
+    }
+    function cmp(key1, key2) {
+        return indexedDB.cmp(key1, key2);
+    }
+    function min(a, b) {
+        return cmp(a, b) < 0 ? a : b;
+    }
+    function max(a, b) {
+        return cmp(a, b) > 0 ? a : b;
+    }
+    function ascending(a, b) {
+        return indexedDB.cmp(a, b);
+    }
+    function descending(a, b) {
+        return indexedDB.cmp(b, a);
+    }
+    function simpleCompare(a, b) {
+        return a < b ? -1 : a === b ? 0 : 1;
+    }
+    function simpleCompareReverse(a, b) {
+        return a > b ? -1 : a === b ? 0 : 1;
+    }
+    function combine(filter1, filter2) {
+        return filter1 ?
+            filter2 ?
+                function () { return filter1.apply(this, arguments) && filter2.apply(this, arguments); } :
+                filter1 :
+            filter2;
+    }
+    function readGlobalSchema() {
+        db.verno = idbdb.version / 10;
+        db._dbSchema = globalSchema = {};
+        dbStoreNames = slice(idbdb.objectStoreNames, 0);
+        if (dbStoreNames.length === 0)
+            return; // Database contains no stores.
+        var trans = idbdb.transaction(safariMultiStoreFix(dbStoreNames), 'readonly');
+        dbStoreNames.forEach(function (storeName) {
+            var store = trans.objectStore(storeName), keyPath = store.keyPath, dotted = keyPath && typeof keyPath === 'string' && keyPath.indexOf('.') !== -1;
+            var primKey = new IndexSpec(keyPath, keyPath || "", false, false, !!store.autoIncrement, keyPath && typeof keyPath !== 'string', dotted);
+            var indexes = [];
+            for (var j = 0; j < store.indexNames.length; ++j) {
+                var idbindex = store.index(store.indexNames[j]);
+                keyPath = idbindex.keyPath;
+                dotted = keyPath && typeof keyPath === 'string' && keyPath.indexOf('.') !== -1;
+                var index = new IndexSpec(idbindex.name, keyPath, !!idbindex.unique, !!idbindex.multiEntry, false, keyPath && typeof keyPath !== 'string', dotted);
+                indexes.push(index);
+            }
+            globalSchema[storeName] = new TableSchema(storeName, primKey, indexes, {});
+        });
+        setApiOnPlace([allTables], keys(globalSchema), globalSchema);
+    }
+    function adjustToExistingIndexNames(schema, idbtrans) {
+        /// <summary>
+        /// Issue #30 Problem with existing db - adjust to existing index names when migrating from non-dexie db
+        /// </summary>
+        /// <param name="schema" type="Object">Map between name and TableSchema</param>
+        /// <param name="idbtrans" type="IDBTransaction"></param>
+        var storeNames = idbtrans.db.objectStoreNames;
+        for (var i = 0; i < storeNames.length; ++i) {
+            var storeName = storeNames[i];
+            var store = idbtrans.objectStore(storeName);
+            hasGetAll = 'getAll' in store;
+            for (var j = 0; j < store.indexNames.length; ++j) {
+                var indexName = store.indexNames[j];
+                var keyPath = store.index(indexName).keyPath;
+                var dexieName = typeof keyPath === 'string' ? keyPath : "[" + slice(keyPath).join('+') + "]";
+                if (schema[storeName]) {
+                    var indexSpec = schema[storeName].idxByName[dexieName];
+                    if (indexSpec)
+                        indexSpec.name = indexName;
+                }
+            }
+        }
+        // Bug with getAll() on Safari ver<604 on Workers only, see discussion following PR #579
+        if (/Safari/.test(navigator.userAgent) &&
+            !/(Chrome\/|Edge\/)/.test(navigator.userAgent) &&
+            _global.WorkerGlobalScope && _global instanceof _global.WorkerGlobalScope &&
+            [].concat(navigator.userAgent.match(/Safari\/(\d*)/))[1] < 604) {
+            hasGetAll = false;
+        }
+    }
+    function fireOnBlocked(ev) {
+        db.on("blocked").fire(ev);
+        // Workaround (not fully*) for missing "versionchange" event in IE,Edge and Safari:
+        connections
+            .filter(function (c) { return c.name === db.name && c !== db && !c._vcFired; })
+            .map(function (c) { return c.on("versionchange").fire(ev); });
+    }
+    extend(this, {
+        Collection: Collection,
+        Table: Table,
+        Transaction: Transaction,
+        Version: Version,
+        WhereClause: WhereClause
+    });
+    init();
+    addons.forEach(function (fn) {
+        fn(db);
+    });
+}
+var fakeAutoComplete = function () { }; // Will never be changed. We just fake for the IDE that we change it (see doFakeAutoComplete())
+var fake = false; // Will never be changed. We just fake for the IDE that we change it (see doFakeAutoComplete())
+function parseType(type) {
+    if (typeof type === 'function') {
+        return new type();
+    }
+    else if (isArray(type)) {
+        return [parseType(type[0])];
+    }
+    else if (type && typeof type === 'object') {
+        var rv = {};
+        applyStructure(rv, type);
+        return rv;
+    }
+    else {
+        return type;
+    }
+}
+function applyStructure(obj, structure) {
+    keys(structure).forEach(function (member) {
+        var value = parseType(structure[member]);
+        obj[member] = value;
+    });
+    return obj;
+}
+function hookedEventSuccessHandler(resolve) {
+    // wrap() is needed when calling hooks because the rare scenario of:
+    //  * hook does a db operation that fails immediately (IDB throws exception)
+    //    For calling db operations on correct transaction, wrap makes sure to set PSD correctly.
+    //    wrap() will also execute in a virtual tick.
+    //  * If not wrapped in a virtual tick, direct exception will launch a new physical tick.
+    //  * If this was the last event in the bulk, the promise will resolve after a physical tick
+    //    and the transaction will have committed already.
+    // If no hook, the virtual tick will be executed in the reject()/resolve of the final promise,
+    // because it is always marked with _lib = true when created using Transaction._promise().
+    return wrap(function (event) {
+        var req = event.target, result = req.result, ctx = req._hookCtx, // Contains the hook error handler. Put here instead of closure to boost performance.
+        hookSuccessHandler = ctx && ctx.onsuccess;
+        hookSuccessHandler && hookSuccessHandler(result);
+        resolve && resolve(result);
+    }, resolve);
+}
+function eventRejectHandler(reject) {
+    return wrap(function (event) {
+        preventDefault(event);
+        reject(event.target.error);
+        return false;
+    });
+}
+function eventSuccessHandler(resolve) {
+    return wrap(function (event) {
+        resolve(event.target.result);
+    });
+}
+function hookedEventRejectHandler(reject) {
+    return wrap(function (event) {
+        // See comment on hookedEventSuccessHandler() why wrap() is needed only when supporting hooks.
+        var req = event.target, err = req.error, ctx = req._hookCtx, // Contains the hook error handler. Put here instead of closure to boost performance.
+        hookErrorHandler = ctx && ctx.onerror;
+        hookErrorHandler && hookErrorHandler(err);
+        preventDefault(event);
+        reject(err);
+        return false;
+    });
+}
+function preventDefault(event) {
+    if (event.stopPropagation)
+        event.stopPropagation();
+    if (event.preventDefault)
+        event.preventDefault();
+}
+function awaitIterator(iterator) {
+    var callNext = function (result) { return iterator.next(result); }, doThrow = function (error) { return iterator.throw(error); }, onSuccess = step(callNext), onError = step(doThrow);
+    function step(getNext) {
+        return function (val) {
+            var next = getNext(val), value = next.value;
+            return next.done ? value :
+                (!value || typeof value.then !== 'function' ?
+                    isArray(value) ? Promise.all(value).then(onSuccess, onError) : onSuccess(value) :
+                    value.then(onSuccess, onError));
+        };
+    }
+    return step(callNext)();
+}
+//
+// IndexSpec struct
+//
+function IndexSpec(name, keyPath, unique, multi, auto, compound, dotted) {
+    /// <param name="name" type="String"></param>
+    /// <param name="keyPath" type="String"></param>
+    /// <param name="unique" type="Boolean"></param>
+    /// <param name="multi" type="Boolean"></param>
+    /// <param name="auto" type="Boolean"></param>
+    /// <param name="compound" type="Boolean"></param>
+    /// <param name="dotted" type="Boolean"></param>
+    this.name = name;
+    this.keyPath = keyPath;
+    this.unique = unique;
+    this.multi = multi;
+    this.auto = auto;
+    this.compound = compound;
+    this.dotted = dotted;
+    var keyPathSrc = typeof keyPath === 'string' ? keyPath : keyPath && ('[' + [].join.call(keyPath, '+') + ']');
+    this.src = (unique ? '&' : '') + (multi ? '*' : '') + (auto ? "++" : "") + keyPathSrc;
+}
+//
+// TableSchema struct
+//
+function TableSchema(name, primKey, indexes, instanceTemplate) {
+    /// <param name="name" type="String"></param>
+    /// <param name="primKey" type="IndexSpec"></param>
+    /// <param name="indexes" type="Array" elementType="IndexSpec"></param>
+    /// <param name="instanceTemplate" type="Object"></param>
+    this.name = name;
+    this.primKey = primKey || new IndexSpec();
+    this.indexes = indexes || [new IndexSpec()];
+    this.instanceTemplate = instanceTemplate;
+    this.mappedClass = null;
+    this.idxByName = arrayToObject(indexes, function (index) { return [index.name, index]; });
+}
+function safariMultiStoreFix(storeNames) {
+    return storeNames.length === 1 ? storeNames[0] : storeNames;
+}
+function getNativeGetDatabaseNamesFn(indexedDB) {
+    var fn = indexedDB && (indexedDB.getDatabaseNames || indexedDB.webkitGetDatabaseNames);
+    return fn && fn.bind(indexedDB);
+}
+// Export Error classes
+props(Dexie, fullNameExceptions); // Dexie.XXXError = class XXXError {...};
+//
+// Static methods and properties
+// 
+props(Dexie, {
+    //
+    // Static delete() method.
+    //
+    delete: function (databaseName) {
+        var db = new Dexie(databaseName), promise = db.delete();
+        promise.onblocked = function (fn) {
+            db.on("blocked", fn);
+            return this;
+        };
+        return promise;
+    },
+    //
+    // Static exists() method.
+    //
+    exists: function (name) {
+        return new Dexie(name).open().then(function (db) {
+            db.close();
+            return true;
+        }).catch(Dexie.NoSuchDatabaseError, function () { return false; });
+    },
+    //
+    // Static method for retrieving a list of all existing databases at current host.
+    //
+    getDatabaseNames: function (cb) {
+        var getDatabaseNames = getNativeGetDatabaseNamesFn(Dexie.dependencies.indexedDB);
+        return getDatabaseNames ? new Promise(function (resolve, reject) {
+            var req = getDatabaseNames();
+            req.onsuccess = function (event) {
+                resolve(slice(event.target.result, 0)); // Converst DOMStringList to Array<String>
+            };
+            req.onerror = eventRejectHandler(reject);
+        }).then(cb) : dbNamesDB.dbnames.toCollection().primaryKeys(cb);
+    },
+    defineClass: function (structure) {
+        /// <summary>
+        ///     Create a javascript constructor based on given template for which properties to expect in the class.
+        ///     Any property that is a constructor function will act as a type. So {name: String} will be equal to {name: new String()}.
+        /// </summary>
+        /// <param name="structure">Helps IDE code completion by knowing the members that objects contain and not just the indexes. Also
+        /// know what type each member has. Example: {name: String, emailAddresses: [String], properties: {shoeSize: Number}}</param>
+        // Default constructor able to copy given properties into this object.
+        function Class(properties) {
+            /// <param name="properties" type="Object" optional="true">Properties to initialize object with.
+            /// </param>
+            properties ? extend(this, properties) : fake && applyStructure(this, structure);
+        }
+        return Class;
+    },
+    applyStructure: applyStructure,
+    ignoreTransaction: function (scopeFunc) {
+        // In case caller is within a transaction but needs to create a separate transaction.
+        // Example of usage:
+        //
+        // Let's say we have a logger function in our app. Other application-logic should be unaware of the
+        // logger function and not need to include the 'logentries' table in all transaction it performs.
+        // The logging should always be done in a separate transaction and not be dependant on the current
+        // running transaction context. Then you could use Dexie.ignoreTransaction() to run code that starts a new transaction.
+        //
+        //     Dexie.ignoreTransaction(function() {
+        //         db.logentries.add(newLogEntry);
+        //     });
+        //
+        // Unless using Dexie.ignoreTransaction(), the above example would try to reuse the current transaction
+        // in current Promise-scope.
+        //
+        // An alternative to Dexie.ignoreTransaction() would be setImmediate() or setTimeout(). The reason we still provide an
+        // API for this because
+        //  1) The intention of writing the statement could be unclear if using setImmediate() or setTimeout().
+        //  2) setTimeout() would wait unnescessary until firing. This is however not the case with setImmediate().
+        //  3) setImmediate() is not supported in the ES standard.
+        //  4) You might want to keep other PSD state that was set in a parent PSD, such as PSD.letThrough.
+        return PSD.trans ?
+            usePSD(PSD.transless, scopeFunc) :
+            scopeFunc(); // No need to change scope because there is no ongoing transaction.
+    },
+    vip: function (fn) {
+        // To be used by subscribers to the on('ready') event.
+        // This will let caller through to access DB even when it is blocked while the db.ready() subscribers are firing.
+        // This would have worked automatically if we were certain that the Provider was using Dexie.Promise for all asyncronic operations. The promise PSD
+        // from the provider.connect() call would then be derived all the way to when provider would call localDatabase.applyChanges(). But since
+        // the provider more likely is using non-promise async APIs or other thenable implementations, we cannot assume that.
+        // Note that this method is only useful for on('ready') subscribers that is returning a Promise from the event. If not using vip()
+        // the database could deadlock since it wont open until the returned Promise is resolved, and any non-VIPed operation started by
+        // the caller will not resolve until database is opened.
+        return newScope(function () {
+            PSD.letThrough = true; // Make sure we are let through if still blocking db due to onready is firing.
+            return fn();
+        });
+    },
+    async: function (generatorFn) {
+        return function () {
+            try {
+                var rv = awaitIterator(generatorFn.apply(this, arguments));
+                if (!rv || typeof rv.then !== 'function')
+                    return Promise.resolve(rv);
+                return rv;
+            }
+            catch (e) {
+                return rejection(e);
+            }
+        };
+    },
+    spawn: function (generatorFn, args, thiz) {
+        try {
+            var rv = awaitIterator(generatorFn.apply(thiz, args || []));
+            if (!rv || typeof rv.then !== 'function')
+                return Promise.resolve(rv);
+            return rv;
+        }
+        catch (e) {
+            return rejection(e);
+        }
+    },
+    // Dexie.currentTransaction property
+    currentTransaction: {
+        get: function () { return PSD.trans || null; }
+    },
+    waitFor: function (promiseOrFunction, optionalTimeout) {
+        // If a function is provided, invoke it and pass the returning value to Transaction.waitFor()
+        var promise = Promise.resolve(typeof promiseOrFunction === 'function' ? Dexie.ignoreTransaction(promiseOrFunction) : promiseOrFunction)
+            .timeout(optionalTimeout || 60000); // Default the timeout to one minute. Caller may specify Infinity if required.       
+        // Run given promise on current transaction. If no current transaction, just return a Dexie promise based
+        // on given value.
+        return PSD.trans ? PSD.trans.waitFor(promise) : promise;
+    },
+    // Export our Promise implementation since it can be handy as a standalone Promise implementation
+    Promise: Promise,
+    // Dexie.debug proptery:
+    // Dexie.debug = false
+    // Dexie.debug = true
+    // Dexie.debug = "dexie" - don't hide dexie's stack frames.
+    debug: {
+        get: function () { return debug; },
+        set: function (value) {
+            setDebug(value, value === 'dexie' ? function () { return true; } : dexieStackFrameFilter);
+        }
+    },
+    // Export our derive/extend/override methodology
+    derive: derive,
+    extend: extend,
+    props: props,
+    override: override,
+    // Export our Events() function - can be handy as a toolkit
+    Events: Events,
+    // Utilities
+    getByKeyPath: getByKeyPath,
+    setByKeyPath: setByKeyPath,
+    delByKeyPath: delByKeyPath,
+    shallowClone: shallowClone,
+    deepClone: deepClone,
+    getObjectDiff: getObjectDiff,
+    asap: asap,
+    maxKey: maxKey,
+    minKey: minKey,
+    // Addon registry
+    addons: [],
+    // Global DB connection list
+    connections: connections,
+    MultiModifyError: exceptions.Modify,
+    errnames: errnames,
+    // Export other static classes
+    IndexSpec: IndexSpec,
+    TableSchema: TableSchema,
+    //
+    // Dependencies
+    //
+    // These will automatically work in browsers with indexedDB support, or where an indexedDB polyfill has been included.
+    //
+    // In node.js, however, these properties must be set "manually" before instansiating a new Dexie().
+    // For node.js, you need to require indexeddb-js or similar and then set these deps.
+    //
+    dependencies: {
+        // Required:
+        indexedDB: _global.indexedDB || _global.mozIndexedDB || _global.webkitIndexedDB || _global.msIndexedDB,
+        IDBKeyRange: _global.IDBKeyRange || _global.webkitIDBKeyRange
+    },
+    // API Version Number: Type Number, make sure to always set a version number that can be comparable correctly. Example: 0.9, 0.91, 0.92, 1.0, 1.01, 1.1, 1.2, 1.21, etc.
+    semVer: DEXIE_VERSION,
+    version: DEXIE_VERSION.split('.')
+        .map(function (n) { return parseInt(n); })
+        .reduce(function (p, c, i) { return p + (c / Math.pow(10, i * 2)); }),
+    fakeAutoComplete: fakeAutoComplete,
+    // https://github.com/dfahlander/Dexie.js/issues/186
+    // typescript compiler tsc in mode ts-->es5 & commonJS, will expect require() to return
+    // x.default. Workaround: Set Dexie.default = Dexie.
+    default: Dexie,
+    // Make it possible to import {Dexie} (non-default import)
+    // Reason 1: May switch to that in future.
+    // Reason 2: We declare it both default and named exported in d.ts to make it possible
+    // to let addons extend the Dexie interface with Typescript 2.1 (works only when explicitely
+    // exporting the symbol, not just default exporting)
+    Dexie: Dexie
+});
+// Map DOMErrors and DOMExceptions to corresponding Dexie errors. May change in Dexie v2.0.
+Promise.rejectionMapper = mapError;
+// Fool IDE to improve autocomplete. Tested with Visual Studio 2013 and 2015.
+doFakeAutoComplete(function () {
+    Dexie.fakeAutoComplete = fakeAutoComplete = doFakeAutoComplete;
+    Dexie.fake = fake = true;
+});
+// Initialize dbNamesDB (won't ever be opened on chromium browsers')
+dbNamesDB = new Dexie('__dbnames');
+dbNamesDB.version(1).stores({ dbnames: 'name' });
+(function () {
+    // Migrate from Dexie 1.x database names stored in localStorage:
+    var DBNAMES = 'Dexie.DatabaseNames';
+    if (typeof localStorage !== undefined && _global.document !== undefined)
+        try {
+            // Have localStorage and is not executing in a worker. Lets migrate from Dexie 1.x.
+            JSON.parse(localStorage.getItem(DBNAMES) || "[]")
+                .forEach(function (name) { return dbNamesDB.dbnames.put({ name: name }).catch(nop); });
+            localStorage.removeItem(DBNAMES);
+        }
+        catch (_e) { }
+})();
+
+return Dexie;
+
+})));
+
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],338:[function(require,module,exports){
 /*!
   Copyright (c) 2015 Jed Watson.
   Based on code that is Copyright 2013-2015, Facebook, Inc.
@@ -10020,7 +14535,7 @@ function shim (obj) {
 
 }());
 
-},{}],338:[function(require,module,exports){
+},{}],339:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -10097,7 +14612,7 @@ var EventListener = {
 
 module.exports = EventListener;
 }).call(this,require('_process'))
-},{"./emptyFunction":345,"_process":400}],339:[function(require,module,exports){
+},{"./emptyFunction":346,"_process":402}],340:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -10131,7 +14646,7 @@ var ExecutionEnvironment = {
 };
 
 module.exports = ExecutionEnvironment;
-},{}],340:[function(require,module,exports){
+},{}],341:[function(require,module,exports){
 "use strict";
 
 /**
@@ -10161,7 +14676,7 @@ function camelize(string) {
 }
 
 module.exports = camelize;
-},{}],341:[function(require,module,exports){
+},{}],342:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -10199,7 +14714,7 @@ function camelizeStyleName(string) {
 }
 
 module.exports = camelizeStyleName;
-},{"./camelize":340}],342:[function(require,module,exports){
+},{"./camelize":341}],343:[function(require,module,exports){
 'use strict';
 
 /**
@@ -10237,7 +14752,7 @@ function containsNode(outerNode, innerNode) {
 }
 
 module.exports = containsNode;
-},{"./isTextNode":355}],343:[function(require,module,exports){
+},{"./isTextNode":356}],344:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -10364,7 +14879,7 @@ function createArrayFromMixed(obj) {
 
 module.exports = createArrayFromMixed;
 }).call(this,require('_process'))
-},{"./invariant":353,"_process":400}],344:[function(require,module,exports){
+},{"./invariant":354,"_process":402}],345:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -10448,7 +14963,7 @@ function createNodesFromMarkup(markup, handleScript) {
 
 module.exports = createNodesFromMarkup;
 }).call(this,require('_process'))
-},{"./ExecutionEnvironment":339,"./createArrayFromMixed":343,"./getMarkupWrap":349,"./invariant":353,"_process":400}],345:[function(require,module,exports){
+},{"./ExecutionEnvironment":340,"./createArrayFromMixed":344,"./getMarkupWrap":350,"./invariant":354,"_process":402}],346:[function(require,module,exports){
 "use strict";
 
 /**
@@ -10485,7 +15000,7 @@ emptyFunction.thatReturnsArgument = function (arg) {
 };
 
 module.exports = emptyFunction;
-},{}],346:[function(require,module,exports){
+},{}],347:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -10505,7 +15020,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = emptyObject;
 }).call(this,require('_process'))
-},{"_process":400}],347:[function(require,module,exports){
+},{"_process":402}],348:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -10530,7 +15045,7 @@ function focusNode(node) {
 }
 
 module.exports = focusNode;
-},{}],348:[function(require,module,exports){
+},{}],349:[function(require,module,exports){
 'use strict';
 
 /**
@@ -10567,7 +15082,7 @@ function getActiveElement(doc) /*?DOMElement*/{
 }
 
 module.exports = getActiveElement;
-},{}],349:[function(require,module,exports){
+},{}],350:[function(require,module,exports){
 (function (process){
 'use strict';
 
@@ -10662,7 +15177,7 @@ function getMarkupWrap(nodeName) {
 
 module.exports = getMarkupWrap;
 }).call(this,require('_process'))
-},{"./ExecutionEnvironment":339,"./invariant":353,"_process":400}],350:[function(require,module,exports){
+},{"./ExecutionEnvironment":340,"./invariant":354,"_process":402}],351:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -10699,7 +15214,7 @@ function getUnboundedScrollPosition(scrollable) {
 }
 
 module.exports = getUnboundedScrollPosition;
-},{}],351:[function(require,module,exports){
+},{}],352:[function(require,module,exports){
 'use strict';
 
 /**
@@ -10730,7 +15245,7 @@ function hyphenate(string) {
 }
 
 module.exports = hyphenate;
-},{}],352:[function(require,module,exports){
+},{}],353:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -10767,7 +15282,7 @@ function hyphenateStyleName(string) {
 }
 
 module.exports = hyphenateStyleName;
-},{"./hyphenate":351}],353:[function(require,module,exports){
+},{"./hyphenate":352}],354:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -10823,7 +15338,7 @@ function invariant(condition, format, a, b, c, d, e, f) {
 
 module.exports = invariant;
 }).call(this,require('_process'))
-},{"_process":400}],354:[function(require,module,exports){
+},{"_process":402}],355:[function(require,module,exports){
 'use strict';
 
 /**
@@ -10846,7 +15361,7 @@ function isNode(object) {
 }
 
 module.exports = isNode;
-},{}],355:[function(require,module,exports){
+},{}],356:[function(require,module,exports){
 'use strict';
 
 /**
@@ -10869,7 +15384,7 @@ function isTextNode(object) {
 }
 
 module.exports = isTextNode;
-},{"./isNode":354}],356:[function(require,module,exports){
+},{"./isNode":355}],357:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -10897,7 +15412,7 @@ function memoizeStringOnly(callback) {
 }
 
 module.exports = memoizeStringOnly;
-},{}],357:[function(require,module,exports){
+},{}],358:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -10918,7 +15433,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = performance || {};
-},{"./ExecutionEnvironment":339}],358:[function(require,module,exports){
+},{"./ExecutionEnvironment":340}],359:[function(require,module,exports){
 'use strict';
 
 /**
@@ -10950,7 +15465,7 @@ if (performance.now) {
 }
 
 module.exports = performanceNow;
-},{"./performance":357}],359:[function(require,module,exports){
+},{"./performance":358}],360:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -11016,7 +15531,7 @@ function shallowEqual(objA, objB) {
 }
 
 module.exports = shallowEqual;
-},{}],360:[function(require,module,exports){
+},{}],361:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
@@ -11081,7 +15596,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = warning;
 }).call(this,require('_process'))
-},{"./emptyFunction":345,"_process":400}],361:[function(require,module,exports){
+},{"./emptyFunction":346,"_process":402}],362:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -11322,7 +15837,7 @@ var AngularEmitter = function AngularEmitter() {
 
 exports.default = AngularEmitter;
 module.exports = exports['default'];
-},{"./helpers/createMessenger":371,"./helpers/sanitize":372,"./helpers/throttle":373}],362:[function(require,module,exports){
+},{"./helpers/createMessenger":372,"./helpers/sanitize":373,"./helpers/throttle":374}],363:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -11346,7 +15861,7 @@ function BaseEmitter() {
   };
 };
 module.exports = exports['default'];
-},{"./helpers/createMessenger":371,"./helpers/sanitize":372}],363:[function(require,module,exports){
+},{"./helpers/createMessenger":372,"./helpers/sanitize":373}],364:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -11448,7 +15963,7 @@ function HTMLEmitter() {
   });
 };
 module.exports = exports['default'];
-},{"./helpers/createMessenger":371,"./helpers/sanitize":372,"./helpers/throttle":373}],364:[function(require,module,exports){
+},{"./helpers/createMessenger":372,"./helpers/sanitize":373,"./helpers/throttle":374}],365:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -11477,7 +15992,7 @@ function MachinaEmitter(machine) {
   });
 };
 module.exports = exports['default'];
-},{"./helpers/createMessenger":371,"./helpers/sanitize":372}],365:[function(require,module,exports){
+},{"./helpers/createMessenger":372,"./helpers/sanitize":373}],366:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -11522,7 +16037,7 @@ function MobXEmitter(spy, stores) {
   });
 };
 module.exports = exports['default'];
-},{"./helpers/createMessenger":371,"./helpers/sanitize":372}],366:[function(require,module,exports){
+},{"./helpers/createMessenger":372,"./helpers/sanitize":373}],367:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -11748,7 +16263,7 @@ ReactEmitter.Node = Node;
 ReactEmitter.traverseReactTree = traverseReactTree;
 ReactEmitter.throttle = throttle;
 module.exports = exports['default'];
-},{"./helpers/createMessenger":371,"./helpers/sanitize":372}],367:[function(require,module,exports){
+},{"./helpers/createMessenger":372,"./helpers/sanitize":373}],368:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -11792,7 +16307,7 @@ function ReduxEmitter() {
   };
 };
 module.exports = exports['default'];
-},{"./helpers/createMessenger":371,"./helpers/sanitize":372}],368:[function(require,module,exports){
+},{"./helpers/createMessenger":372,"./helpers/sanitize":373}],369:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -11870,7 +16385,7 @@ function ReduxSagaEmitter() {
   };
 };
 module.exports = exports['default'];
-},{"./helpers/createMessenger":371,"./helpers/sanitize":372}],369:[function(require,module,exports){
+},{"./helpers/createMessenger":372,"./helpers/sanitize":373}],370:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -12018,7 +16533,7 @@ var StentEmitter = function StentEmitter() {
 
 exports.default = StentEmitter;
 module.exports = exports['default'];
-},{"./helpers/createMessenger":371,"./helpers/sanitize":372}],370:[function(require,module,exports){
+},{"./helpers/createMessenger":372,"./helpers/sanitize":373}],371:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -12113,7 +16628,7 @@ function VueEmitter() {
   });
 };
 module.exports = exports['default'];
-},{"./helpers/createMessenger":371,"./helpers/sanitize":372}],371:[function(require,module,exports){
+},{"./helpers/createMessenger":372,"./helpers/sanitize":373}],372:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -12218,7 +16733,7 @@ function createMessenger(emitterName) {
   browserPostMessage({ type: 'NEW_EMITTER', emitterDescription: emitterDescription });
   return browserPostMessage;
 };
-},{}],372:[function(require,module,exports){
+},{}],373:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -12256,7 +16771,7 @@ function sanitize(something) {
   return result;
 }
 module.exports = exports['default'];
-},{"./vendors/CircularJSON":374,"./vendors/SerializeError":375}],373:[function(require,module,exports){
+},{"./vendors/CircularJSON":375,"./vendors/SerializeError":376}],374:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -12300,7 +16815,7 @@ function throttle(func, wait, options) {
   };
 }
 module.exports = exports['default'];
-},{}],374:[function(require,module,exports){
+},{}],375:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -12478,7 +16993,7 @@ exports.default = {
   parse: parseRecursion
 };
 module.exports = exports['default'];
-},{}],375:[function(require,module,exports){
+},{}],376:[function(require,module,exports){
 /* eslint-disable */
 // Credits: https://github.com/sindresorhus/serialize-error
 
@@ -12554,7 +17069,7 @@ function destroyCircular(from, seen) {
 
 	return to;
 }
-},{}],376:[function(require,module,exports){
+},{}],377:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -12630,10 +17145,10 @@ exports.default = {
   throttle: _throttle2.default
 };
 module.exports = exports['default'];
-},{"./AngularEmitter":361,"./BaseEmitter":362,"./HTMLEmitter":363,"./MachinaEmitter":364,"./MobXEmitter":365,"./ReactEmitter":366,"./ReduxEmitter":367,"./ReduxSagaEmitter":368,"./StentEmitter":369,"./VueEmitter":370,"./helpers/createMessenger":371,"./helpers/sanitize":372,"./helpers/throttle":373}],377:[function(require,module,exports){
+},{"./AngularEmitter":362,"./BaseEmitter":363,"./HTMLEmitter":364,"./MachinaEmitter":365,"./MobXEmitter":366,"./ReactEmitter":367,"./ReduxEmitter":368,"./ReduxSagaEmitter":369,"./StentEmitter":370,"./VueEmitter":371,"./helpers/createMessenger":372,"./helpers/sanitize":373,"./helpers/throttle":374}],378:[function(require,module,exports){
 module.exports = require('./lib/linkify-html').default;
 
-},{"./lib/linkify-html":378}],378:[function(require,module,exports){
+},{"./lib/linkify-html":379}],379:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -12853,7 +17368,7 @@ function attrsToStrings(attrs) {
 	}
 	return attrStrs;
 }
-},{"./linkify":379,"./simple-html-tokenizer":388}],379:[function(require,module,exports){
+},{"./linkify":380,"./simple-html-tokenizer":389}],380:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -12939,7 +17454,7 @@ exports.parser = parser;
 exports.scanner = scanner;
 exports.test = test;
 exports.tokenize = tokenize;
-},{"./linkify/core/parser":380,"./linkify/core/scanner":381,"./linkify/utils/class":386,"./linkify/utils/options":387}],380:[function(require,module,exports){
+},{"./linkify/core/parser":381,"./linkify/core/scanner":382,"./linkify/utils/class":387,"./linkify/utils/options":388}],381:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13229,7 +17744,7 @@ exports.State = _state.TokenState;
 exports.TOKENS = MULTI_TOKENS;
 exports.run = run;
 exports.start = S_START;
-},{"./state":382,"./tokens/multi":384,"./tokens/text":385}],381:[function(require,module,exports){
+},{"./state":383,"./tokens/multi":385,"./tokens/text":386}],382:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13411,7 +17926,7 @@ exports.State = _state.CharacterState;
 exports.TOKENS = TOKENS;
 exports.run = run;
 exports.start = start;
-},{"./state":382,"./tokens/text":385}],382:[function(require,module,exports){
+},{"./state":383,"./tokens/text":386}],383:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13653,7 +18168,7 @@ function stateify(str, start, endToken, defaultToken) {
 exports.CharacterState = CharacterState;
 exports.TokenState = TokenState;
 exports.stateify = stateify;
-},{"../utils/class":386}],383:[function(require,module,exports){
+},{"../utils/class":387}],384:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -13666,7 +18181,7 @@ function createTokenClass() {
 }
 
 exports.createTokenClass = createTokenClass;
-},{}],384:[function(require,module,exports){
+},{}],385:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -13872,7 +18387,7 @@ exports.EMAIL = EMAIL;
 exports.NL = NL;
 exports.TEXT = TEXT;
 exports.URL = URL;
-},{"../../utils/class":386,"./create-token-class":383,"./text":385}],385:[function(require,module,exports){
+},{"../../utils/class":387,"./create-token-class":384,"./text":386}],386:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -14077,7 +18592,7 @@ exports.CLOSEBRACKET = CLOSEBRACKET;
 exports.CLOSEANGLEBRACKET = CLOSEANGLEBRACKET;
 exports.CLOSEPAREN = CLOSEPAREN;
 exports.AMPERSAND = AMPERSAND;
-},{"../../utils/class":386,"./create-token-class":383}],386:[function(require,module,exports){
+},{"../../utils/class":387,"./create-token-class":384}],387:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -14093,7 +18608,7 @@ function inherits(parent, child) {
 	child.prototype = extended;
 	return child;
 }
-},{}],387:[function(require,module,exports){
+},{}],388:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -14221,7 +18736,7 @@ function noop(val) {
 function typeToTarget(href, type) {
 	return type === 'url' ? '_blank' : null;
 }
-},{}],388:[function(require,module,exports){
+},{}],389:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -14257,7 +18772,7 @@ var HTML5Tokenizer = {
 };
 
 exports.default = HTML5Tokenizer;
-},{"./simple-html-tokenizer/entity-parser":389,"./simple-html-tokenizer/evented-tokenizer":390,"./simple-html-tokenizer/html5-named-char-refs":391,"./simple-html-tokenizer/tokenize":392,"./simple-html-tokenizer/tokenizer":393}],389:[function(require,module,exports){
+},{"./simple-html-tokenizer/entity-parser":390,"./simple-html-tokenizer/evented-tokenizer":391,"./simple-html-tokenizer/html5-named-char-refs":392,"./simple-html-tokenizer/tokenize":393,"./simple-html-tokenizer/tokenizer":394}],390:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -14288,7 +18803,7 @@ EntityParser.prototype.parse = function (entity) {
 };
 
 exports.default = EntityParser;
-},{}],390:[function(require,module,exports){
+},{}],391:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -14727,7 +19242,7 @@ EventedTokenizer.prototype = {
 };
 
 exports.default = EventedTokenizer;
-},{"./utils":394}],391:[function(require,module,exports){
+},{"./utils":395}],392:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -14739,7 +19254,7 @@ var HTML5NamedCharRefs = {
     nbsp: "\xA0"
 };
 exports.default = HTML5NamedCharRefs;
-},{}],392:[function(require,module,exports){
+},{}],393:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -14763,7 +19278,7 @@ function tokenize(input, options) {
   var tokenizer = new _tokenizer2.default(new _entityParser2.default(_html5NamedCharRefs2.default), options);
   return tokenizer.tokenize(input);
 }
-},{"./entity-parser":389,"./html5-named-char-refs":391,"./tokenizer":393}],393:[function(require,module,exports){
+},{"./entity-parser":390,"./html5-named-char-refs":392,"./tokenizer":394}],394:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -14918,7 +19433,7 @@ Tokenizer.prototype = {
 };
 
 exports.default = Tokenizer;
-},{"./evented-tokenizer":390}],394:[function(require,module,exports){
+},{"./evented-tokenizer":391}],395:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -14940,2437 +19455,6 @@ function isAlpha(char) {
 function preprocessInput(input) {
   return input.replace(CRLF, "\n");
 }
-},{}],395:[function(require,module,exports){
-(function (global){
-/*!
-    localForage -- Offline Storage, Improved
-    Version 1.5.6
-    https://localforage.github.io/localForage
-    (c) 2013-2017 Mozilla, Apache License 2.0
-*/
-(function(f){if(typeof exports==="object"&&typeof module!=="undefined"){module.exports=f()}else if(typeof define==="function"&&define.amd){define([],f)}else{var g;if(typeof window!=="undefined"){g=window}else if(typeof global!=="undefined"){g=global}else if(typeof self!=="undefined"){g=self}else{g=this}g.localforage = f()}})(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw (f.code="MODULE_NOT_FOUND", f)}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
-(function (global){
-'use strict';
-var Mutation = global.MutationObserver || global.WebKitMutationObserver;
-
-var scheduleDrain;
-
-{
-  if (Mutation) {
-    var called = 0;
-    var observer = new Mutation(nextTick);
-    var element = global.document.createTextNode('');
-    observer.observe(element, {
-      characterData: true
-    });
-    scheduleDrain = function () {
-      element.data = (called = ++called % 2);
-    };
-  } else if (!global.setImmediate && typeof global.MessageChannel !== 'undefined') {
-    var channel = new global.MessageChannel();
-    channel.port1.onmessage = nextTick;
-    scheduleDrain = function () {
-      channel.port2.postMessage(0);
-    };
-  } else if ('document' in global && 'onreadystatechange' in global.document.createElement('script')) {
-    scheduleDrain = function () {
-
-      // Create a <script> element; its readystatechange event will be fired asynchronously once it is inserted
-      // into the document. Do so, thus queuing up the task. Remember to clean up once it's been called.
-      var scriptEl = global.document.createElement('script');
-      scriptEl.onreadystatechange = function () {
-        nextTick();
-
-        scriptEl.onreadystatechange = null;
-        scriptEl.parentNode.removeChild(scriptEl);
-        scriptEl = null;
-      };
-      global.document.documentElement.appendChild(scriptEl);
-    };
-  } else {
-    scheduleDrain = function () {
-      setTimeout(nextTick, 0);
-    };
-  }
-}
-
-var draining;
-var queue = [];
-//named nextTick for less confusing stack traces
-function nextTick() {
-  draining = true;
-  var i, oldQueue;
-  var len = queue.length;
-  while (len) {
-    oldQueue = queue;
-    queue = [];
-    i = -1;
-    while (++i < len) {
-      oldQueue[i]();
-    }
-    len = queue.length;
-  }
-  draining = false;
-}
-
-module.exports = immediate;
-function immediate(task) {
-  if (queue.push(task) === 1 && !draining) {
-    scheduleDrain();
-  }
-}
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],2:[function(_dereq_,module,exports){
-'use strict';
-var immediate = _dereq_(1);
-
-/* istanbul ignore next */
-function INTERNAL() {}
-
-var handlers = {};
-
-var REJECTED = ['REJECTED'];
-var FULFILLED = ['FULFILLED'];
-var PENDING = ['PENDING'];
-
-module.exports = Promise;
-
-function Promise(resolver) {
-  if (typeof resolver !== 'function') {
-    throw new TypeError('resolver must be a function');
-  }
-  this.state = PENDING;
-  this.queue = [];
-  this.outcome = void 0;
-  if (resolver !== INTERNAL) {
-    safelyResolveThenable(this, resolver);
-  }
-}
-
-Promise.prototype["catch"] = function (onRejected) {
-  return this.then(null, onRejected);
-};
-Promise.prototype.then = function (onFulfilled, onRejected) {
-  if (typeof onFulfilled !== 'function' && this.state === FULFILLED ||
-    typeof onRejected !== 'function' && this.state === REJECTED) {
-    return this;
-  }
-  var promise = new this.constructor(INTERNAL);
-  if (this.state !== PENDING) {
-    var resolver = this.state === FULFILLED ? onFulfilled : onRejected;
-    unwrap(promise, resolver, this.outcome);
-  } else {
-    this.queue.push(new QueueItem(promise, onFulfilled, onRejected));
-  }
-
-  return promise;
-};
-function QueueItem(promise, onFulfilled, onRejected) {
-  this.promise = promise;
-  if (typeof onFulfilled === 'function') {
-    this.onFulfilled = onFulfilled;
-    this.callFulfilled = this.otherCallFulfilled;
-  }
-  if (typeof onRejected === 'function') {
-    this.onRejected = onRejected;
-    this.callRejected = this.otherCallRejected;
-  }
-}
-QueueItem.prototype.callFulfilled = function (value) {
-  handlers.resolve(this.promise, value);
-};
-QueueItem.prototype.otherCallFulfilled = function (value) {
-  unwrap(this.promise, this.onFulfilled, value);
-};
-QueueItem.prototype.callRejected = function (value) {
-  handlers.reject(this.promise, value);
-};
-QueueItem.prototype.otherCallRejected = function (value) {
-  unwrap(this.promise, this.onRejected, value);
-};
-
-function unwrap(promise, func, value) {
-  immediate(function () {
-    var returnValue;
-    try {
-      returnValue = func(value);
-    } catch (e) {
-      return handlers.reject(promise, e);
-    }
-    if (returnValue === promise) {
-      handlers.reject(promise, new TypeError('Cannot resolve promise with itself'));
-    } else {
-      handlers.resolve(promise, returnValue);
-    }
-  });
-}
-
-handlers.resolve = function (self, value) {
-  var result = tryCatch(getThen, value);
-  if (result.status === 'error') {
-    return handlers.reject(self, result.value);
-  }
-  var thenable = result.value;
-
-  if (thenable) {
-    safelyResolveThenable(self, thenable);
-  } else {
-    self.state = FULFILLED;
-    self.outcome = value;
-    var i = -1;
-    var len = self.queue.length;
-    while (++i < len) {
-      self.queue[i].callFulfilled(value);
-    }
-  }
-  return self;
-};
-handlers.reject = function (self, error) {
-  self.state = REJECTED;
-  self.outcome = error;
-  var i = -1;
-  var len = self.queue.length;
-  while (++i < len) {
-    self.queue[i].callRejected(error);
-  }
-  return self;
-};
-
-function getThen(obj) {
-  // Make sure we only access the accessor once as required by the spec
-  var then = obj && obj.then;
-  if (obj && (typeof obj === 'object' || typeof obj === 'function') && typeof then === 'function') {
-    return function appyThen() {
-      then.apply(obj, arguments);
-    };
-  }
-}
-
-function safelyResolveThenable(self, thenable) {
-  // Either fulfill, reject or reject with error
-  var called = false;
-  function onError(value) {
-    if (called) {
-      return;
-    }
-    called = true;
-    handlers.reject(self, value);
-  }
-
-  function onSuccess(value) {
-    if (called) {
-      return;
-    }
-    called = true;
-    handlers.resolve(self, value);
-  }
-
-  function tryToUnwrap() {
-    thenable(onSuccess, onError);
-  }
-
-  var result = tryCatch(tryToUnwrap);
-  if (result.status === 'error') {
-    onError(result.value);
-  }
-}
-
-function tryCatch(func, value) {
-  var out = {};
-  try {
-    out.value = func(value);
-    out.status = 'success';
-  } catch (e) {
-    out.status = 'error';
-    out.value = e;
-  }
-  return out;
-}
-
-Promise.resolve = resolve;
-function resolve(value) {
-  if (value instanceof this) {
-    return value;
-  }
-  return handlers.resolve(new this(INTERNAL), value);
-}
-
-Promise.reject = reject;
-function reject(reason) {
-  var promise = new this(INTERNAL);
-  return handlers.reject(promise, reason);
-}
-
-Promise.all = all;
-function all(iterable) {
-  var self = this;
-  if (Object.prototype.toString.call(iterable) !== '[object Array]') {
-    return this.reject(new TypeError('must be an array'));
-  }
-
-  var len = iterable.length;
-  var called = false;
-  if (!len) {
-    return this.resolve([]);
-  }
-
-  var values = new Array(len);
-  var resolved = 0;
-  var i = -1;
-  var promise = new this(INTERNAL);
-
-  while (++i < len) {
-    allResolver(iterable[i], i);
-  }
-  return promise;
-  function allResolver(value, i) {
-    self.resolve(value).then(resolveFromAll, function (error) {
-      if (!called) {
-        called = true;
-        handlers.reject(promise, error);
-      }
-    });
-    function resolveFromAll(outValue) {
-      values[i] = outValue;
-      if (++resolved === len && !called) {
-        called = true;
-        handlers.resolve(promise, values);
-      }
-    }
-  }
-}
-
-Promise.race = race;
-function race(iterable) {
-  var self = this;
-  if (Object.prototype.toString.call(iterable) !== '[object Array]') {
-    return this.reject(new TypeError('must be an array'));
-  }
-
-  var len = iterable.length;
-  var called = false;
-  if (!len) {
-    return this.resolve([]);
-  }
-
-  var i = -1;
-  var promise = new this(INTERNAL);
-
-  while (++i < len) {
-    resolver(iterable[i]);
-  }
-  return promise;
-  function resolver(value) {
-    self.resolve(value).then(function (response) {
-      if (!called) {
-        called = true;
-        handlers.resolve(promise, response);
-      }
-    }, function (error) {
-      if (!called) {
-        called = true;
-        handlers.reject(promise, error);
-      }
-    });
-  }
-}
-
-},{"1":1}],3:[function(_dereq_,module,exports){
-(function (global){
-'use strict';
-if (typeof global.Promise !== 'function') {
-  global.Promise = _dereq_(2);
-}
-
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"2":2}],4:[function(_dereq_,module,exports){
-'use strict';
-
-var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function getIDB() {
-    /* global indexedDB,webkitIndexedDB,mozIndexedDB,OIndexedDB,msIndexedDB */
-    try {
-        if (typeof indexedDB !== 'undefined') {
-            return indexedDB;
-        }
-        if (typeof webkitIndexedDB !== 'undefined') {
-            return webkitIndexedDB;
-        }
-        if (typeof mozIndexedDB !== 'undefined') {
-            return mozIndexedDB;
-        }
-        if (typeof OIndexedDB !== 'undefined') {
-            return OIndexedDB;
-        }
-        if (typeof msIndexedDB !== 'undefined') {
-            return msIndexedDB;
-        }
-    } catch (e) {
-        return;
-    }
-}
-
-var idb = getIDB();
-
-function isIndexedDBValid() {
-    try {
-        // Initialize IndexedDB; fall back to vendor-prefixed versions
-        // if needed.
-        if (!idb) {
-            return false;
-        }
-        // We mimic PouchDB here;
-        //
-        // We test for openDatabase because IE Mobile identifies itself
-        // as Safari. Oh the lulz...
-        var isSafari = typeof openDatabase !== 'undefined' && /(Safari|iPhone|iPad|iPod)/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent) && !/BlackBerry/.test(navigator.platform);
-
-        var hasFetch = typeof fetch === 'function' && fetch.toString().indexOf('[native code') !== -1;
-
-        // Safari <10.1 does not meet our requirements for IDB support (#5572)
-        // since Safari 10.1 shipped with fetch, we can use that to detect it
-        return (!isSafari || hasFetch) && typeof indexedDB !== 'undefined' &&
-        // some outdated implementations of IDB that appear on Samsung
-        // and HTC Android devices <4.4 are missing IDBKeyRange
-        // See: https://github.com/mozilla/localForage/issues/128
-        // See: https://github.com/mozilla/localForage/issues/272
-        typeof IDBKeyRange !== 'undefined';
-    } catch (e) {
-        return false;
-    }
-}
-
-// Abstracts constructing a Blob object, so it also works in older
-// browsers that don't support the native Blob constructor. (i.e.
-// old QtWebKit versions, at least).
-// Abstracts constructing a Blob object, so it also works in older
-// browsers that don't support the native Blob constructor. (i.e.
-// old QtWebKit versions, at least).
-function createBlob(parts, properties) {
-    /* global BlobBuilder,MSBlobBuilder,MozBlobBuilder,WebKitBlobBuilder */
-    parts = parts || [];
-    properties = properties || {};
-    try {
-        return new Blob(parts, properties);
-    } catch (e) {
-        if (e.name !== 'TypeError') {
-            throw e;
-        }
-        var Builder = typeof BlobBuilder !== 'undefined' ? BlobBuilder : typeof MSBlobBuilder !== 'undefined' ? MSBlobBuilder : typeof MozBlobBuilder !== 'undefined' ? MozBlobBuilder : WebKitBlobBuilder;
-        var builder = new Builder();
-        for (var i = 0; i < parts.length; i += 1) {
-            builder.append(parts[i]);
-        }
-        return builder.getBlob(properties.type);
-    }
-}
-
-// This is CommonJS because lie is an external dependency, so Rollup
-// can just ignore it.
-if (typeof Promise === 'undefined') {
-    // In the "nopromises" build this will just throw if you don't have
-    // a global promise object, but it would throw anyway later.
-    _dereq_(3);
-}
-var Promise$1 = Promise;
-
-function executeCallback(promise, callback) {
-    if (callback) {
-        promise.then(function (result) {
-            callback(null, result);
-        }, function (error) {
-            callback(error);
-        });
-    }
-}
-
-function executeTwoCallbacks(promise, callback, errorCallback) {
-    if (typeof callback === 'function') {
-        promise.then(callback);
-    }
-
-    if (typeof errorCallback === 'function') {
-        promise["catch"](errorCallback);
-    }
-}
-
-function normalizeKey(key) {
-    // Cast the key to a string, as that's all we can set as a key.
-    if (typeof key !== 'string') {
-        console.warn(key + ' used as a key, but it is not a string.');
-        key = String(key);
-    }
-
-    return key;
-}
-
-// Some code originally from async_storage.js in
-// [Gaia](https://github.com/mozilla-b2g/gaia).
-
-var DETECT_BLOB_SUPPORT_STORE = 'local-forage-detect-blob-support';
-var supportsBlobs;
-var dbContexts;
-var toString = Object.prototype.toString;
-
-// Transaction Modes
-var READ_ONLY = 'readonly';
-var READ_WRITE = 'readwrite';
-
-// Transform a binary string to an array buffer, because otherwise
-// weird stuff happens when you try to work with the binary string directly.
-// It is known.
-// From http://stackoverflow.com/questions/14967647/ (continues on next line)
-// encode-decode-image-with-base64-breaks-image (2013-04-21)
-function _binStringToArrayBuffer(bin) {
-    var length = bin.length;
-    var buf = new ArrayBuffer(length);
-    var arr = new Uint8Array(buf);
-    for (var i = 0; i < length; i++) {
-        arr[i] = bin.charCodeAt(i);
-    }
-    return buf;
-}
-
-//
-// Blobs are not supported in all versions of IndexedDB, notably
-// Chrome <37 and Android <5. In those versions, storing a blob will throw.
-//
-// Various other blob bugs exist in Chrome v37-42 (inclusive).
-// Detecting them is expensive and confusing to users, and Chrome 37-42
-// is at very low usage worldwide, so we do a hacky userAgent check instead.
-//
-// content-type bug: https://code.google.com/p/chromium/issues/detail?id=408120
-// 404 bug: https://code.google.com/p/chromium/issues/detail?id=447916
-// FileReader bug: https://code.google.com/p/chromium/issues/detail?id=447836
-//
-// Code borrowed from PouchDB. See:
-// https://github.com/pouchdb/pouchdb/blob/master/packages/node_modules/pouchdb-adapter-idb/src/blobSupport.js
-//
-function _checkBlobSupportWithoutCaching(idb) {
-    return new Promise$1(function (resolve) {
-        var txn = idb.transaction(DETECT_BLOB_SUPPORT_STORE, READ_WRITE);
-        var blob = createBlob(['']);
-        txn.objectStore(DETECT_BLOB_SUPPORT_STORE).put(blob, 'key');
-
-        txn.onabort = function (e) {
-            // If the transaction aborts now its due to not being able to
-            // write to the database, likely due to the disk being full
-            e.preventDefault();
-            e.stopPropagation();
-            resolve(false);
-        };
-
-        txn.oncomplete = function () {
-            var matchedChrome = navigator.userAgent.match(/Chrome\/(\d+)/);
-            var matchedEdge = navigator.userAgent.match(/Edge\//);
-            // MS Edge pretends to be Chrome 42:
-            // https://msdn.microsoft.com/en-us/library/hh869301%28v=vs.85%29.aspx
-            resolve(matchedEdge || !matchedChrome || parseInt(matchedChrome[1], 10) >= 43);
-        };
-    })["catch"](function () {
-        return false; // error, so assume unsupported
-    });
-}
-
-function _checkBlobSupport(idb) {
-    if (typeof supportsBlobs === 'boolean') {
-        return Promise$1.resolve(supportsBlobs);
-    }
-    return _checkBlobSupportWithoutCaching(idb).then(function (value) {
-        supportsBlobs = value;
-        return supportsBlobs;
-    });
-}
-
-function _deferReadiness(dbInfo) {
-    var dbContext = dbContexts[dbInfo.name];
-
-    // Create a deferred object representing the current database operation.
-    var deferredOperation = {};
-
-    deferredOperation.promise = new Promise$1(function (resolve) {
-        deferredOperation.resolve = resolve;
-    });
-
-    // Enqueue the deferred operation.
-    dbContext.deferredOperations.push(deferredOperation);
-
-    // Chain its promise to the database readiness.
-    if (!dbContext.dbReady) {
-        dbContext.dbReady = deferredOperation.promise;
-    } else {
-        dbContext.dbReady = dbContext.dbReady.then(function () {
-            return deferredOperation.promise;
-        });
-    }
-}
-
-function _advanceReadiness(dbInfo) {
-    var dbContext = dbContexts[dbInfo.name];
-
-    // Dequeue a deferred operation.
-    var deferredOperation = dbContext.deferredOperations.pop();
-
-    // Resolve its promise (which is part of the database readiness
-    // chain of promises).
-    if (deferredOperation) {
-        deferredOperation.resolve();
-    }
-}
-
-function _rejectReadiness(dbInfo, err) {
-    var dbContext = dbContexts[dbInfo.name];
-
-    // Dequeue a deferred operation.
-    var deferredOperation = dbContext.deferredOperations.pop();
-
-    // Reject its promise (which is part of the database readiness
-    // chain of promises).
-    if (deferredOperation) {
-        deferredOperation.reject(err);
-    }
-}
-
-function _getConnection(dbInfo, upgradeNeeded) {
-    return new Promise$1(function (resolve, reject) {
-
-        if (dbInfo.db) {
-            if (upgradeNeeded) {
-                _deferReadiness(dbInfo);
-                dbInfo.db.close();
-            } else {
-                return resolve(dbInfo.db);
-            }
-        }
-
-        var dbArgs = [dbInfo.name];
-
-        if (upgradeNeeded) {
-            dbArgs.push(dbInfo.version);
-        }
-
-        var openreq = idb.open.apply(idb, dbArgs);
-
-        if (upgradeNeeded) {
-            openreq.onupgradeneeded = function (e) {
-                var db = openreq.result;
-                try {
-                    db.createObjectStore(dbInfo.storeName);
-                    if (e.oldVersion <= 1) {
-                        // Added when support for blob shims was added
-                        db.createObjectStore(DETECT_BLOB_SUPPORT_STORE);
-                    }
-                } catch (ex) {
-                    if (ex.name === 'ConstraintError') {
-                        console.warn('The database "' + dbInfo.name + '"' + ' has been upgraded from version ' + e.oldVersion + ' to version ' + e.newVersion + ', but the storage "' + dbInfo.storeName + '" already exists.');
-                    } else {
-                        throw ex;
-                    }
-                }
-            };
-        }
-
-        openreq.onerror = function (e) {
-            e.preventDefault();
-            reject(openreq.error);
-        };
-
-        openreq.onsuccess = function () {
-            resolve(openreq.result);
-            _advanceReadiness(dbInfo);
-        };
-    });
-}
-
-function _getOriginalConnection(dbInfo) {
-    return _getConnection(dbInfo, false);
-}
-
-function _getUpgradedConnection(dbInfo) {
-    return _getConnection(dbInfo, true);
-}
-
-function _isUpgradeNeeded(dbInfo, defaultVersion) {
-    if (!dbInfo.db) {
-        return true;
-    }
-
-    var isNewStore = !dbInfo.db.objectStoreNames.contains(dbInfo.storeName);
-    var isDowngrade = dbInfo.version < dbInfo.db.version;
-    var isUpgrade = dbInfo.version > dbInfo.db.version;
-
-    if (isDowngrade) {
-        // If the version is not the default one
-        // then warn for impossible downgrade.
-        if (dbInfo.version !== defaultVersion) {
-            console.warn('The database "' + dbInfo.name + '"' + ' can\'t be downgraded from version ' + dbInfo.db.version + ' to version ' + dbInfo.version + '.');
-        }
-        // Align the versions to prevent errors.
-        dbInfo.version = dbInfo.db.version;
-    }
-
-    if (isUpgrade || isNewStore) {
-        // If the store is new then increment the version (if needed).
-        // This will trigger an "upgradeneeded" event which is required
-        // for creating a store.
-        if (isNewStore) {
-            var incVersion = dbInfo.db.version + 1;
-            if (incVersion > dbInfo.version) {
-                dbInfo.version = incVersion;
-            }
-        }
-
-        return true;
-    }
-
-    return false;
-}
-
-// encode a blob for indexeddb engines that don't support blobs
-function _encodeBlob(blob) {
-    return new Promise$1(function (resolve, reject) {
-        var reader = new FileReader();
-        reader.onerror = reject;
-        reader.onloadend = function (e) {
-            var base64 = btoa(e.target.result || '');
-            resolve({
-                __local_forage_encoded_blob: true,
-                data: base64,
-                type: blob.type
-            });
-        };
-        reader.readAsBinaryString(blob);
-    });
-}
-
-// decode an encoded blob
-function _decodeBlob(encodedBlob) {
-    var arrayBuff = _binStringToArrayBuffer(atob(encodedBlob.data));
-    return createBlob([arrayBuff], { type: encodedBlob.type });
-}
-
-// is this one of our fancy encoded blobs?
-function _isEncodedBlob(value) {
-    return value && value.__local_forage_encoded_blob;
-}
-
-// Specialize the default `ready()` function by making it dependent
-// on the current database operations. Thus, the driver will be actually
-// ready when it's been initialized (default) *and* there are no pending
-// operations on the database (initiated by some other instances).
-function _fullyReady(callback) {
-    var self = this;
-
-    var promise = self._initReady().then(function () {
-        var dbContext = dbContexts[self._dbInfo.name];
-
-        if (dbContext && dbContext.dbReady) {
-            return dbContext.dbReady;
-        }
-    });
-
-    executeTwoCallbacks(promise, callback, callback);
-    return promise;
-}
-
-// Try to establish a new db connection to replace the
-// current one which is broken (i.e. experiencing
-// InvalidStateError while creating a transaction).
-function _tryReconnect(dbInfo) {
-    _deferReadiness(dbInfo);
-
-    var dbContext = dbContexts[dbInfo.name];
-    var forages = dbContext.forages;
-
-    for (var i = 0; i < forages.length; i++) {
-        if (forages[i]._dbInfo.db) {
-            forages[i]._dbInfo.db.close();
-            forages[i]._dbInfo.db = null;
-        }
-    }
-
-    return _getConnection(dbInfo, false).then(function (db) {
-        for (var j = 0; j < forages.length; j++) {
-            forages[j]._dbInfo.db = db;
-        }
-    })["catch"](function (err) {
-        _rejectReadiness(dbInfo, err);
-        throw err;
-    });
-}
-
-// FF doesn't like Promises (micro-tasks) and IDDB store operations,
-// so we have to do it with callbacks
-function createTransaction(dbInfo, mode, callback) {
-    try {
-        var tx = dbInfo.db.transaction(dbInfo.storeName, mode);
-        callback(null, tx);
-    } catch (err) {
-        if (!dbInfo.db || err.name === 'InvalidStateError') {
-            return _tryReconnect(dbInfo).then(function () {
-
-                var tx = dbInfo.db.transaction(dbInfo.storeName, mode);
-                callback(null, tx);
-            });
-        }
-
-        callback(err);
-    }
-}
-
-// Open the IndexedDB database (automatically creates one if one didn't
-// previously exist), using any options set in the config.
-function _initStorage(options) {
-    var self = this;
-    var dbInfo = {
-        db: null
-    };
-
-    if (options) {
-        for (var i in options) {
-            dbInfo[i] = options[i];
-        }
-    }
-
-    // Initialize a singleton container for all running localForages.
-    if (!dbContexts) {
-        dbContexts = {};
-    }
-
-    // Get the current context of the database;
-    var dbContext = dbContexts[dbInfo.name];
-
-    // ...or create a new context.
-    if (!dbContext) {
-        dbContext = {
-            // Running localForages sharing a database.
-            forages: [],
-            // Shared database.
-            db: null,
-            // Database readiness (promise).
-            dbReady: null,
-            // Deferred operations on the database.
-            deferredOperations: []
-        };
-        // Register the new context in the global container.
-        dbContexts[dbInfo.name] = dbContext;
-    }
-
-    // Register itself as a running localForage in the current context.
-    dbContext.forages.push(self);
-
-    // Replace the default `ready()` function with the specialized one.
-    if (!self._initReady) {
-        self._initReady = self.ready;
-        self.ready = _fullyReady;
-    }
-
-    // Create an array of initialization states of the related localForages.
-    var initPromises = [];
-
-    function ignoreErrors() {
-        // Don't handle errors here,
-        // just makes sure related localForages aren't pending.
-        return Promise$1.resolve();
-    }
-
-    for (var j = 0; j < dbContext.forages.length; j++) {
-        var forage = dbContext.forages[j];
-        if (forage !== self) {
-            // Don't wait for itself...
-            initPromises.push(forage._initReady()["catch"](ignoreErrors));
-        }
-    }
-
-    // Take a snapshot of the related localForages.
-    var forages = dbContext.forages.slice(0);
-
-    // Initialize the connection process only when
-    // all the related localForages aren't pending.
-    return Promise$1.all(initPromises).then(function () {
-        dbInfo.db = dbContext.db;
-        // Get the connection or open a new one without upgrade.
-        return _getOriginalConnection(dbInfo);
-    }).then(function (db) {
-        dbInfo.db = db;
-        if (_isUpgradeNeeded(dbInfo, self._defaultConfig.version)) {
-            // Reopen the database for upgrading.
-            return _getUpgradedConnection(dbInfo);
-        }
-        return db;
-    }).then(function (db) {
-        dbInfo.db = dbContext.db = db;
-        self._dbInfo = dbInfo;
-        // Share the final connection amongst related localForages.
-        for (var k = 0; k < forages.length; k++) {
-            var forage = forages[k];
-            if (forage !== self) {
-                // Self is already up-to-date.
-                forage._dbInfo.db = dbInfo.db;
-                forage._dbInfo.version = dbInfo.version;
-            }
-        }
-    });
-}
-
-function getItem(key, callback) {
-    var self = this;
-
-    key = normalizeKey(key);
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            createTransaction(self._dbInfo, READ_ONLY, function (err, transaction) {
-                if (err) {
-                    return reject(err);
-                }
-
-                try {
-                    var store = transaction.objectStore(self._dbInfo.storeName);
-                    var req = store.get(key);
-
-                    req.onsuccess = function () {
-                        var value = req.result;
-                        if (value === undefined) {
-                            value = null;
-                        }
-                        if (_isEncodedBlob(value)) {
-                            value = _decodeBlob(value);
-                        }
-                        resolve(value);
-                    };
-
-                    req.onerror = function () {
-                        reject(req.error);
-                    };
-                } catch (e) {
-                    reject(e);
-                }
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Iterate over all items stored in database.
-function iterate(iterator, callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            createTransaction(self._dbInfo, READ_ONLY, function (err, transaction) {
-                if (err) {
-                    return reject(err);
-                }
-
-                try {
-                    var store = transaction.objectStore(self._dbInfo.storeName);
-                    var req = store.openCursor();
-                    var iterationNumber = 1;
-
-                    req.onsuccess = function () {
-                        var cursor = req.result;
-
-                        if (cursor) {
-                            var value = cursor.value;
-                            if (_isEncodedBlob(value)) {
-                                value = _decodeBlob(value);
-                            }
-                            var result = iterator(value, cursor.key, iterationNumber++);
-
-                            // when the iterator callback retuns any
-                            // (non-`undefined`) value, then we stop
-                            // the iteration immediately
-                            if (result !== void 0) {
-                                resolve(result);
-                            } else {
-                                cursor["continue"]();
-                            }
-                        } else {
-                            resolve();
-                        }
-                    };
-
-                    req.onerror = function () {
-                        reject(req.error);
-                    };
-                } catch (e) {
-                    reject(e);
-                }
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-
-    return promise;
-}
-
-function setItem(key, value, callback) {
-    var self = this;
-
-    key = normalizeKey(key);
-
-    var promise = new Promise$1(function (resolve, reject) {
-        var dbInfo;
-        self.ready().then(function () {
-            dbInfo = self._dbInfo;
-            if (toString.call(value) === '[object Blob]') {
-                return _checkBlobSupport(dbInfo.db).then(function (blobSupport) {
-                    if (blobSupport) {
-                        return value;
-                    }
-                    return _encodeBlob(value);
-                });
-            }
-            return value;
-        }).then(function (value) {
-            createTransaction(self._dbInfo, READ_WRITE, function (err, transaction) {
-                if (err) {
-                    return reject(err);
-                }
-
-                try {
-                    var store = transaction.objectStore(self._dbInfo.storeName);
-
-                    // The reason we don't _save_ null is because IE 10 does
-                    // not support saving the `null` type in IndexedDB. How
-                    // ironic, given the bug below!
-                    // See: https://github.com/mozilla/localForage/issues/161
-                    if (value === null) {
-                        value = undefined;
-                    }
-
-                    var req = store.put(value, key);
-
-                    transaction.oncomplete = function () {
-                        // Cast to undefined so the value passed to
-                        // callback/promise is the same as what one would get out
-                        // of `getItem()` later. This leads to some weirdness
-                        // (setItem('foo', undefined) will return `null`), but
-                        // it's not my fault localStorage is our baseline and that
-                        // it's weird.
-                        if (value === undefined) {
-                            value = null;
-                        }
-
-                        resolve(value);
-                    };
-                    transaction.onabort = transaction.onerror = function () {
-                        var err = req.error ? req.error : req.transaction.error;
-                        reject(err);
-                    };
-                } catch (e) {
-                    reject(e);
-                }
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function removeItem(key, callback) {
-    var self = this;
-
-    key = normalizeKey(key);
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            createTransaction(self._dbInfo, READ_WRITE, function (err, transaction) {
-                if (err) {
-                    return reject(err);
-                }
-
-                try {
-                    var store = transaction.objectStore(self._dbInfo.storeName);
-                    // We use a Grunt task to make this safe for IE and some
-                    // versions of Android (including those used by Cordova).
-                    // Normally IE won't like `.delete()` and will insist on
-                    // using `['delete']()`, but we have a build step that
-                    // fixes this for us now.
-                    var req = store["delete"](key);
-                    transaction.oncomplete = function () {
-                        resolve();
-                    };
-
-                    transaction.onerror = function () {
-                        reject(req.error);
-                    };
-
-                    // The request will be also be aborted if we've exceeded our storage
-                    // space.
-                    transaction.onabort = function () {
-                        var err = req.error ? req.error : req.transaction.error;
-                        reject(err);
-                    };
-                } catch (e) {
-                    reject(e);
-                }
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function clear(callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            createTransaction(self._dbInfo, READ_WRITE, function (err, transaction) {
-                if (err) {
-                    return reject(err);
-                }
-
-                try {
-                    var store = transaction.objectStore(self._dbInfo.storeName);
-                    var req = store.clear();
-
-                    transaction.oncomplete = function () {
-                        resolve();
-                    };
-
-                    transaction.onabort = transaction.onerror = function () {
-                        var err = req.error ? req.error : req.transaction.error;
-                        reject(err);
-                    };
-                } catch (e) {
-                    reject(e);
-                }
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function length(callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            createTransaction(self._dbInfo, READ_ONLY, function (err, transaction) {
-                if (err) {
-                    return reject(err);
-                }
-
-                try {
-                    var store = transaction.objectStore(self._dbInfo.storeName);
-                    var req = store.count();
-
-                    req.onsuccess = function () {
-                        resolve(req.result);
-                    };
-
-                    req.onerror = function () {
-                        reject(req.error);
-                    };
-                } catch (e) {
-                    reject(e);
-                }
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function key(n, callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        if (n < 0) {
-            resolve(null);
-
-            return;
-        }
-
-        self.ready().then(function () {
-            createTransaction(self._dbInfo, READ_ONLY, function (err, transaction) {
-                if (err) {
-                    return reject(err);
-                }
-
-                try {
-                    var store = transaction.objectStore(self._dbInfo.storeName);
-                    var advanced = false;
-                    var req = store.openCursor();
-
-                    req.onsuccess = function () {
-                        var cursor = req.result;
-                        if (!cursor) {
-                            // this means there weren't enough keys
-                            resolve(null);
-
-                            return;
-                        }
-
-                        if (n === 0) {
-                            // We have the first key, return it if that's what they
-                            // wanted.
-                            resolve(cursor.key);
-                        } else {
-                            if (!advanced) {
-                                // Otherwise, ask the cursor to skip ahead n
-                                // records.
-                                advanced = true;
-                                cursor.advance(n);
-                            } else {
-                                // When we get here, we've got the nth key.
-                                resolve(cursor.key);
-                            }
-                        }
-                    };
-
-                    req.onerror = function () {
-                        reject(req.error);
-                    };
-                } catch (e) {
-                    reject(e);
-                }
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function keys(callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            createTransaction(self._dbInfo, READ_ONLY, function (err, transaction) {
-                if (err) {
-                    return reject(err);
-                }
-
-                try {
-                    var store = transaction.objectStore(self._dbInfo.storeName);
-                    var req = store.openCursor();
-                    var keys = [];
-
-                    req.onsuccess = function () {
-                        var cursor = req.result;
-
-                        if (!cursor) {
-                            resolve(keys);
-                            return;
-                        }
-
-                        keys.push(cursor.key);
-                        cursor["continue"]();
-                    };
-
-                    req.onerror = function () {
-                        reject(req.error);
-                    };
-                } catch (e) {
-                    reject(e);
-                }
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-var asyncStorage = {
-    _driver: 'asyncStorage',
-    _initStorage: _initStorage,
-    _support: isIndexedDBValid(),
-    iterate: iterate,
-    getItem: getItem,
-    setItem: setItem,
-    removeItem: removeItem,
-    clear: clear,
-    length: length,
-    key: key,
-    keys: keys
-};
-
-function isWebSQLValid() {
-    return typeof openDatabase === 'function';
-}
-
-// Sadly, the best way to save binary data in WebSQL/localStorage is serializing
-// it to Base64, so this is how we store it to prevent very strange errors with less
-// verbose ways of binary <-> string data storage.
-var BASE_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-
-var BLOB_TYPE_PREFIX = '~~local_forage_type~';
-var BLOB_TYPE_PREFIX_REGEX = /^~~local_forage_type~([^~]+)~/;
-
-var SERIALIZED_MARKER = '__lfsc__:';
-var SERIALIZED_MARKER_LENGTH = SERIALIZED_MARKER.length;
-
-// OMG the serializations!
-var TYPE_ARRAYBUFFER = 'arbf';
-var TYPE_BLOB = 'blob';
-var TYPE_INT8ARRAY = 'si08';
-var TYPE_UINT8ARRAY = 'ui08';
-var TYPE_UINT8CLAMPEDARRAY = 'uic8';
-var TYPE_INT16ARRAY = 'si16';
-var TYPE_INT32ARRAY = 'si32';
-var TYPE_UINT16ARRAY = 'ur16';
-var TYPE_UINT32ARRAY = 'ui32';
-var TYPE_FLOAT32ARRAY = 'fl32';
-var TYPE_FLOAT64ARRAY = 'fl64';
-var TYPE_SERIALIZED_MARKER_LENGTH = SERIALIZED_MARKER_LENGTH + TYPE_ARRAYBUFFER.length;
-
-var toString$1 = Object.prototype.toString;
-
-function stringToBuffer(serializedString) {
-    // Fill the string into a ArrayBuffer.
-    var bufferLength = serializedString.length * 0.75;
-    var len = serializedString.length;
-    var i;
-    var p = 0;
-    var encoded1, encoded2, encoded3, encoded4;
-
-    if (serializedString[serializedString.length - 1] === '=') {
-        bufferLength--;
-        if (serializedString[serializedString.length - 2] === '=') {
-            bufferLength--;
-        }
-    }
-
-    var buffer = new ArrayBuffer(bufferLength);
-    var bytes = new Uint8Array(buffer);
-
-    for (i = 0; i < len; i += 4) {
-        encoded1 = BASE_CHARS.indexOf(serializedString[i]);
-        encoded2 = BASE_CHARS.indexOf(serializedString[i + 1]);
-        encoded3 = BASE_CHARS.indexOf(serializedString[i + 2]);
-        encoded4 = BASE_CHARS.indexOf(serializedString[i + 3]);
-
-        /*jslint bitwise: true */
-        bytes[p++] = encoded1 << 2 | encoded2 >> 4;
-        bytes[p++] = (encoded2 & 15) << 4 | encoded3 >> 2;
-        bytes[p++] = (encoded3 & 3) << 6 | encoded4 & 63;
-    }
-    return buffer;
-}
-
-// Converts a buffer to a string to store, serialized, in the backend
-// storage library.
-function bufferToString(buffer) {
-    // base64-arraybuffer
-    var bytes = new Uint8Array(buffer);
-    var base64String = '';
-    var i;
-
-    for (i = 0; i < bytes.length; i += 3) {
-        /*jslint bitwise: true */
-        base64String += BASE_CHARS[bytes[i] >> 2];
-        base64String += BASE_CHARS[(bytes[i] & 3) << 4 | bytes[i + 1] >> 4];
-        base64String += BASE_CHARS[(bytes[i + 1] & 15) << 2 | bytes[i + 2] >> 6];
-        base64String += BASE_CHARS[bytes[i + 2] & 63];
-    }
-
-    if (bytes.length % 3 === 2) {
-        base64String = base64String.substring(0, base64String.length - 1) + '=';
-    } else if (bytes.length % 3 === 1) {
-        base64String = base64String.substring(0, base64String.length - 2) + '==';
-    }
-
-    return base64String;
-}
-
-// Serialize a value, afterwards executing a callback (which usually
-// instructs the `setItem()` callback/promise to be executed). This is how
-// we store binary data with localStorage.
-function serialize(value, callback) {
-    var valueType = '';
-    if (value) {
-        valueType = toString$1.call(value);
-    }
-
-    // Cannot use `value instanceof ArrayBuffer` or such here, as these
-    // checks fail when running the tests using casper.js...
-    //
-    // TODO: See why those tests fail and use a better solution.
-    if (value && (valueType === '[object ArrayBuffer]' || value.buffer && toString$1.call(value.buffer) === '[object ArrayBuffer]')) {
-        // Convert binary arrays to a string and prefix the string with
-        // a special marker.
-        var buffer;
-        var marker = SERIALIZED_MARKER;
-
-        if (value instanceof ArrayBuffer) {
-            buffer = value;
-            marker += TYPE_ARRAYBUFFER;
-        } else {
-            buffer = value.buffer;
-
-            if (valueType === '[object Int8Array]') {
-                marker += TYPE_INT8ARRAY;
-            } else if (valueType === '[object Uint8Array]') {
-                marker += TYPE_UINT8ARRAY;
-            } else if (valueType === '[object Uint8ClampedArray]') {
-                marker += TYPE_UINT8CLAMPEDARRAY;
-            } else if (valueType === '[object Int16Array]') {
-                marker += TYPE_INT16ARRAY;
-            } else if (valueType === '[object Uint16Array]') {
-                marker += TYPE_UINT16ARRAY;
-            } else if (valueType === '[object Int32Array]') {
-                marker += TYPE_INT32ARRAY;
-            } else if (valueType === '[object Uint32Array]') {
-                marker += TYPE_UINT32ARRAY;
-            } else if (valueType === '[object Float32Array]') {
-                marker += TYPE_FLOAT32ARRAY;
-            } else if (valueType === '[object Float64Array]') {
-                marker += TYPE_FLOAT64ARRAY;
-            } else {
-                callback(new Error('Failed to get type for BinaryArray'));
-            }
-        }
-
-        callback(marker + bufferToString(buffer));
-    } else if (valueType === '[object Blob]') {
-        // Conver the blob to a binaryArray and then to a string.
-        var fileReader = new FileReader();
-
-        fileReader.onload = function () {
-            // Backwards-compatible prefix for the blob type.
-            var str = BLOB_TYPE_PREFIX + value.type + '~' + bufferToString(this.result);
-
-            callback(SERIALIZED_MARKER + TYPE_BLOB + str);
-        };
-
-        fileReader.readAsArrayBuffer(value);
-    } else {
-        try {
-            callback(JSON.stringify(value));
-        } catch (e) {
-            console.error("Couldn't convert value into a JSON string: ", value);
-
-            callback(null, e);
-        }
-    }
-}
-
-// Deserialize data we've inserted into a value column/field. We place
-// special markers into our strings to mark them as encoded; this isn't
-// as nice as a meta field, but it's the only sane thing we can do whilst
-// keeping localStorage support intact.
-//
-// Oftentimes this will just deserialize JSON content, but if we have a
-// special marker (SERIALIZED_MARKER, defined above), we will extract
-// some kind of arraybuffer/binary data/typed array out of the string.
-function deserialize(value) {
-    // If we haven't marked this string as being specially serialized (i.e.
-    // something other than serialized JSON), we can just return it and be
-    // done with it.
-    if (value.substring(0, SERIALIZED_MARKER_LENGTH) !== SERIALIZED_MARKER) {
-        return JSON.parse(value);
-    }
-
-    // The following code deals with deserializing some kind of Blob or
-    // TypedArray. First we separate out the type of data we're dealing
-    // with from the data itself.
-    var serializedString = value.substring(TYPE_SERIALIZED_MARKER_LENGTH);
-    var type = value.substring(SERIALIZED_MARKER_LENGTH, TYPE_SERIALIZED_MARKER_LENGTH);
-
-    var blobType;
-    // Backwards-compatible blob type serialization strategy.
-    // DBs created with older versions of localForage will simply not have the blob type.
-    if (type === TYPE_BLOB && BLOB_TYPE_PREFIX_REGEX.test(serializedString)) {
-        var matcher = serializedString.match(BLOB_TYPE_PREFIX_REGEX);
-        blobType = matcher[1];
-        serializedString = serializedString.substring(matcher[0].length);
-    }
-    var buffer = stringToBuffer(serializedString);
-
-    // Return the right type based on the code/type set during
-    // serialization.
-    switch (type) {
-        case TYPE_ARRAYBUFFER:
-            return buffer;
-        case TYPE_BLOB:
-            return createBlob([buffer], { type: blobType });
-        case TYPE_INT8ARRAY:
-            return new Int8Array(buffer);
-        case TYPE_UINT8ARRAY:
-            return new Uint8Array(buffer);
-        case TYPE_UINT8CLAMPEDARRAY:
-            return new Uint8ClampedArray(buffer);
-        case TYPE_INT16ARRAY:
-            return new Int16Array(buffer);
-        case TYPE_UINT16ARRAY:
-            return new Uint16Array(buffer);
-        case TYPE_INT32ARRAY:
-            return new Int32Array(buffer);
-        case TYPE_UINT32ARRAY:
-            return new Uint32Array(buffer);
-        case TYPE_FLOAT32ARRAY:
-            return new Float32Array(buffer);
-        case TYPE_FLOAT64ARRAY:
-            return new Float64Array(buffer);
-        default:
-            throw new Error('Unkown type: ' + type);
-    }
-}
-
-var localforageSerializer = {
-    serialize: serialize,
-    deserialize: deserialize,
-    stringToBuffer: stringToBuffer,
-    bufferToString: bufferToString
-};
-
-/*
- * Includes code from:
- *
- * base64-arraybuffer
- * https://github.com/niklasvh/base64-arraybuffer
- *
- * Copyright (c) 2012 Niklas von Hertzen
- * Licensed under the MIT license.
- */
-// Open the WebSQL database (automatically creates one if one didn't
-// previously exist), using any options set in the config.
-function _initStorage$1(options) {
-    var self = this;
-    var dbInfo = {
-        db: null
-    };
-
-    if (options) {
-        for (var i in options) {
-            dbInfo[i] = typeof options[i] !== 'string' ? options[i].toString() : options[i];
-        }
-    }
-
-    var dbInfoPromise = new Promise$1(function (resolve, reject) {
-        // Open the database; the openDatabase API will automatically
-        // create it for us if it doesn't exist.
-        try {
-            dbInfo.db = openDatabase(dbInfo.name, String(dbInfo.version), dbInfo.description, dbInfo.size);
-        } catch (e) {
-            return reject(e);
-        }
-
-        // Create our key/value table if it doesn't exist.
-        dbInfo.db.transaction(function (t) {
-            t.executeSql('CREATE TABLE IF NOT EXISTS ' + dbInfo.storeName + ' (id INTEGER PRIMARY KEY, key unique, value)', [], function () {
-                self._dbInfo = dbInfo;
-                resolve();
-            }, function (t, error) {
-                reject(error);
-            });
-        });
-    });
-
-    dbInfo.serializer = localforageSerializer;
-    return dbInfoPromise;
-}
-
-function getItem$1(key, callback) {
-    var self = this;
-
-    key = normalizeKey(key);
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            dbInfo.db.transaction(function (t) {
-                t.executeSql('SELECT * FROM ' + dbInfo.storeName + ' WHERE key = ? LIMIT 1', [key], function (t, results) {
-                    var result = results.rows.length ? results.rows.item(0).value : null;
-
-                    // Check to see if this is serialized content we need to
-                    // unpack.
-                    if (result) {
-                        result = dbInfo.serializer.deserialize(result);
-                    }
-
-                    resolve(result);
-                }, function (t, error) {
-
-                    reject(error);
-                });
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function iterate$1(iterator, callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-
-            dbInfo.db.transaction(function (t) {
-                t.executeSql('SELECT * FROM ' + dbInfo.storeName, [], function (t, results) {
-                    var rows = results.rows;
-                    var length = rows.length;
-
-                    for (var i = 0; i < length; i++) {
-                        var item = rows.item(i);
-                        var result = item.value;
-
-                        // Check to see if this is serialized content
-                        // we need to unpack.
-                        if (result) {
-                            result = dbInfo.serializer.deserialize(result);
-                        }
-
-                        result = iterator(result, item.key, i + 1);
-
-                        // void(0) prevents problems with redefinition
-                        // of `undefined`.
-                        if (result !== void 0) {
-                            resolve(result);
-                            return;
-                        }
-                    }
-
-                    resolve();
-                }, function (t, error) {
-                    reject(error);
-                });
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function _setItem(key, value, callback, retriesLeft) {
-    var self = this;
-
-    key = normalizeKey(key);
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            // The localStorage API doesn't return undefined values in an
-            // "expected" way, so undefined is always cast to null in all
-            // drivers. See: https://github.com/mozilla/localForage/pull/42
-            if (value === undefined) {
-                value = null;
-            }
-
-            // Save the original value to pass to the callback.
-            var originalValue = value;
-
-            var dbInfo = self._dbInfo;
-            dbInfo.serializer.serialize(value, function (value, error) {
-                if (error) {
-                    reject(error);
-                } else {
-                    dbInfo.db.transaction(function (t) {
-                        t.executeSql('INSERT OR REPLACE INTO ' + dbInfo.storeName + ' (key, value) VALUES (?, ?)', [key, value], function () {
-                            resolve(originalValue);
-                        }, function (t, error) {
-                            reject(error);
-                        });
-                    }, function (sqlError) {
-                        // The transaction failed; check
-                        // to see if it's a quota error.
-                        if (sqlError.code === sqlError.QUOTA_ERR) {
-                            // We reject the callback outright for now, but
-                            // it's worth trying to re-run the transaction.
-                            // Even if the user accepts the prompt to use
-                            // more storage on Safari, this error will
-                            // be called.
-                            //
-                            // Try to re-run the transaction.
-                            if (retriesLeft > 0) {
-                                resolve(_setItem.apply(self, [key, originalValue, callback, retriesLeft - 1]));
-                                return;
-                            }
-                            reject(sqlError);
-                        }
-                    });
-                }
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function setItem$1(key, value, callback) {
-    return _setItem.apply(this, [key, value, callback, 1]);
-}
-
-function removeItem$1(key, callback) {
-    var self = this;
-
-    key = normalizeKey(key);
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            dbInfo.db.transaction(function (t) {
-                t.executeSql('DELETE FROM ' + dbInfo.storeName + ' WHERE key = ?', [key], function () {
-                    resolve();
-                }, function (t, error) {
-                    reject(error);
-                });
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Deletes every item in the table.
-// TODO: Find out if this resets the AUTO_INCREMENT number.
-function clear$1(callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            dbInfo.db.transaction(function (t) {
-                t.executeSql('DELETE FROM ' + dbInfo.storeName, [], function () {
-                    resolve();
-                }, function (t, error) {
-                    reject(error);
-                });
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Does a simple `COUNT(key)` to get the number of items stored in
-// localForage.
-function length$1(callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            dbInfo.db.transaction(function (t) {
-                // Ahhh, SQL makes this one soooooo easy.
-                t.executeSql('SELECT COUNT(key) as c FROM ' + dbInfo.storeName, [], function (t, results) {
-                    var result = results.rows.item(0).c;
-
-                    resolve(result);
-                }, function (t, error) {
-                    reject(error);
-                });
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Return the key located at key index X; essentially gets the key from a
-// `WHERE id = ?`. This is the most efficient way I can think to implement
-// this rarely-used (in my experience) part of the API, but it can seem
-// inconsistent, because we do `INSERT OR REPLACE INTO` on `setItem()`, so
-// the ID of each key will change every time it's updated. Perhaps a stored
-// procedure for the `setItem()` SQL would solve this problem?
-// TODO: Don't change ID on `setItem()`.
-function key$1(n, callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            dbInfo.db.transaction(function (t) {
-                t.executeSql('SELECT key FROM ' + dbInfo.storeName + ' WHERE id = ? LIMIT 1', [n + 1], function (t, results) {
-                    var result = results.rows.length ? results.rows.item(0).key : null;
-                    resolve(result);
-                }, function (t, error) {
-                    reject(error);
-                });
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function keys$1(callback) {
-    var self = this;
-
-    var promise = new Promise$1(function (resolve, reject) {
-        self.ready().then(function () {
-            var dbInfo = self._dbInfo;
-            dbInfo.db.transaction(function (t) {
-                t.executeSql('SELECT key FROM ' + dbInfo.storeName, [], function (t, results) {
-                    var keys = [];
-
-                    for (var i = 0; i < results.rows.length; i++) {
-                        keys.push(results.rows.item(i).key);
-                    }
-
-                    resolve(keys);
-                }, function (t, error) {
-                    reject(error);
-                });
-            });
-        })["catch"](reject);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-var webSQLStorage = {
-    _driver: 'webSQLStorage',
-    _initStorage: _initStorage$1,
-    _support: isWebSQLValid(),
-    iterate: iterate$1,
-    getItem: getItem$1,
-    setItem: setItem$1,
-    removeItem: removeItem$1,
-    clear: clear$1,
-    length: length$1,
-    key: key$1,
-    keys: keys$1
-};
-
-function isLocalStorageValid() {
-    try {
-        return typeof localStorage !== 'undefined' && 'setItem' in localStorage && typeof localStorage.setItem === 'function';
-    } catch (e) {
-        return false;
-    }
-}
-
-// Check if localStorage throws when saving an item
-function checkIfLocalStorageThrows() {
-    var localStorageTestKey = '_localforage_support_test';
-
-    try {
-        localStorage.setItem(localStorageTestKey, true);
-        localStorage.removeItem(localStorageTestKey);
-
-        return false;
-    } catch (e) {
-        return true;
-    }
-}
-
-// Check if localStorage is usable and allows to save an item
-// This method checks if localStorage is usable in Safari Private Browsing
-// mode, or in any other case where the available quota for localStorage
-// is 0 and there wasn't any saved items yet.
-function _isLocalStorageUsable() {
-    return !checkIfLocalStorageThrows() || localStorage.length > 0;
-}
-
-// Config the localStorage backend, using options set in the config.
-function _initStorage$2(options) {
-    var self = this;
-    var dbInfo = {};
-    if (options) {
-        for (var i in options) {
-            dbInfo[i] = options[i];
-        }
-    }
-
-    dbInfo.keyPrefix = dbInfo.name + '/';
-
-    if (dbInfo.storeName !== self._defaultConfig.storeName) {
-        dbInfo.keyPrefix += dbInfo.storeName + '/';
-    }
-
-    if (!_isLocalStorageUsable()) {
-        return Promise$1.reject();
-    }
-
-    self._dbInfo = dbInfo;
-    dbInfo.serializer = localforageSerializer;
-
-    return Promise$1.resolve();
-}
-
-// Remove all keys from the datastore, effectively destroying all data in
-// the app's key/value store!
-function clear$2(callback) {
-    var self = this;
-    var promise = self.ready().then(function () {
-        var keyPrefix = self._dbInfo.keyPrefix;
-
-        for (var i = localStorage.length - 1; i >= 0; i--) {
-            var key = localStorage.key(i);
-
-            if (key.indexOf(keyPrefix) === 0) {
-                localStorage.removeItem(key);
-            }
-        }
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Retrieve an item from the store. Unlike the original async_storage
-// library in Gaia, we don't modify return values at all. If a key's value
-// is `undefined`, we pass that value to the callback function.
-function getItem$2(key, callback) {
-    var self = this;
-
-    key = normalizeKey(key);
-
-    var promise = self.ready().then(function () {
-        var dbInfo = self._dbInfo;
-        var result = localStorage.getItem(dbInfo.keyPrefix + key);
-
-        // If a result was found, parse it from the serialized
-        // string into a JS object. If result isn't truthy, the key
-        // is likely undefined and we'll pass it straight to the
-        // callback.
-        if (result) {
-            result = dbInfo.serializer.deserialize(result);
-        }
-
-        return result;
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Iterate over all items in the store.
-function iterate$2(iterator, callback) {
-    var self = this;
-
-    var promise = self.ready().then(function () {
-        var dbInfo = self._dbInfo;
-        var keyPrefix = dbInfo.keyPrefix;
-        var keyPrefixLength = keyPrefix.length;
-        var length = localStorage.length;
-
-        // We use a dedicated iterator instead of the `i` variable below
-        // so other keys we fetch in localStorage aren't counted in
-        // the `iterationNumber` argument passed to the `iterate()`
-        // callback.
-        //
-        // See: github.com/mozilla/localForage/pull/435#discussion_r38061530
-        var iterationNumber = 1;
-
-        for (var i = 0; i < length; i++) {
-            var key = localStorage.key(i);
-            if (key.indexOf(keyPrefix) !== 0) {
-                continue;
-            }
-            var value = localStorage.getItem(key);
-
-            // If a result was found, parse it from the serialized
-            // string into a JS object. If result isn't truthy, the
-            // key is likely undefined and we'll pass it straight
-            // to the iterator.
-            if (value) {
-                value = dbInfo.serializer.deserialize(value);
-            }
-
-            value = iterator(value, key.substring(keyPrefixLength), iterationNumber++);
-
-            if (value !== void 0) {
-                return value;
-            }
-        }
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Same as localStorage's key() method, except takes a callback.
-function key$2(n, callback) {
-    var self = this;
-    var promise = self.ready().then(function () {
-        var dbInfo = self._dbInfo;
-        var result;
-        try {
-            result = localStorage.key(n);
-        } catch (error) {
-            result = null;
-        }
-
-        // Remove the prefix from the key, if a key is found.
-        if (result) {
-            result = result.substring(dbInfo.keyPrefix.length);
-        }
-
-        return result;
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-function keys$2(callback) {
-    var self = this;
-    var promise = self.ready().then(function () {
-        var dbInfo = self._dbInfo;
-        var length = localStorage.length;
-        var keys = [];
-
-        for (var i = 0; i < length; i++) {
-            var itemKey = localStorage.key(i);
-            if (itemKey.indexOf(dbInfo.keyPrefix) === 0) {
-                keys.push(itemKey.substring(dbInfo.keyPrefix.length));
-            }
-        }
-
-        return keys;
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Supply the number of keys in the datastore to the callback function.
-function length$2(callback) {
-    var self = this;
-    var promise = self.keys().then(function (keys) {
-        return keys.length;
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Remove an item from the store, nice and simple.
-function removeItem$2(key, callback) {
-    var self = this;
-
-    key = normalizeKey(key);
-
-    var promise = self.ready().then(function () {
-        var dbInfo = self._dbInfo;
-        localStorage.removeItem(dbInfo.keyPrefix + key);
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-// Set a key's value and run an optional callback once the value is set.
-// Unlike Gaia's implementation, the callback function is passed the value,
-// in case you want to operate on that value only after you're sure it
-// saved, or something like that.
-function setItem$2(key, value, callback) {
-    var self = this;
-
-    key = normalizeKey(key);
-
-    var promise = self.ready().then(function () {
-        // Convert undefined values to null.
-        // https://github.com/mozilla/localForage/pull/42
-        if (value === undefined) {
-            value = null;
-        }
-
-        // Save the original value to pass to the callback.
-        var originalValue = value;
-
-        return new Promise$1(function (resolve, reject) {
-            var dbInfo = self._dbInfo;
-            dbInfo.serializer.serialize(value, function (value, error) {
-                if (error) {
-                    reject(error);
-                } else {
-                    try {
-                        localStorage.setItem(dbInfo.keyPrefix + key, value);
-                        resolve(originalValue);
-                    } catch (e) {
-                        // localStorage capacity exceeded.
-                        // TODO: Make this a specific error/event.
-                        if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-                            reject(e);
-                        }
-                        reject(e);
-                    }
-                }
-            });
-        });
-    });
-
-    executeCallback(promise, callback);
-    return promise;
-}
-
-var localStorageWrapper = {
-    _driver: 'localStorageWrapper',
-    _initStorage: _initStorage$2,
-    _support: isLocalStorageValid(),
-    iterate: iterate$2,
-    getItem: getItem$2,
-    setItem: setItem$2,
-    removeItem: removeItem$2,
-    clear: clear$2,
-    length: length$2,
-    key: key$2,
-    keys: keys$2
-};
-
-var isArray = Array.isArray || function (arg) {
-    return Object.prototype.toString.call(arg) === '[object Array]';
-};
-
-// Drivers are stored here when `defineDriver()` is called.
-// They are shared across all instances of localForage.
-var DefinedDrivers = {};
-
-var DriverSupport = {};
-
-var DefaultDrivers = {
-    INDEXEDDB: asyncStorage,
-    WEBSQL: webSQLStorage,
-    LOCALSTORAGE: localStorageWrapper
-};
-
-var DefaultDriverOrder = [DefaultDrivers.INDEXEDDB._driver, DefaultDrivers.WEBSQL._driver, DefaultDrivers.LOCALSTORAGE._driver];
-
-var LibraryMethods = ['clear', 'getItem', 'iterate', 'key', 'keys', 'length', 'removeItem', 'setItem'];
-
-var DefaultConfig = {
-    description: '',
-    driver: DefaultDriverOrder.slice(),
-    name: 'localforage',
-    // Default DB size is _JUST UNDER_ 5MB, as it's the highest size
-    // we can use without a prompt.
-    size: 4980736,
-    storeName: 'keyvaluepairs',
-    version: 1.0
-};
-
-function callWhenReady(localForageInstance, libraryMethod) {
-    localForageInstance[libraryMethod] = function () {
-        var _args = arguments;
-        return localForageInstance.ready().then(function () {
-            return localForageInstance[libraryMethod].apply(localForageInstance, _args);
-        });
-    };
-}
-
-function extend() {
-    for (var i = 1; i < arguments.length; i++) {
-        var arg = arguments[i];
-
-        if (arg) {
-            for (var _key in arg) {
-                if (arg.hasOwnProperty(_key)) {
-                    if (isArray(arg[_key])) {
-                        arguments[0][_key] = arg[_key].slice();
-                    } else {
-                        arguments[0][_key] = arg[_key];
-                    }
-                }
-            }
-        }
-    }
-
-    return arguments[0];
-}
-
-var LocalForage = function () {
-    function LocalForage(options) {
-        _classCallCheck(this, LocalForage);
-
-        for (var driverTypeKey in DefaultDrivers) {
-            if (DefaultDrivers.hasOwnProperty(driverTypeKey)) {
-                var driver = DefaultDrivers[driverTypeKey];
-                var driverName = driver._driver;
-                this[driverTypeKey] = driverName;
-
-                if (!DefinedDrivers[driverName]) {
-                    // we don't need to wait for the promise,
-                    // since the default drivers can be defined
-                    // in a blocking manner
-                    this.defineDriver(driver);
-                }
-            }
-        }
-
-        this._defaultConfig = extend({}, DefaultConfig);
-        this._config = extend({}, this._defaultConfig, options);
-        this._driverSet = null;
-        this._initDriver = null;
-        this._ready = false;
-        this._dbInfo = null;
-
-        this._wrapLibraryMethodsWithReady();
-        this.setDriver(this._config.driver)["catch"](function () {});
-    }
-
-    // Set any config values for localForage; can be called anytime before
-    // the first API call (e.g. `getItem`, `setItem`).
-    // We loop through options so we don't overwrite existing config
-    // values.
-
-
-    LocalForage.prototype.config = function config(options) {
-        // If the options argument is an object, we use it to set values.
-        // Otherwise, we return either a specified config value or all
-        // config values.
-        if ((typeof options === 'undefined' ? 'undefined' : _typeof(options)) === 'object') {
-            // If localforage is ready and fully initialized, we can't set
-            // any new configuration values. Instead, we return an error.
-            if (this._ready) {
-                return new Error('Can\'t call config() after localforage ' + 'has been used.');
-            }
-
-            for (var i in options) {
-                if (i === 'storeName') {
-                    options[i] = options[i].replace(/\W/g, '_');
-                }
-
-                if (i === 'version' && typeof options[i] !== 'number') {
-                    return new Error('Database version must be a number.');
-                }
-
-                this._config[i] = options[i];
-            }
-
-            // after all config options are set and
-            // the driver option is used, try setting it
-            if ('driver' in options && options.driver) {
-                return this.setDriver(this._config.driver);
-            }
-
-            return true;
-        } else if (typeof options === 'string') {
-            return this._config[options];
-        } else {
-            return this._config;
-        }
-    };
-
-    // Used to define a custom driver, shared across all instances of
-    // localForage.
-
-
-    LocalForage.prototype.defineDriver = function defineDriver(driverObject, callback, errorCallback) {
-        var promise = new Promise$1(function (resolve, reject) {
-            try {
-                var driverName = driverObject._driver;
-                var complianceError = new Error('Custom driver not compliant; see ' + 'https://mozilla.github.io/localForage/#definedriver');
-
-                // A driver name should be defined and not overlap with the
-                // library-defined, default drivers.
-                if (!driverObject._driver) {
-                    reject(complianceError);
-                    return;
-                }
-
-                var driverMethods = LibraryMethods.concat('_initStorage');
-                for (var i = 0, len = driverMethods.length; i < len; i++) {
-                    var customDriverMethod = driverMethods[i];
-                    if (!customDriverMethod || !driverObject[customDriverMethod] || typeof driverObject[customDriverMethod] !== 'function') {
-                        reject(complianceError);
-                        return;
-                    }
-                }
-
-                var setDriverSupport = function setDriverSupport(support) {
-                    if (DefinedDrivers[driverName]) {
-                        console.info('Redefining LocalForage driver: ' + driverName);
-                    }
-                    DefinedDrivers[driverName] = driverObject;
-                    DriverSupport[driverName] = support;
-                    // don't use a then, so that we can define
-                    // drivers that have simple _support methods
-                    // in a blocking manner
-                    resolve();
-                };
-
-                if ('_support' in driverObject) {
-                    if (driverObject._support && typeof driverObject._support === 'function') {
-                        driverObject._support().then(setDriverSupport, reject);
-                    } else {
-                        setDriverSupport(!!driverObject._support);
-                    }
-                } else {
-                    setDriverSupport(true);
-                }
-            } catch (e) {
-                reject(e);
-            }
-        });
-
-        executeTwoCallbacks(promise, callback, errorCallback);
-        return promise;
-    };
-
-    LocalForage.prototype.driver = function driver() {
-        return this._driver || null;
-    };
-
-    LocalForage.prototype.getDriver = function getDriver(driverName, callback, errorCallback) {
-        var getDriverPromise = DefinedDrivers[driverName] ? Promise$1.resolve(DefinedDrivers[driverName]) : Promise$1.reject(new Error('Driver not found.'));
-
-        executeTwoCallbacks(getDriverPromise, callback, errorCallback);
-        return getDriverPromise;
-    };
-
-    LocalForage.prototype.getSerializer = function getSerializer(callback) {
-        var serializerPromise = Promise$1.resolve(localforageSerializer);
-        executeTwoCallbacks(serializerPromise, callback);
-        return serializerPromise;
-    };
-
-    LocalForage.prototype.ready = function ready(callback) {
-        var self = this;
-
-        var promise = self._driverSet.then(function () {
-            if (self._ready === null) {
-                self._ready = self._initDriver();
-            }
-
-            return self._ready;
-        });
-
-        executeTwoCallbacks(promise, callback, callback);
-        return promise;
-    };
-
-    LocalForage.prototype.setDriver = function setDriver(drivers, callback, errorCallback) {
-        var self = this;
-
-        if (!isArray(drivers)) {
-            drivers = [drivers];
-        }
-
-        var supportedDrivers = this._getSupportedDrivers(drivers);
-
-        function setDriverToConfig() {
-            self._config.driver = self.driver();
-        }
-
-        function extendSelfWithDriver(driver) {
-            self._extend(driver);
-            setDriverToConfig();
-
-            self._ready = self._initStorage(self._config);
-            return self._ready;
-        }
-
-        function initDriver(supportedDrivers) {
-            return function () {
-                var currentDriverIndex = 0;
-
-                function driverPromiseLoop() {
-                    while (currentDriverIndex < supportedDrivers.length) {
-                        var driverName = supportedDrivers[currentDriverIndex];
-                        currentDriverIndex++;
-
-                        self._dbInfo = null;
-                        self._ready = null;
-
-                        return self.getDriver(driverName).then(extendSelfWithDriver)["catch"](driverPromiseLoop);
-                    }
-
-                    setDriverToConfig();
-                    var error = new Error('No available storage method found.');
-                    self._driverSet = Promise$1.reject(error);
-                    return self._driverSet;
-                }
-
-                return driverPromiseLoop();
-            };
-        }
-
-        // There might be a driver initialization in progress
-        // so wait for it to finish in order to avoid a possible
-        // race condition to set _dbInfo
-        var oldDriverSetDone = this._driverSet !== null ? this._driverSet["catch"](function () {
-            return Promise$1.resolve();
-        }) : Promise$1.resolve();
-
-        this._driverSet = oldDriverSetDone.then(function () {
-            var driverName = supportedDrivers[0];
-            self._dbInfo = null;
-            self._ready = null;
-
-            return self.getDriver(driverName).then(function (driver) {
-                self._driver = driver._driver;
-                setDriverToConfig();
-                self._wrapLibraryMethodsWithReady();
-                self._initDriver = initDriver(supportedDrivers);
-            });
-        })["catch"](function () {
-            setDriverToConfig();
-            var error = new Error('No available storage method found.');
-            self._driverSet = Promise$1.reject(error);
-            return self._driverSet;
-        });
-
-        executeTwoCallbacks(this._driverSet, callback, errorCallback);
-        return this._driverSet;
-    };
-
-    LocalForage.prototype.supports = function supports(driverName) {
-        return !!DriverSupport[driverName];
-    };
-
-    LocalForage.prototype._extend = function _extend(libraryMethodsAndProperties) {
-        extend(this, libraryMethodsAndProperties);
-    };
-
-    LocalForage.prototype._getSupportedDrivers = function _getSupportedDrivers(drivers) {
-        var supportedDrivers = [];
-        for (var i = 0, len = drivers.length; i < len; i++) {
-            var driverName = drivers[i];
-            if (this.supports(driverName)) {
-                supportedDrivers.push(driverName);
-            }
-        }
-        return supportedDrivers;
-    };
-
-    LocalForage.prototype._wrapLibraryMethodsWithReady = function _wrapLibraryMethodsWithReady() {
-        // Add a stub for each driver API method that delays the call to the
-        // corresponding driver method until localForage is ready. These stubs
-        // will be replaced by the driver methods as soon as the driver is
-        // loaded, so there is no performance impact.
-        for (var i = 0, len = LibraryMethods.length; i < len; i++) {
-            callWhenReady(this, LibraryMethods[i]);
-        }
-    };
-
-    LocalForage.prototype.createInstance = function createInstance(options) {
-        return new LocalForage(options);
-    };
-
-    return LocalForage;
-}();
-
-// The actual localForage object that we expose as a module or via a
-// global. It's extended by pulling in one of our other libraries.
-
-
-var localforage_js = new LocalForage();
-
-module.exports = localforage_js;
-
-},{"3":3}]},{},[4])(4)
-});
-}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],396:[function(require,module,exports){
 (function (global){
 /**
@@ -18441,6 +20525,3250 @@ module.exports = intersection;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],397:[function(require,module,exports){
+(function (global){
+/**
+ * lodash (Custom Build) <https://lodash.com/>
+ * Build: `lodash modularize exports="npm" -o ./`
+ * Copyright jQuery Foundation and other contributors <https://jquery.org/>
+ * Released under MIT license <https://lodash.com/license>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ */
+
+/** Used as the size to enable large array optimizations. */
+var LARGE_ARRAY_SIZE = 200;
+
+/** Used as the `TypeError` message for "Functions" methods. */
+var FUNC_ERROR_TEXT = 'Expected a function';
+
+/** Used to stand-in for `undefined` hash values. */
+var HASH_UNDEFINED = '__lodash_hash_undefined__';
+
+/** Used to compose bitmasks for comparison styles. */
+var UNORDERED_COMPARE_FLAG = 1,
+    PARTIAL_COMPARE_FLAG = 2;
+
+/** Used as references for various `Number` constants. */
+var INFINITY = 1 / 0,
+    MAX_SAFE_INTEGER = 9007199254740991;
+
+/** `Object#toString` result references. */
+var argsTag = '[object Arguments]',
+    arrayTag = '[object Array]',
+    boolTag = '[object Boolean]',
+    dateTag = '[object Date]',
+    errorTag = '[object Error]',
+    funcTag = '[object Function]',
+    genTag = '[object GeneratorFunction]',
+    mapTag = '[object Map]',
+    numberTag = '[object Number]',
+    objectTag = '[object Object]',
+    promiseTag = '[object Promise]',
+    regexpTag = '[object RegExp]',
+    setTag = '[object Set]',
+    stringTag = '[object String]',
+    symbolTag = '[object Symbol]',
+    weakMapTag = '[object WeakMap]';
+
+var arrayBufferTag = '[object ArrayBuffer]',
+    dataViewTag = '[object DataView]',
+    float32Tag = '[object Float32Array]',
+    float64Tag = '[object Float64Array]',
+    int8Tag = '[object Int8Array]',
+    int16Tag = '[object Int16Array]',
+    int32Tag = '[object Int32Array]',
+    uint8Tag = '[object Uint8Array]',
+    uint8ClampedTag = '[object Uint8ClampedArray]',
+    uint16Tag = '[object Uint16Array]',
+    uint32Tag = '[object Uint32Array]';
+
+/** Used to match property names within property paths. */
+var reIsDeepProp = /\.|\[(?:[^[\]]*|(["'])(?:(?!\1)[^\\]|\\.)*?\1)\]/,
+    reIsPlainProp = /^\w*$/,
+    reLeadingDot = /^\./,
+    rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|$))/g;
+
+/**
+ * Used to match `RegExp`
+ * [syntax characters](http://ecma-international.org/ecma-262/7.0/#sec-patterns).
+ */
+var reRegExpChar = /[\\^$.*+?()[\]{}|]/g;
+
+/** Used to match backslashes in property paths. */
+var reEscapeChar = /\\(\\)?/g;
+
+/** Used to detect host constructors (Safari). */
+var reIsHostCtor = /^\[object .+?Constructor\]$/;
+
+/** Used to detect unsigned integer values. */
+var reIsUint = /^(?:0|[1-9]\d*)$/;
+
+/** Used to identify `toStringTag` values of typed arrays. */
+var typedArrayTags = {};
+typedArrayTags[float32Tag] = typedArrayTags[float64Tag] =
+typedArrayTags[int8Tag] = typedArrayTags[int16Tag] =
+typedArrayTags[int32Tag] = typedArrayTags[uint8Tag] =
+typedArrayTags[uint8ClampedTag] = typedArrayTags[uint16Tag] =
+typedArrayTags[uint32Tag] = true;
+typedArrayTags[argsTag] = typedArrayTags[arrayTag] =
+typedArrayTags[arrayBufferTag] = typedArrayTags[boolTag] =
+typedArrayTags[dataViewTag] = typedArrayTags[dateTag] =
+typedArrayTags[errorTag] = typedArrayTags[funcTag] =
+typedArrayTags[mapTag] = typedArrayTags[numberTag] =
+typedArrayTags[objectTag] = typedArrayTags[regexpTag] =
+typedArrayTags[setTag] = typedArrayTags[stringTag] =
+typedArrayTags[weakMapTag] = false;
+
+/** Detect free variable `global` from Node.js. */
+var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
+
+/** Detect free variable `self`. */
+var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
+
+/** Used as a reference to the global object. */
+var root = freeGlobal || freeSelf || Function('return this')();
+
+/** Detect free variable `exports`. */
+var freeExports = typeof exports == 'object' && exports && !exports.nodeType && exports;
+
+/** Detect free variable `module`. */
+var freeModule = freeExports && typeof module == 'object' && module && !module.nodeType && module;
+
+/** Detect the popular CommonJS extension `module.exports`. */
+var moduleExports = freeModule && freeModule.exports === freeExports;
+
+/** Detect free variable `process` from Node.js. */
+var freeProcess = moduleExports && freeGlobal.process;
+
+/** Used to access faster Node.js helpers. */
+var nodeUtil = (function() {
+  try {
+    return freeProcess && freeProcess.binding('util');
+  } catch (e) {}
+}());
+
+/* Node.js helper references. */
+var nodeIsTypedArray = nodeUtil && nodeUtil.isTypedArray;
+
+/**
+ * A specialized version of `_.some` for arrays without support for iteratee
+ * shorthands.
+ *
+ * @private
+ * @param {Array} [array] The array to iterate over.
+ * @param {Function} predicate The function invoked per iteration.
+ * @returns {boolean} Returns `true` if any element passes the predicate check,
+ *  else `false`.
+ */
+function arraySome(array, predicate) {
+  var index = -1,
+      length = array ? array.length : 0;
+
+  while (++index < length) {
+    if (predicate(array[index], index, array)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * The base implementation of `_.property` without support for deep paths.
+ *
+ * @private
+ * @param {string} key The key of the property to get.
+ * @returns {Function} Returns the new accessor function.
+ */
+function baseProperty(key) {
+  return function(object) {
+    return object == null ? undefined : object[key];
+  };
+}
+
+/**
+ * The base implementation of `_.times` without support for iteratee shorthands
+ * or max array length checks.
+ *
+ * @private
+ * @param {number} n The number of times to invoke `iteratee`.
+ * @param {Function} iteratee The function invoked per iteration.
+ * @returns {Array} Returns the array of results.
+ */
+function baseTimes(n, iteratee) {
+  var index = -1,
+      result = Array(n);
+
+  while (++index < n) {
+    result[index] = iteratee(index);
+  }
+  return result;
+}
+
+/**
+ * The base implementation of `_.unary` without support for storing metadata.
+ *
+ * @private
+ * @param {Function} func The function to cap arguments for.
+ * @returns {Function} Returns the new capped function.
+ */
+function baseUnary(func) {
+  return function(value) {
+    return func(value);
+  };
+}
+
+/**
+ * Gets the value at `key` of `object`.
+ *
+ * @private
+ * @param {Object} [object] The object to query.
+ * @param {string} key The key of the property to get.
+ * @returns {*} Returns the property value.
+ */
+function getValue(object, key) {
+  return object == null ? undefined : object[key];
+}
+
+/**
+ * Checks if `value` is a host object in IE < 9.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a host object, else `false`.
+ */
+function isHostObject(value) {
+  // Many host objects are `Object` objects that can coerce to strings
+  // despite having improperly defined `toString` methods.
+  var result = false;
+  if (value != null && typeof value.toString != 'function') {
+    try {
+      result = !!(value + '');
+    } catch (e) {}
+  }
+  return result;
+}
+
+/**
+ * Converts `map` to its key-value pairs.
+ *
+ * @private
+ * @param {Object} map The map to convert.
+ * @returns {Array} Returns the key-value pairs.
+ */
+function mapToArray(map) {
+  var index = -1,
+      result = Array(map.size);
+
+  map.forEach(function(value, key) {
+    result[++index] = [key, value];
+  });
+  return result;
+}
+
+/**
+ * Creates a unary function that invokes `func` with its argument transformed.
+ *
+ * @private
+ * @param {Function} func The function to wrap.
+ * @param {Function} transform The argument transform.
+ * @returns {Function} Returns the new function.
+ */
+function overArg(func, transform) {
+  return function(arg) {
+    return func(transform(arg));
+  };
+}
+
+/**
+ * Converts `set` to an array of its values.
+ *
+ * @private
+ * @param {Object} set The set to convert.
+ * @returns {Array} Returns the values.
+ */
+function setToArray(set) {
+  var index = -1,
+      result = Array(set.size);
+
+  set.forEach(function(value) {
+    result[++index] = value;
+  });
+  return result;
+}
+
+/** Used for built-in method references. */
+var arrayProto = Array.prototype,
+    funcProto = Function.prototype,
+    objectProto = Object.prototype;
+
+/** Used to detect overreaching core-js shims. */
+var coreJsData = root['__core-js_shared__'];
+
+/** Used to detect methods masquerading as native. */
+var maskSrcKey = (function() {
+  var uid = /[^.]+$/.exec(coreJsData && coreJsData.keys && coreJsData.keys.IE_PROTO || '');
+  return uid ? ('Symbol(src)_1.' + uid) : '';
+}());
+
+/** Used to resolve the decompiled source of functions. */
+var funcToString = funcProto.toString;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objectToString = objectProto.toString;
+
+/** Used to detect if a method is native. */
+var reIsNative = RegExp('^' +
+  funcToString.call(hasOwnProperty).replace(reRegExpChar, '\\$&')
+  .replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, '$1.*?') + '$'
+);
+
+/** Built-in value references. */
+var Symbol = root.Symbol,
+    Uint8Array = root.Uint8Array,
+    propertyIsEnumerable = objectProto.propertyIsEnumerable,
+    splice = arrayProto.splice;
+
+/* Built-in method references for those with the same name as other `lodash` methods. */
+var nativeKeys = overArg(Object.keys, Object);
+
+/* Built-in method references that are verified to be native. */
+var DataView = getNative(root, 'DataView'),
+    Map = getNative(root, 'Map'),
+    Promise = getNative(root, 'Promise'),
+    Set = getNative(root, 'Set'),
+    WeakMap = getNative(root, 'WeakMap'),
+    nativeCreate = getNative(Object, 'create');
+
+/** Used to detect maps, sets, and weakmaps. */
+var dataViewCtorString = toSource(DataView),
+    mapCtorString = toSource(Map),
+    promiseCtorString = toSource(Promise),
+    setCtorString = toSource(Set),
+    weakMapCtorString = toSource(WeakMap);
+
+/** Used to convert symbols to primitives and strings. */
+var symbolProto = Symbol ? Symbol.prototype : undefined,
+    symbolValueOf = symbolProto ? symbolProto.valueOf : undefined,
+    symbolToString = symbolProto ? symbolProto.toString : undefined;
+
+/**
+ * Creates a hash object.
+ *
+ * @private
+ * @constructor
+ * @param {Array} [entries] The key-value pairs to cache.
+ */
+function Hash(entries) {
+  var index = -1,
+      length = entries ? entries.length : 0;
+
+  this.clear();
+  while (++index < length) {
+    var entry = entries[index];
+    this.set(entry[0], entry[1]);
+  }
+}
+
+/**
+ * Removes all key-value entries from the hash.
+ *
+ * @private
+ * @name clear
+ * @memberOf Hash
+ */
+function hashClear() {
+  this.__data__ = nativeCreate ? nativeCreate(null) : {};
+}
+
+/**
+ * Removes `key` and its value from the hash.
+ *
+ * @private
+ * @name delete
+ * @memberOf Hash
+ * @param {Object} hash The hash to modify.
+ * @param {string} key The key of the value to remove.
+ * @returns {boolean} Returns `true` if the entry was removed, else `false`.
+ */
+function hashDelete(key) {
+  return this.has(key) && delete this.__data__[key];
+}
+
+/**
+ * Gets the hash value for `key`.
+ *
+ * @private
+ * @name get
+ * @memberOf Hash
+ * @param {string} key The key of the value to get.
+ * @returns {*} Returns the entry value.
+ */
+function hashGet(key) {
+  var data = this.__data__;
+  if (nativeCreate) {
+    var result = data[key];
+    return result === HASH_UNDEFINED ? undefined : result;
+  }
+  return hasOwnProperty.call(data, key) ? data[key] : undefined;
+}
+
+/**
+ * Checks if a hash value for `key` exists.
+ *
+ * @private
+ * @name has
+ * @memberOf Hash
+ * @param {string} key The key of the entry to check.
+ * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
+ */
+function hashHas(key) {
+  var data = this.__data__;
+  return nativeCreate ? data[key] !== undefined : hasOwnProperty.call(data, key);
+}
+
+/**
+ * Sets the hash `key` to `value`.
+ *
+ * @private
+ * @name set
+ * @memberOf Hash
+ * @param {string} key The key of the value to set.
+ * @param {*} value The value to set.
+ * @returns {Object} Returns the hash instance.
+ */
+function hashSet(key, value) {
+  var data = this.__data__;
+  data[key] = (nativeCreate && value === undefined) ? HASH_UNDEFINED : value;
+  return this;
+}
+
+// Add methods to `Hash`.
+Hash.prototype.clear = hashClear;
+Hash.prototype['delete'] = hashDelete;
+Hash.prototype.get = hashGet;
+Hash.prototype.has = hashHas;
+Hash.prototype.set = hashSet;
+
+/**
+ * Creates an list cache object.
+ *
+ * @private
+ * @constructor
+ * @param {Array} [entries] The key-value pairs to cache.
+ */
+function ListCache(entries) {
+  var index = -1,
+      length = entries ? entries.length : 0;
+
+  this.clear();
+  while (++index < length) {
+    var entry = entries[index];
+    this.set(entry[0], entry[1]);
+  }
+}
+
+/**
+ * Removes all key-value entries from the list cache.
+ *
+ * @private
+ * @name clear
+ * @memberOf ListCache
+ */
+function listCacheClear() {
+  this.__data__ = [];
+}
+
+/**
+ * Removes `key` and its value from the list cache.
+ *
+ * @private
+ * @name delete
+ * @memberOf ListCache
+ * @param {string} key The key of the value to remove.
+ * @returns {boolean} Returns `true` if the entry was removed, else `false`.
+ */
+function listCacheDelete(key) {
+  var data = this.__data__,
+      index = assocIndexOf(data, key);
+
+  if (index < 0) {
+    return false;
+  }
+  var lastIndex = data.length - 1;
+  if (index == lastIndex) {
+    data.pop();
+  } else {
+    splice.call(data, index, 1);
+  }
+  return true;
+}
+
+/**
+ * Gets the list cache value for `key`.
+ *
+ * @private
+ * @name get
+ * @memberOf ListCache
+ * @param {string} key The key of the value to get.
+ * @returns {*} Returns the entry value.
+ */
+function listCacheGet(key) {
+  var data = this.__data__,
+      index = assocIndexOf(data, key);
+
+  return index < 0 ? undefined : data[index][1];
+}
+
+/**
+ * Checks if a list cache value for `key` exists.
+ *
+ * @private
+ * @name has
+ * @memberOf ListCache
+ * @param {string} key The key of the entry to check.
+ * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
+ */
+function listCacheHas(key) {
+  return assocIndexOf(this.__data__, key) > -1;
+}
+
+/**
+ * Sets the list cache `key` to `value`.
+ *
+ * @private
+ * @name set
+ * @memberOf ListCache
+ * @param {string} key The key of the value to set.
+ * @param {*} value The value to set.
+ * @returns {Object} Returns the list cache instance.
+ */
+function listCacheSet(key, value) {
+  var data = this.__data__,
+      index = assocIndexOf(data, key);
+
+  if (index < 0) {
+    data.push([key, value]);
+  } else {
+    data[index][1] = value;
+  }
+  return this;
+}
+
+// Add methods to `ListCache`.
+ListCache.prototype.clear = listCacheClear;
+ListCache.prototype['delete'] = listCacheDelete;
+ListCache.prototype.get = listCacheGet;
+ListCache.prototype.has = listCacheHas;
+ListCache.prototype.set = listCacheSet;
+
+/**
+ * Creates a map cache object to store key-value pairs.
+ *
+ * @private
+ * @constructor
+ * @param {Array} [entries] The key-value pairs to cache.
+ */
+function MapCache(entries) {
+  var index = -1,
+      length = entries ? entries.length : 0;
+
+  this.clear();
+  while (++index < length) {
+    var entry = entries[index];
+    this.set(entry[0], entry[1]);
+  }
+}
+
+/**
+ * Removes all key-value entries from the map.
+ *
+ * @private
+ * @name clear
+ * @memberOf MapCache
+ */
+function mapCacheClear() {
+  this.__data__ = {
+    'hash': new Hash,
+    'map': new (Map || ListCache),
+    'string': new Hash
+  };
+}
+
+/**
+ * Removes `key` and its value from the map.
+ *
+ * @private
+ * @name delete
+ * @memberOf MapCache
+ * @param {string} key The key of the value to remove.
+ * @returns {boolean} Returns `true` if the entry was removed, else `false`.
+ */
+function mapCacheDelete(key) {
+  return getMapData(this, key)['delete'](key);
+}
+
+/**
+ * Gets the map value for `key`.
+ *
+ * @private
+ * @name get
+ * @memberOf MapCache
+ * @param {string} key The key of the value to get.
+ * @returns {*} Returns the entry value.
+ */
+function mapCacheGet(key) {
+  return getMapData(this, key).get(key);
+}
+
+/**
+ * Checks if a map value for `key` exists.
+ *
+ * @private
+ * @name has
+ * @memberOf MapCache
+ * @param {string} key The key of the entry to check.
+ * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
+ */
+function mapCacheHas(key) {
+  return getMapData(this, key).has(key);
+}
+
+/**
+ * Sets the map `key` to `value`.
+ *
+ * @private
+ * @name set
+ * @memberOf MapCache
+ * @param {string} key The key of the value to set.
+ * @param {*} value The value to set.
+ * @returns {Object} Returns the map cache instance.
+ */
+function mapCacheSet(key, value) {
+  getMapData(this, key).set(key, value);
+  return this;
+}
+
+// Add methods to `MapCache`.
+MapCache.prototype.clear = mapCacheClear;
+MapCache.prototype['delete'] = mapCacheDelete;
+MapCache.prototype.get = mapCacheGet;
+MapCache.prototype.has = mapCacheHas;
+MapCache.prototype.set = mapCacheSet;
+
+/**
+ *
+ * Creates an array cache object to store unique values.
+ *
+ * @private
+ * @constructor
+ * @param {Array} [values] The values to cache.
+ */
+function SetCache(values) {
+  var index = -1,
+      length = values ? values.length : 0;
+
+  this.__data__ = new MapCache;
+  while (++index < length) {
+    this.add(values[index]);
+  }
+}
+
+/**
+ * Adds `value` to the array cache.
+ *
+ * @private
+ * @name add
+ * @memberOf SetCache
+ * @alias push
+ * @param {*} value The value to cache.
+ * @returns {Object} Returns the cache instance.
+ */
+function setCacheAdd(value) {
+  this.__data__.set(value, HASH_UNDEFINED);
+  return this;
+}
+
+/**
+ * Checks if `value` is in the array cache.
+ *
+ * @private
+ * @name has
+ * @memberOf SetCache
+ * @param {*} value The value to search for.
+ * @returns {number} Returns `true` if `value` is found, else `false`.
+ */
+function setCacheHas(value) {
+  return this.__data__.has(value);
+}
+
+// Add methods to `SetCache`.
+SetCache.prototype.add = SetCache.prototype.push = setCacheAdd;
+SetCache.prototype.has = setCacheHas;
+
+/**
+ * Creates a stack cache object to store key-value pairs.
+ *
+ * @private
+ * @constructor
+ * @param {Array} [entries] The key-value pairs to cache.
+ */
+function Stack(entries) {
+  this.__data__ = new ListCache(entries);
+}
+
+/**
+ * Removes all key-value entries from the stack.
+ *
+ * @private
+ * @name clear
+ * @memberOf Stack
+ */
+function stackClear() {
+  this.__data__ = new ListCache;
+}
+
+/**
+ * Removes `key` and its value from the stack.
+ *
+ * @private
+ * @name delete
+ * @memberOf Stack
+ * @param {string} key The key of the value to remove.
+ * @returns {boolean} Returns `true` if the entry was removed, else `false`.
+ */
+function stackDelete(key) {
+  return this.__data__['delete'](key);
+}
+
+/**
+ * Gets the stack value for `key`.
+ *
+ * @private
+ * @name get
+ * @memberOf Stack
+ * @param {string} key The key of the value to get.
+ * @returns {*} Returns the entry value.
+ */
+function stackGet(key) {
+  return this.__data__.get(key);
+}
+
+/**
+ * Checks if a stack value for `key` exists.
+ *
+ * @private
+ * @name has
+ * @memberOf Stack
+ * @param {string} key The key of the entry to check.
+ * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
+ */
+function stackHas(key) {
+  return this.__data__.has(key);
+}
+
+/**
+ * Sets the stack `key` to `value`.
+ *
+ * @private
+ * @name set
+ * @memberOf Stack
+ * @param {string} key The key of the value to set.
+ * @param {*} value The value to set.
+ * @returns {Object} Returns the stack cache instance.
+ */
+function stackSet(key, value) {
+  var cache = this.__data__;
+  if (cache instanceof ListCache) {
+    var pairs = cache.__data__;
+    if (!Map || (pairs.length < LARGE_ARRAY_SIZE - 1)) {
+      pairs.push([key, value]);
+      return this;
+    }
+    cache = this.__data__ = new MapCache(pairs);
+  }
+  cache.set(key, value);
+  return this;
+}
+
+// Add methods to `Stack`.
+Stack.prototype.clear = stackClear;
+Stack.prototype['delete'] = stackDelete;
+Stack.prototype.get = stackGet;
+Stack.prototype.has = stackHas;
+Stack.prototype.set = stackSet;
+
+/**
+ * Creates an array of the enumerable property names of the array-like `value`.
+ *
+ * @private
+ * @param {*} value The value to query.
+ * @param {boolean} inherited Specify returning inherited property names.
+ * @returns {Array} Returns the array of property names.
+ */
+function arrayLikeKeys(value, inherited) {
+  // Safari 8.1 makes `arguments.callee` enumerable in strict mode.
+  // Safari 9 makes `arguments.length` enumerable in strict mode.
+  var result = (isArray(value) || isArguments(value))
+    ? baseTimes(value.length, String)
+    : [];
+
+  var length = result.length,
+      skipIndexes = !!length;
+
+  for (var key in value) {
+    if ((inherited || hasOwnProperty.call(value, key)) &&
+        !(skipIndexes && (key == 'length' || isIndex(key, length)))) {
+      result.push(key);
+    }
+  }
+  return result;
+}
+
+/**
+ * Gets the index at which the `key` is found in `array` of key-value pairs.
+ *
+ * @private
+ * @param {Array} array The array to inspect.
+ * @param {*} key The key to search for.
+ * @returns {number} Returns the index of the matched value, else `-1`.
+ */
+function assocIndexOf(array, key) {
+  var length = array.length;
+  while (length--) {
+    if (eq(array[length][0], key)) {
+      return length;
+    }
+  }
+  return -1;
+}
+
+/**
+ * The base implementation of `_.get` without support for default values.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @param {Array|string} path The path of the property to get.
+ * @returns {*} Returns the resolved value.
+ */
+function baseGet(object, path) {
+  path = isKey(path, object) ? [path] : castPath(path);
+
+  var index = 0,
+      length = path.length;
+
+  while (object != null && index < length) {
+    object = object[toKey(path[index++])];
+  }
+  return (index && index == length) ? object : undefined;
+}
+
+/**
+ * The base implementation of `getTag`.
+ *
+ * @private
+ * @param {*} value The value to query.
+ * @returns {string} Returns the `toStringTag`.
+ */
+function baseGetTag(value) {
+  return objectToString.call(value);
+}
+
+/**
+ * The base implementation of `_.hasIn` without support for deep paths.
+ *
+ * @private
+ * @param {Object} [object] The object to query.
+ * @param {Array|string} key The key to check.
+ * @returns {boolean} Returns `true` if `key` exists, else `false`.
+ */
+function baseHasIn(object, key) {
+  return object != null && key in Object(object);
+}
+
+/**
+ * The base implementation of `_.isEqual` which supports partial comparisons
+ * and tracks traversed objects.
+ *
+ * @private
+ * @param {*} value The value to compare.
+ * @param {*} other The other value to compare.
+ * @param {Function} [customizer] The function to customize comparisons.
+ * @param {boolean} [bitmask] The bitmask of comparison flags.
+ *  The bitmask may be composed of the following flags:
+ *     1 - Unordered comparison
+ *     2 - Partial comparison
+ * @param {Object} [stack] Tracks traversed `value` and `other` objects.
+ * @returns {boolean} Returns `true` if the values are equivalent, else `false`.
+ */
+function baseIsEqual(value, other, customizer, bitmask, stack) {
+  if (value === other) {
+    return true;
+  }
+  if (value == null || other == null || (!isObject(value) && !isObjectLike(other))) {
+    return value !== value && other !== other;
+  }
+  return baseIsEqualDeep(value, other, baseIsEqual, customizer, bitmask, stack);
+}
+
+/**
+ * A specialized version of `baseIsEqual` for arrays and objects which performs
+ * deep comparisons and tracks traversed objects enabling objects with circular
+ * references to be compared.
+ *
+ * @private
+ * @param {Object} object The object to compare.
+ * @param {Object} other The other object to compare.
+ * @param {Function} equalFunc The function to determine equivalents of values.
+ * @param {Function} [customizer] The function to customize comparisons.
+ * @param {number} [bitmask] The bitmask of comparison flags. See `baseIsEqual`
+ *  for more details.
+ * @param {Object} [stack] Tracks traversed `object` and `other` objects.
+ * @returns {boolean} Returns `true` if the objects are equivalent, else `false`.
+ */
+function baseIsEqualDeep(object, other, equalFunc, customizer, bitmask, stack) {
+  var objIsArr = isArray(object),
+      othIsArr = isArray(other),
+      objTag = arrayTag,
+      othTag = arrayTag;
+
+  if (!objIsArr) {
+    objTag = getTag(object);
+    objTag = objTag == argsTag ? objectTag : objTag;
+  }
+  if (!othIsArr) {
+    othTag = getTag(other);
+    othTag = othTag == argsTag ? objectTag : othTag;
+  }
+  var objIsObj = objTag == objectTag && !isHostObject(object),
+      othIsObj = othTag == objectTag && !isHostObject(other),
+      isSameTag = objTag == othTag;
+
+  if (isSameTag && !objIsObj) {
+    stack || (stack = new Stack);
+    return (objIsArr || isTypedArray(object))
+      ? equalArrays(object, other, equalFunc, customizer, bitmask, stack)
+      : equalByTag(object, other, objTag, equalFunc, customizer, bitmask, stack);
+  }
+  if (!(bitmask & PARTIAL_COMPARE_FLAG)) {
+    var objIsWrapped = objIsObj && hasOwnProperty.call(object, '__wrapped__'),
+        othIsWrapped = othIsObj && hasOwnProperty.call(other, '__wrapped__');
+
+    if (objIsWrapped || othIsWrapped) {
+      var objUnwrapped = objIsWrapped ? object.value() : object,
+          othUnwrapped = othIsWrapped ? other.value() : other;
+
+      stack || (stack = new Stack);
+      return equalFunc(objUnwrapped, othUnwrapped, customizer, bitmask, stack);
+    }
+  }
+  if (!isSameTag) {
+    return false;
+  }
+  stack || (stack = new Stack);
+  return equalObjects(object, other, equalFunc, customizer, bitmask, stack);
+}
+
+/**
+ * The base implementation of `_.isMatch` without support for iteratee shorthands.
+ *
+ * @private
+ * @param {Object} object The object to inspect.
+ * @param {Object} source The object of property values to match.
+ * @param {Array} matchData The property names, values, and compare flags to match.
+ * @param {Function} [customizer] The function to customize comparisons.
+ * @returns {boolean} Returns `true` if `object` is a match, else `false`.
+ */
+function baseIsMatch(object, source, matchData, customizer) {
+  var index = matchData.length,
+      length = index,
+      noCustomizer = !customizer;
+
+  if (object == null) {
+    return !length;
+  }
+  object = Object(object);
+  while (index--) {
+    var data = matchData[index];
+    if ((noCustomizer && data[2])
+          ? data[1] !== object[data[0]]
+          : !(data[0] in object)
+        ) {
+      return false;
+    }
+  }
+  while (++index < length) {
+    data = matchData[index];
+    var key = data[0],
+        objValue = object[key],
+        srcValue = data[1];
+
+    if (noCustomizer && data[2]) {
+      if (objValue === undefined && !(key in object)) {
+        return false;
+      }
+    } else {
+      var stack = new Stack;
+      if (customizer) {
+        var result = customizer(objValue, srcValue, key, object, source, stack);
+      }
+      if (!(result === undefined
+            ? baseIsEqual(srcValue, objValue, customizer, UNORDERED_COMPARE_FLAG | PARTIAL_COMPARE_FLAG, stack)
+            : result
+          )) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * The base implementation of `_.isNative` without bad shim checks.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a native function,
+ *  else `false`.
+ */
+function baseIsNative(value) {
+  if (!isObject(value) || isMasked(value)) {
+    return false;
+  }
+  var pattern = (isFunction(value) || isHostObject(value)) ? reIsNative : reIsHostCtor;
+  return pattern.test(toSource(value));
+}
+
+/**
+ * The base implementation of `_.isTypedArray` without Node.js optimizations.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a typed array, else `false`.
+ */
+function baseIsTypedArray(value) {
+  return isObjectLike(value) &&
+    isLength(value.length) && !!typedArrayTags[objectToString.call(value)];
+}
+
+/**
+ * The base implementation of `_.iteratee`.
+ *
+ * @private
+ * @param {*} [value=_.identity] The value to convert to an iteratee.
+ * @returns {Function} Returns the iteratee.
+ */
+function baseIteratee(value) {
+  // Don't store the `typeof` result in a variable to avoid a JIT bug in Safari 9.
+  // See https://bugs.webkit.org/show_bug.cgi?id=156034 for more details.
+  if (typeof value == 'function') {
+    return value;
+  }
+  if (value == null) {
+    return identity;
+  }
+  if (typeof value == 'object') {
+    return isArray(value)
+      ? baseMatchesProperty(value[0], value[1])
+      : baseMatches(value);
+  }
+  return property(value);
+}
+
+/**
+ * The base implementation of `_.keys` which doesn't treat sparse arrays as dense.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the array of property names.
+ */
+function baseKeys(object) {
+  if (!isPrototype(object)) {
+    return nativeKeys(object);
+  }
+  var result = [];
+  for (var key in Object(object)) {
+    if (hasOwnProperty.call(object, key) && key != 'constructor') {
+      result.push(key);
+    }
+  }
+  return result;
+}
+
+/**
+ * The base implementation of `_.matches` which doesn't clone `source`.
+ *
+ * @private
+ * @param {Object} source The object of property values to match.
+ * @returns {Function} Returns the new spec function.
+ */
+function baseMatches(source) {
+  var matchData = getMatchData(source);
+  if (matchData.length == 1 && matchData[0][2]) {
+    return matchesStrictComparable(matchData[0][0], matchData[0][1]);
+  }
+  return function(object) {
+    return object === source || baseIsMatch(object, source, matchData);
+  };
+}
+
+/**
+ * The base implementation of `_.matchesProperty` which doesn't clone `srcValue`.
+ *
+ * @private
+ * @param {string} path The path of the property to get.
+ * @param {*} srcValue The value to match.
+ * @returns {Function} Returns the new spec function.
+ */
+function baseMatchesProperty(path, srcValue) {
+  if (isKey(path) && isStrictComparable(srcValue)) {
+    return matchesStrictComparable(toKey(path), srcValue);
+  }
+  return function(object) {
+    var objValue = get(object, path);
+    return (objValue === undefined && objValue === srcValue)
+      ? hasIn(object, path)
+      : baseIsEqual(srcValue, objValue, undefined, UNORDERED_COMPARE_FLAG | PARTIAL_COMPARE_FLAG);
+  };
+}
+
+/**
+ * A specialized version of `baseProperty` which supports deep paths.
+ *
+ * @private
+ * @param {Array|string} path The path of the property to get.
+ * @returns {Function} Returns the new accessor function.
+ */
+function basePropertyDeep(path) {
+  return function(object) {
+    return baseGet(object, path);
+  };
+}
+
+/**
+ * The base implementation of `_.pullAt` without support for individual
+ * indexes or capturing the removed elements.
+ *
+ * @private
+ * @param {Array} array The array to modify.
+ * @param {number[]} indexes The indexes of elements to remove.
+ * @returns {Array} Returns `array`.
+ */
+function basePullAt(array, indexes) {
+  var length = array ? indexes.length : 0,
+      lastIndex = length - 1;
+
+  while (length--) {
+    var index = indexes[length];
+    if (length == lastIndex || index !== previous) {
+      var previous = index;
+      if (isIndex(index)) {
+        splice.call(array, index, 1);
+      }
+      else if (!isKey(index, array)) {
+        var path = castPath(index),
+            object = parent(array, path);
+
+        if (object != null) {
+          delete object[toKey(last(path))];
+        }
+      }
+      else {
+        delete array[toKey(index)];
+      }
+    }
+  }
+  return array;
+}
+
+/**
+ * The base implementation of `_.slice` without an iteratee call guard.
+ *
+ * @private
+ * @param {Array} array The array to slice.
+ * @param {number} [start=0] The start position.
+ * @param {number} [end=array.length] The end position.
+ * @returns {Array} Returns the slice of `array`.
+ */
+function baseSlice(array, start, end) {
+  var index = -1,
+      length = array.length;
+
+  if (start < 0) {
+    start = -start > length ? 0 : (length + start);
+  }
+  end = end > length ? length : end;
+  if (end < 0) {
+    end += length;
+  }
+  length = start > end ? 0 : ((end - start) >>> 0);
+  start >>>= 0;
+
+  var result = Array(length);
+  while (++index < length) {
+    result[index] = array[index + start];
+  }
+  return result;
+}
+
+/**
+ * The base implementation of `_.toString` which doesn't convert nullish
+ * values to empty strings.
+ *
+ * @private
+ * @param {*} value The value to process.
+ * @returns {string} Returns the string.
+ */
+function baseToString(value) {
+  // Exit early for strings to avoid a performance hit in some environments.
+  if (typeof value == 'string') {
+    return value;
+  }
+  if (isSymbol(value)) {
+    return symbolToString ? symbolToString.call(value) : '';
+  }
+  var result = (value + '');
+  return (result == '0' && (1 / value) == -INFINITY) ? '-0' : result;
+}
+
+/**
+ * Casts `value` to a path array if it's not one.
+ *
+ * @private
+ * @param {*} value The value to inspect.
+ * @returns {Array} Returns the cast property path array.
+ */
+function castPath(value) {
+  return isArray(value) ? value : stringToPath(value);
+}
+
+/**
+ * A specialized version of `baseIsEqualDeep` for arrays with support for
+ * partial deep comparisons.
+ *
+ * @private
+ * @param {Array} array The array to compare.
+ * @param {Array} other The other array to compare.
+ * @param {Function} equalFunc The function to determine equivalents of values.
+ * @param {Function} customizer The function to customize comparisons.
+ * @param {number} bitmask The bitmask of comparison flags. See `baseIsEqual`
+ *  for more details.
+ * @param {Object} stack Tracks traversed `array` and `other` objects.
+ * @returns {boolean} Returns `true` if the arrays are equivalent, else `false`.
+ */
+function equalArrays(array, other, equalFunc, customizer, bitmask, stack) {
+  var isPartial = bitmask & PARTIAL_COMPARE_FLAG,
+      arrLength = array.length,
+      othLength = other.length;
+
+  if (arrLength != othLength && !(isPartial && othLength > arrLength)) {
+    return false;
+  }
+  // Assume cyclic values are equal.
+  var stacked = stack.get(array);
+  if (stacked && stack.get(other)) {
+    return stacked == other;
+  }
+  var index = -1,
+      result = true,
+      seen = (bitmask & UNORDERED_COMPARE_FLAG) ? new SetCache : undefined;
+
+  stack.set(array, other);
+  stack.set(other, array);
+
+  // Ignore non-index properties.
+  while (++index < arrLength) {
+    var arrValue = array[index],
+        othValue = other[index];
+
+    if (customizer) {
+      var compared = isPartial
+        ? customizer(othValue, arrValue, index, other, array, stack)
+        : customizer(arrValue, othValue, index, array, other, stack);
+    }
+    if (compared !== undefined) {
+      if (compared) {
+        continue;
+      }
+      result = false;
+      break;
+    }
+    // Recursively compare arrays (susceptible to call stack limits).
+    if (seen) {
+      if (!arraySome(other, function(othValue, othIndex) {
+            if (!seen.has(othIndex) &&
+                (arrValue === othValue || equalFunc(arrValue, othValue, customizer, bitmask, stack))) {
+              return seen.add(othIndex);
+            }
+          })) {
+        result = false;
+        break;
+      }
+    } else if (!(
+          arrValue === othValue ||
+            equalFunc(arrValue, othValue, customizer, bitmask, stack)
+        )) {
+      result = false;
+      break;
+    }
+  }
+  stack['delete'](array);
+  stack['delete'](other);
+  return result;
+}
+
+/**
+ * A specialized version of `baseIsEqualDeep` for comparing objects of
+ * the same `toStringTag`.
+ *
+ * **Note:** This function only supports comparing values with tags of
+ * `Boolean`, `Date`, `Error`, `Number`, `RegExp`, or `String`.
+ *
+ * @private
+ * @param {Object} object The object to compare.
+ * @param {Object} other The other object to compare.
+ * @param {string} tag The `toStringTag` of the objects to compare.
+ * @param {Function} equalFunc The function to determine equivalents of values.
+ * @param {Function} customizer The function to customize comparisons.
+ * @param {number} bitmask The bitmask of comparison flags. See `baseIsEqual`
+ *  for more details.
+ * @param {Object} stack Tracks traversed `object` and `other` objects.
+ * @returns {boolean} Returns `true` if the objects are equivalent, else `false`.
+ */
+function equalByTag(object, other, tag, equalFunc, customizer, bitmask, stack) {
+  switch (tag) {
+    case dataViewTag:
+      if ((object.byteLength != other.byteLength) ||
+          (object.byteOffset != other.byteOffset)) {
+        return false;
+      }
+      object = object.buffer;
+      other = other.buffer;
+
+    case arrayBufferTag:
+      if ((object.byteLength != other.byteLength) ||
+          !equalFunc(new Uint8Array(object), new Uint8Array(other))) {
+        return false;
+      }
+      return true;
+
+    case boolTag:
+    case dateTag:
+    case numberTag:
+      // Coerce booleans to `1` or `0` and dates to milliseconds.
+      // Invalid dates are coerced to `NaN`.
+      return eq(+object, +other);
+
+    case errorTag:
+      return object.name == other.name && object.message == other.message;
+
+    case regexpTag:
+    case stringTag:
+      // Coerce regexes to strings and treat strings, primitives and objects,
+      // as equal. See http://www.ecma-international.org/ecma-262/7.0/#sec-regexp.prototype.tostring
+      // for more details.
+      return object == (other + '');
+
+    case mapTag:
+      var convert = mapToArray;
+
+    case setTag:
+      var isPartial = bitmask & PARTIAL_COMPARE_FLAG;
+      convert || (convert = setToArray);
+
+      if (object.size != other.size && !isPartial) {
+        return false;
+      }
+      // Assume cyclic values are equal.
+      var stacked = stack.get(object);
+      if (stacked) {
+        return stacked == other;
+      }
+      bitmask |= UNORDERED_COMPARE_FLAG;
+
+      // Recursively compare objects (susceptible to call stack limits).
+      stack.set(object, other);
+      var result = equalArrays(convert(object), convert(other), equalFunc, customizer, bitmask, stack);
+      stack['delete'](object);
+      return result;
+
+    case symbolTag:
+      if (symbolValueOf) {
+        return symbolValueOf.call(object) == symbolValueOf.call(other);
+      }
+  }
+  return false;
+}
+
+/**
+ * A specialized version of `baseIsEqualDeep` for objects with support for
+ * partial deep comparisons.
+ *
+ * @private
+ * @param {Object} object The object to compare.
+ * @param {Object} other The other object to compare.
+ * @param {Function} equalFunc The function to determine equivalents of values.
+ * @param {Function} customizer The function to customize comparisons.
+ * @param {number} bitmask The bitmask of comparison flags. See `baseIsEqual`
+ *  for more details.
+ * @param {Object} stack Tracks traversed `object` and `other` objects.
+ * @returns {boolean} Returns `true` if the objects are equivalent, else `false`.
+ */
+function equalObjects(object, other, equalFunc, customizer, bitmask, stack) {
+  var isPartial = bitmask & PARTIAL_COMPARE_FLAG,
+      objProps = keys(object),
+      objLength = objProps.length,
+      othProps = keys(other),
+      othLength = othProps.length;
+
+  if (objLength != othLength && !isPartial) {
+    return false;
+  }
+  var index = objLength;
+  while (index--) {
+    var key = objProps[index];
+    if (!(isPartial ? key in other : hasOwnProperty.call(other, key))) {
+      return false;
+    }
+  }
+  // Assume cyclic values are equal.
+  var stacked = stack.get(object);
+  if (stacked && stack.get(other)) {
+    return stacked == other;
+  }
+  var result = true;
+  stack.set(object, other);
+  stack.set(other, object);
+
+  var skipCtor = isPartial;
+  while (++index < objLength) {
+    key = objProps[index];
+    var objValue = object[key],
+        othValue = other[key];
+
+    if (customizer) {
+      var compared = isPartial
+        ? customizer(othValue, objValue, key, other, object, stack)
+        : customizer(objValue, othValue, key, object, other, stack);
+    }
+    // Recursively compare objects (susceptible to call stack limits).
+    if (!(compared === undefined
+          ? (objValue === othValue || equalFunc(objValue, othValue, customizer, bitmask, stack))
+          : compared
+        )) {
+      result = false;
+      break;
+    }
+    skipCtor || (skipCtor = key == 'constructor');
+  }
+  if (result && !skipCtor) {
+    var objCtor = object.constructor,
+        othCtor = other.constructor;
+
+    // Non `Object` object instances with different constructors are not equal.
+    if (objCtor != othCtor &&
+        ('constructor' in object && 'constructor' in other) &&
+        !(typeof objCtor == 'function' && objCtor instanceof objCtor &&
+          typeof othCtor == 'function' && othCtor instanceof othCtor)) {
+      result = false;
+    }
+  }
+  stack['delete'](object);
+  stack['delete'](other);
+  return result;
+}
+
+/**
+ * Gets the data for `map`.
+ *
+ * @private
+ * @param {Object} map The map to query.
+ * @param {string} key The reference key.
+ * @returns {*} Returns the map data.
+ */
+function getMapData(map, key) {
+  var data = map.__data__;
+  return isKeyable(key)
+    ? data[typeof key == 'string' ? 'string' : 'hash']
+    : data.map;
+}
+
+/**
+ * Gets the property names, values, and compare flags of `object`.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the match data of `object`.
+ */
+function getMatchData(object) {
+  var result = keys(object),
+      length = result.length;
+
+  while (length--) {
+    var key = result[length],
+        value = object[key];
+
+    result[length] = [key, value, isStrictComparable(value)];
+  }
+  return result;
+}
+
+/**
+ * Gets the native function at `key` of `object`.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @param {string} key The key of the method to get.
+ * @returns {*} Returns the function if it's native, else `undefined`.
+ */
+function getNative(object, key) {
+  var value = getValue(object, key);
+  return baseIsNative(value) ? value : undefined;
+}
+
+/**
+ * Gets the `toStringTag` of `value`.
+ *
+ * @private
+ * @param {*} value The value to query.
+ * @returns {string} Returns the `toStringTag`.
+ */
+var getTag = baseGetTag;
+
+// Fallback for data views, maps, sets, and weak maps in IE 11,
+// for data views in Edge < 14, and promises in Node.js.
+if ((DataView && getTag(new DataView(new ArrayBuffer(1))) != dataViewTag) ||
+    (Map && getTag(new Map) != mapTag) ||
+    (Promise && getTag(Promise.resolve()) != promiseTag) ||
+    (Set && getTag(new Set) != setTag) ||
+    (WeakMap && getTag(new WeakMap) != weakMapTag)) {
+  getTag = function(value) {
+    var result = objectToString.call(value),
+        Ctor = result == objectTag ? value.constructor : undefined,
+        ctorString = Ctor ? toSource(Ctor) : undefined;
+
+    if (ctorString) {
+      switch (ctorString) {
+        case dataViewCtorString: return dataViewTag;
+        case mapCtorString: return mapTag;
+        case promiseCtorString: return promiseTag;
+        case setCtorString: return setTag;
+        case weakMapCtorString: return weakMapTag;
+      }
+    }
+    return result;
+  };
+}
+
+/**
+ * Checks if `path` exists on `object`.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @param {Array|string} path The path to check.
+ * @param {Function} hasFunc The function to check properties.
+ * @returns {boolean} Returns `true` if `path` exists, else `false`.
+ */
+function hasPath(object, path, hasFunc) {
+  path = isKey(path, object) ? [path] : castPath(path);
+
+  var result,
+      index = -1,
+      length = path.length;
+
+  while (++index < length) {
+    var key = toKey(path[index]);
+    if (!(result = object != null && hasFunc(object, key))) {
+      break;
+    }
+    object = object[key];
+  }
+  if (result) {
+    return result;
+  }
+  var length = object ? object.length : 0;
+  return !!length && isLength(length) && isIndex(key, length) &&
+    (isArray(object) || isArguments(object));
+}
+
+/**
+ * Checks if `value` is a valid array-like index.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @param {number} [length=MAX_SAFE_INTEGER] The upper bounds of a valid index.
+ * @returns {boolean} Returns `true` if `value` is a valid index, else `false`.
+ */
+function isIndex(value, length) {
+  length = length == null ? MAX_SAFE_INTEGER : length;
+  return !!length &&
+    (typeof value == 'number' || reIsUint.test(value)) &&
+    (value > -1 && value % 1 == 0 && value < length);
+}
+
+/**
+ * Checks if `value` is a property name and not a property path.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @param {Object} [object] The object to query keys on.
+ * @returns {boolean} Returns `true` if `value` is a property name, else `false`.
+ */
+function isKey(value, object) {
+  if (isArray(value)) {
+    return false;
+  }
+  var type = typeof value;
+  if (type == 'number' || type == 'symbol' || type == 'boolean' ||
+      value == null || isSymbol(value)) {
+    return true;
+  }
+  return reIsPlainProp.test(value) || !reIsDeepProp.test(value) ||
+    (object != null && value in Object(object));
+}
+
+/**
+ * Checks if `value` is suitable for use as unique object key.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is suitable, else `false`.
+ */
+function isKeyable(value) {
+  var type = typeof value;
+  return (type == 'string' || type == 'number' || type == 'symbol' || type == 'boolean')
+    ? (value !== '__proto__')
+    : (value === null);
+}
+
+/**
+ * Checks if `func` has its source masked.
+ *
+ * @private
+ * @param {Function} func The function to check.
+ * @returns {boolean} Returns `true` if `func` is masked, else `false`.
+ */
+function isMasked(func) {
+  return !!maskSrcKey && (maskSrcKey in func);
+}
+
+/**
+ * Checks if `value` is likely a prototype object.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a prototype, else `false`.
+ */
+function isPrototype(value) {
+  var Ctor = value && value.constructor,
+      proto = (typeof Ctor == 'function' && Ctor.prototype) || objectProto;
+
+  return value === proto;
+}
+
+/**
+ * Checks if `value` is suitable for strict equality comparisons, i.e. `===`.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` if suitable for strict
+ *  equality comparisons, else `false`.
+ */
+function isStrictComparable(value) {
+  return value === value && !isObject(value);
+}
+
+/**
+ * A specialized version of `matchesProperty` for source values suitable
+ * for strict equality comparisons, i.e. `===`.
+ *
+ * @private
+ * @param {string} key The key of the property to get.
+ * @param {*} srcValue The value to match.
+ * @returns {Function} Returns the new spec function.
+ */
+function matchesStrictComparable(key, srcValue) {
+  return function(object) {
+    if (object == null) {
+      return false;
+    }
+    return object[key] === srcValue &&
+      (srcValue !== undefined || (key in Object(object)));
+  };
+}
+
+/**
+ * Gets the parent value at `path` of `object`.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @param {Array} path The path to get the parent value of.
+ * @returns {*} Returns the parent value.
+ */
+function parent(object, path) {
+  return path.length == 1 ? object : baseGet(object, baseSlice(path, 0, -1));
+}
+
+/**
+ * Converts `string` to a property path array.
+ *
+ * @private
+ * @param {string} string The string to convert.
+ * @returns {Array} Returns the property path array.
+ */
+var stringToPath = memoize(function(string) {
+  string = toString(string);
+
+  var result = [];
+  if (reLeadingDot.test(string)) {
+    result.push('');
+  }
+  string.replace(rePropName, function(match, number, quote, string) {
+    result.push(quote ? string.replace(reEscapeChar, '$1') : (number || match));
+  });
+  return result;
+});
+
+/**
+ * Converts `value` to a string key if it's not a string or symbol.
+ *
+ * @private
+ * @param {*} value The value to inspect.
+ * @returns {string|symbol} Returns the key.
+ */
+function toKey(value) {
+  if (typeof value == 'string' || isSymbol(value)) {
+    return value;
+  }
+  var result = (value + '');
+  return (result == '0' && (1 / value) == -INFINITY) ? '-0' : result;
+}
+
+/**
+ * Converts `func` to its source code.
+ *
+ * @private
+ * @param {Function} func The function to process.
+ * @returns {string} Returns the source code.
+ */
+function toSource(func) {
+  if (func != null) {
+    try {
+      return funcToString.call(func);
+    } catch (e) {}
+    try {
+      return (func + '');
+    } catch (e) {}
+  }
+  return '';
+}
+
+/**
+ * Gets the last element of `array`.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Array
+ * @param {Array} array The array to query.
+ * @returns {*} Returns the last element of `array`.
+ * @example
+ *
+ * _.last([1, 2, 3]);
+ * // => 3
+ */
+function last(array) {
+  var length = array ? array.length : 0;
+  return length ? array[length - 1] : undefined;
+}
+
+/**
+ * Removes all elements from `array` that `predicate` returns truthy for
+ * and returns an array of the removed elements. The predicate is invoked
+ * with three arguments: (value, index, array).
+ *
+ * **Note:** Unlike `_.filter`, this method mutates `array`. Use `_.pull`
+ * to pull elements from an array by value.
+ *
+ * @static
+ * @memberOf _
+ * @since 2.0.0
+ * @category Array
+ * @param {Array} array The array to modify.
+ * @param {Function} [predicate=_.identity]
+ *  The function invoked per iteration.
+ * @returns {Array} Returns the new array of removed elements.
+ * @example
+ *
+ * var array = [1, 2, 3, 4];
+ * var evens = _.remove(array, function(n) {
+ *   return n % 2 == 0;
+ * });
+ *
+ * console.log(array);
+ * // => [1, 3]
+ *
+ * console.log(evens);
+ * // => [2, 4]
+ */
+function remove(array, predicate) {
+  var result = [];
+  if (!(array && array.length)) {
+    return result;
+  }
+  var index = -1,
+      indexes = [],
+      length = array.length;
+
+  predicate = baseIteratee(predicate, 3);
+  while (++index < length) {
+    var value = array[index];
+    if (predicate(value, index, array)) {
+      result.push(value);
+      indexes.push(index);
+    }
+  }
+  basePullAt(array, indexes);
+  return result;
+}
+
+/**
+ * Creates a function that memoizes the result of `func`. If `resolver` is
+ * provided, it determines the cache key for storing the result based on the
+ * arguments provided to the memoized function. By default, the first argument
+ * provided to the memoized function is used as the map cache key. The `func`
+ * is invoked with the `this` binding of the memoized function.
+ *
+ * **Note:** The cache is exposed as the `cache` property on the memoized
+ * function. Its creation may be customized by replacing the `_.memoize.Cache`
+ * constructor with one whose instances implement the
+ * [`Map`](http://ecma-international.org/ecma-262/7.0/#sec-properties-of-the-map-prototype-object)
+ * method interface of `delete`, `get`, `has`, and `set`.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Function
+ * @param {Function} func The function to have its output memoized.
+ * @param {Function} [resolver] The function to resolve the cache key.
+ * @returns {Function} Returns the new memoized function.
+ * @example
+ *
+ * var object = { 'a': 1, 'b': 2 };
+ * var other = { 'c': 3, 'd': 4 };
+ *
+ * var values = _.memoize(_.values);
+ * values(object);
+ * // => [1, 2]
+ *
+ * values(other);
+ * // => [3, 4]
+ *
+ * object.a = 2;
+ * values(object);
+ * // => [1, 2]
+ *
+ * // Modify the result cache.
+ * values.cache.set(object, ['a', 'b']);
+ * values(object);
+ * // => ['a', 'b']
+ *
+ * // Replace `_.memoize.Cache`.
+ * _.memoize.Cache = WeakMap;
+ */
+function memoize(func, resolver) {
+  if (typeof func != 'function' || (resolver && typeof resolver != 'function')) {
+    throw new TypeError(FUNC_ERROR_TEXT);
+  }
+  var memoized = function() {
+    var args = arguments,
+        key = resolver ? resolver.apply(this, args) : args[0],
+        cache = memoized.cache;
+
+    if (cache.has(key)) {
+      return cache.get(key);
+    }
+    var result = func.apply(this, args);
+    memoized.cache = cache.set(key, result);
+    return result;
+  };
+  memoized.cache = new (memoize.Cache || MapCache);
+  return memoized;
+}
+
+// Assign cache to `_.memoize`.
+memoize.Cache = MapCache;
+
+/**
+ * Performs a
+ * [`SameValueZero`](http://ecma-international.org/ecma-262/7.0/#sec-samevaluezero)
+ * comparison between two values to determine if they are equivalent.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to compare.
+ * @param {*} other The other value to compare.
+ * @returns {boolean} Returns `true` if the values are equivalent, else `false`.
+ * @example
+ *
+ * var object = { 'a': 1 };
+ * var other = { 'a': 1 };
+ *
+ * _.eq(object, object);
+ * // => true
+ *
+ * _.eq(object, other);
+ * // => false
+ *
+ * _.eq('a', 'a');
+ * // => true
+ *
+ * _.eq('a', Object('a'));
+ * // => false
+ *
+ * _.eq(NaN, NaN);
+ * // => true
+ */
+function eq(value, other) {
+  return value === other || (value !== value && other !== other);
+}
+
+/**
+ * Checks if `value` is likely an `arguments` object.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an `arguments` object,
+ *  else `false`.
+ * @example
+ *
+ * _.isArguments(function() { return arguments; }());
+ * // => true
+ *
+ * _.isArguments([1, 2, 3]);
+ * // => false
+ */
+function isArguments(value) {
+  // Safari 8.1 makes `arguments.callee` enumerable in strict mode.
+  return isArrayLikeObject(value) && hasOwnProperty.call(value, 'callee') &&
+    (!propertyIsEnumerable.call(value, 'callee') || objectToString.call(value) == argsTag);
+}
+
+/**
+ * Checks if `value` is classified as an `Array` object.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an array, else `false`.
+ * @example
+ *
+ * _.isArray([1, 2, 3]);
+ * // => true
+ *
+ * _.isArray(document.body.children);
+ * // => false
+ *
+ * _.isArray('abc');
+ * // => false
+ *
+ * _.isArray(_.noop);
+ * // => false
+ */
+var isArray = Array.isArray;
+
+/**
+ * Checks if `value` is array-like. A value is considered array-like if it's
+ * not a function and has a `value.length` that's an integer greater than or
+ * equal to `0` and less than or equal to `Number.MAX_SAFE_INTEGER`.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is array-like, else `false`.
+ * @example
+ *
+ * _.isArrayLike([1, 2, 3]);
+ * // => true
+ *
+ * _.isArrayLike(document.body.children);
+ * // => true
+ *
+ * _.isArrayLike('abc');
+ * // => true
+ *
+ * _.isArrayLike(_.noop);
+ * // => false
+ */
+function isArrayLike(value) {
+  return value != null && isLength(value.length) && !isFunction(value);
+}
+
+/**
+ * This method is like `_.isArrayLike` except that it also checks if `value`
+ * is an object.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an array-like object,
+ *  else `false`.
+ * @example
+ *
+ * _.isArrayLikeObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isArrayLikeObject(document.body.children);
+ * // => true
+ *
+ * _.isArrayLikeObject('abc');
+ * // => false
+ *
+ * _.isArrayLikeObject(_.noop);
+ * // => false
+ */
+function isArrayLikeObject(value) {
+  return isObjectLike(value) && isArrayLike(value);
+}
+
+/**
+ * Checks if `value` is classified as a `Function` object.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a function, else `false`.
+ * @example
+ *
+ * _.isFunction(_);
+ * // => true
+ *
+ * _.isFunction(/abc/);
+ * // => false
+ */
+function isFunction(value) {
+  // The use of `Object#toString` avoids issues with the `typeof` operator
+  // in Safari 8-9 which returns 'object' for typed array and other constructors.
+  var tag = isObject(value) ? objectToString.call(value) : '';
+  return tag == funcTag || tag == genTag;
+}
+
+/**
+ * Checks if `value` is a valid array-like length.
+ *
+ * **Note:** This method is loosely based on
+ * [`ToLength`](http://ecma-international.org/ecma-262/7.0/#sec-tolength).
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a valid length, else `false`.
+ * @example
+ *
+ * _.isLength(3);
+ * // => true
+ *
+ * _.isLength(Number.MIN_VALUE);
+ * // => false
+ *
+ * _.isLength(Infinity);
+ * // => false
+ *
+ * _.isLength('3');
+ * // => false
+ */
+function isLength(value) {
+  return typeof value == 'number' &&
+    value > -1 && value % 1 == 0 && value <= MAX_SAFE_INTEGER;
+}
+
+/**
+ * Checks if `value` is the
+ * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
+ * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(_.noop);
+ * // => true
+ *
+ * _.isObject(null);
+ * // => false
+ */
+function isObject(value) {
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+/**
+ * Checks if `value` is object-like. A value is object-like if it's not `null`
+ * and has a `typeof` result of "object".
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is object-like, else `false`.
+ * @example
+ *
+ * _.isObjectLike({});
+ * // => true
+ *
+ * _.isObjectLike([1, 2, 3]);
+ * // => true
+ *
+ * _.isObjectLike(_.noop);
+ * // => false
+ *
+ * _.isObjectLike(null);
+ * // => false
+ */
+function isObjectLike(value) {
+  return !!value && typeof value == 'object';
+}
+
+/**
+ * Checks if `value` is classified as a `Symbol` primitive or object.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
+ * @example
+ *
+ * _.isSymbol(Symbol.iterator);
+ * // => true
+ *
+ * _.isSymbol('abc');
+ * // => false
+ */
+function isSymbol(value) {
+  return typeof value == 'symbol' ||
+    (isObjectLike(value) && objectToString.call(value) == symbolTag);
+}
+
+/**
+ * Checks if `value` is classified as a typed array.
+ *
+ * @static
+ * @memberOf _
+ * @since 3.0.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a typed array, else `false`.
+ * @example
+ *
+ * _.isTypedArray(new Uint8Array);
+ * // => true
+ *
+ * _.isTypedArray([]);
+ * // => false
+ */
+var isTypedArray = nodeIsTypedArray ? baseUnary(nodeIsTypedArray) : baseIsTypedArray;
+
+/**
+ * Converts `value` to a string. An empty string is returned for `null`
+ * and `undefined` values. The sign of `-0` is preserved.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to process.
+ * @returns {string} Returns the string.
+ * @example
+ *
+ * _.toString(null);
+ * // => ''
+ *
+ * _.toString(-0);
+ * // => '-0'
+ *
+ * _.toString([1, 2, 3]);
+ * // => '1,2,3'
+ */
+function toString(value) {
+  return value == null ? '' : baseToString(value);
+}
+
+/**
+ * Gets the value at `path` of `object`. If the resolved value is
+ * `undefined`, the `defaultValue` is returned in its place.
+ *
+ * @static
+ * @memberOf _
+ * @since 3.7.0
+ * @category Object
+ * @param {Object} object The object to query.
+ * @param {Array|string} path The path of the property to get.
+ * @param {*} [defaultValue] The value returned for `undefined` resolved values.
+ * @returns {*} Returns the resolved value.
+ * @example
+ *
+ * var object = { 'a': [{ 'b': { 'c': 3 } }] };
+ *
+ * _.get(object, 'a[0].b.c');
+ * // => 3
+ *
+ * _.get(object, ['a', '0', 'b', 'c']);
+ * // => 3
+ *
+ * _.get(object, 'a.b.c', 'default');
+ * // => 'default'
+ */
+function get(object, path, defaultValue) {
+  var result = object == null ? undefined : baseGet(object, path);
+  return result === undefined ? defaultValue : result;
+}
+
+/**
+ * Checks if `path` is a direct or inherited property of `object`.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Object
+ * @param {Object} object The object to query.
+ * @param {Array|string} path The path to check.
+ * @returns {boolean} Returns `true` if `path` exists, else `false`.
+ * @example
+ *
+ * var object = _.create({ 'a': _.create({ 'b': 2 }) });
+ *
+ * _.hasIn(object, 'a');
+ * // => true
+ *
+ * _.hasIn(object, 'a.b');
+ * // => true
+ *
+ * _.hasIn(object, ['a', 'b']);
+ * // => true
+ *
+ * _.hasIn(object, 'b');
+ * // => false
+ */
+function hasIn(object, path) {
+  return object != null && hasPath(object, path, baseHasIn);
+}
+
+/**
+ * Creates an array of the own enumerable property names of `object`.
+ *
+ * **Note:** Non-object values are coerced to objects. See the
+ * [ES spec](http://ecma-international.org/ecma-262/7.0/#sec-object.keys)
+ * for more details.
+ *
+ * @static
+ * @since 0.1.0
+ * @memberOf _
+ * @category Object
+ * @param {Object} object The object to query.
+ * @returns {Array} Returns the array of property names.
+ * @example
+ *
+ * function Foo() {
+ *   this.a = 1;
+ *   this.b = 2;
+ * }
+ *
+ * Foo.prototype.c = 3;
+ *
+ * _.keys(new Foo);
+ * // => ['a', 'b'] (iteration order is not guaranteed)
+ *
+ * _.keys('hi');
+ * // => ['0', '1']
+ */
+function keys(object) {
+  return isArrayLike(object) ? arrayLikeKeys(object) : baseKeys(object);
+}
+
+/**
+ * This method returns the first argument it receives.
+ *
+ * @static
+ * @since 0.1.0
+ * @memberOf _
+ * @category Util
+ * @param {*} value Any value.
+ * @returns {*} Returns `value`.
+ * @example
+ *
+ * var object = { 'a': 1 };
+ *
+ * console.log(_.identity(object) === object);
+ * // => true
+ */
+function identity(value) {
+  return value;
+}
+
+/**
+ * Creates a function that returns the value at `path` of a given object.
+ *
+ * @static
+ * @memberOf _
+ * @since 2.4.0
+ * @category Util
+ * @param {Array|string} path The path of the property to get.
+ * @returns {Function} Returns the new accessor function.
+ * @example
+ *
+ * var objects = [
+ *   { 'a': { 'b': 2 } },
+ *   { 'a': { 'b': 1 } }
+ * ];
+ *
+ * _.map(objects, _.property('a.b'));
+ * // => [2, 1]
+ *
+ * _.map(_.sortBy(objects, _.property(['a', 'b'])), 'a.b');
+ * // => [1, 2]
+ */
+function property(path) {
+  return isKey(path) ? baseProperty(toKey(path)) : basePropertyDeep(path);
+}
+
+module.exports = remove;
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],398:[function(require,module,exports){
+(function (global){
+/**
+ * lodash (Custom Build) <https://lodash.com/>
+ * Build: `lodash modularize exports="npm" -o ./`
+ * Copyright jQuery Foundation and other contributors <https://jquery.org/>
+ * Released under MIT license <https://lodash.com/license>
+ * Based on Underscore.js 1.8.3 <http://underscorejs.org/LICENSE>
+ * Copyright Jeremy Ashkenas, DocumentCloud and Investigative Reporters & Editors
+ */
+
+/** Used as the size to enable large array optimizations. */
+var LARGE_ARRAY_SIZE = 200;
+
+/** Used to stand-in for `undefined` hash values. */
+var HASH_UNDEFINED = '__lodash_hash_undefined__';
+
+/** Used as references for various `Number` constants. */
+var INFINITY = 1 / 0;
+
+/** `Object#toString` result references. */
+var funcTag = '[object Function]',
+    genTag = '[object GeneratorFunction]';
+
+/**
+ * Used to match `RegExp`
+ * [syntax characters](http://ecma-international.org/ecma-262/7.0/#sec-patterns).
+ */
+var reRegExpChar = /[\\^$.*+?()[\]{}|]/g;
+
+/** Used to detect host constructors (Safari). */
+var reIsHostCtor = /^\[object .+?Constructor\]$/;
+
+/** Detect free variable `global` from Node.js. */
+var freeGlobal = typeof global == 'object' && global && global.Object === Object && global;
+
+/** Detect free variable `self`. */
+var freeSelf = typeof self == 'object' && self && self.Object === Object && self;
+
+/** Used as a reference to the global object. */
+var root = freeGlobal || freeSelf || Function('return this')();
+
+/**
+ * A specialized version of `_.includes` for arrays without support for
+ * specifying an index to search from.
+ *
+ * @private
+ * @param {Array} [array] The array to inspect.
+ * @param {*} target The value to search for.
+ * @returns {boolean} Returns `true` if `target` is found, else `false`.
+ */
+function arrayIncludes(array, value) {
+  var length = array ? array.length : 0;
+  return !!length && baseIndexOf(array, value, 0) > -1;
+}
+
+/**
+ * This function is like `arrayIncludes` except that it accepts a comparator.
+ *
+ * @private
+ * @param {Array} [array] The array to inspect.
+ * @param {*} target The value to search for.
+ * @param {Function} comparator The comparator invoked per element.
+ * @returns {boolean} Returns `true` if `target` is found, else `false`.
+ */
+function arrayIncludesWith(array, value, comparator) {
+  var index = -1,
+      length = array ? array.length : 0;
+
+  while (++index < length) {
+    if (comparator(value, array[index])) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * The base implementation of `_.findIndex` and `_.findLastIndex` without
+ * support for iteratee shorthands.
+ *
+ * @private
+ * @param {Array} array The array to inspect.
+ * @param {Function} predicate The function invoked per iteration.
+ * @param {number} fromIndex The index to search from.
+ * @param {boolean} [fromRight] Specify iterating from right to left.
+ * @returns {number} Returns the index of the matched value, else `-1`.
+ */
+function baseFindIndex(array, predicate, fromIndex, fromRight) {
+  var length = array.length,
+      index = fromIndex + (fromRight ? 1 : -1);
+
+  while ((fromRight ? index-- : ++index < length)) {
+    if (predicate(array[index], index, array)) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+/**
+ * The base implementation of `_.indexOf` without `fromIndex` bounds checks.
+ *
+ * @private
+ * @param {Array} array The array to inspect.
+ * @param {*} value The value to search for.
+ * @param {number} fromIndex The index to search from.
+ * @returns {number} Returns the index of the matched value, else `-1`.
+ */
+function baseIndexOf(array, value, fromIndex) {
+  if (value !== value) {
+    return baseFindIndex(array, baseIsNaN, fromIndex);
+  }
+  var index = fromIndex - 1,
+      length = array.length;
+
+  while (++index < length) {
+    if (array[index] === value) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+/**
+ * The base implementation of `_.isNaN` without support for number objects.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is `NaN`, else `false`.
+ */
+function baseIsNaN(value) {
+  return value !== value;
+}
+
+/**
+ * Checks if a cache value for `key` exists.
+ *
+ * @private
+ * @param {Object} cache The cache to query.
+ * @param {string} key The key of the entry to check.
+ * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
+ */
+function cacheHas(cache, key) {
+  return cache.has(key);
+}
+
+/**
+ * Gets the value at `key` of `object`.
+ *
+ * @private
+ * @param {Object} [object] The object to query.
+ * @param {string} key The key of the property to get.
+ * @returns {*} Returns the property value.
+ */
+function getValue(object, key) {
+  return object == null ? undefined : object[key];
+}
+
+/**
+ * Checks if `value` is a host object in IE < 9.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a host object, else `false`.
+ */
+function isHostObject(value) {
+  // Many host objects are `Object` objects that can coerce to strings
+  // despite having improperly defined `toString` methods.
+  var result = false;
+  if (value != null && typeof value.toString != 'function') {
+    try {
+      result = !!(value + '');
+    } catch (e) {}
+  }
+  return result;
+}
+
+/**
+ * Converts `set` to an array of its values.
+ *
+ * @private
+ * @param {Object} set The set to convert.
+ * @returns {Array} Returns the values.
+ */
+function setToArray(set) {
+  var index = -1,
+      result = Array(set.size);
+
+  set.forEach(function(value) {
+    result[++index] = value;
+  });
+  return result;
+}
+
+/** Used for built-in method references. */
+var arrayProto = Array.prototype,
+    funcProto = Function.prototype,
+    objectProto = Object.prototype;
+
+/** Used to detect overreaching core-js shims. */
+var coreJsData = root['__core-js_shared__'];
+
+/** Used to detect methods masquerading as native. */
+var maskSrcKey = (function() {
+  var uid = /[^.]+$/.exec(coreJsData && coreJsData.keys && coreJsData.keys.IE_PROTO || '');
+  return uid ? ('Symbol(src)_1.' + uid) : '';
+}());
+
+/** Used to resolve the decompiled source of functions. */
+var funcToString = funcProto.toString;
+
+/** Used to check objects for own properties. */
+var hasOwnProperty = objectProto.hasOwnProperty;
+
+/**
+ * Used to resolve the
+ * [`toStringTag`](http://ecma-international.org/ecma-262/7.0/#sec-object.prototype.tostring)
+ * of values.
+ */
+var objectToString = objectProto.toString;
+
+/** Used to detect if a method is native. */
+var reIsNative = RegExp('^' +
+  funcToString.call(hasOwnProperty).replace(reRegExpChar, '\\$&')
+  .replace(/hasOwnProperty|(function).*?(?=\\\()| for .+?(?=\\\])/g, '$1.*?') + '$'
+);
+
+/** Built-in value references. */
+var splice = arrayProto.splice;
+
+/* Built-in method references that are verified to be native. */
+var Map = getNative(root, 'Map'),
+    Set = getNative(root, 'Set'),
+    nativeCreate = getNative(Object, 'create');
+
+/**
+ * Creates a hash object.
+ *
+ * @private
+ * @constructor
+ * @param {Array} [entries] The key-value pairs to cache.
+ */
+function Hash(entries) {
+  var index = -1,
+      length = entries ? entries.length : 0;
+
+  this.clear();
+  while (++index < length) {
+    var entry = entries[index];
+    this.set(entry[0], entry[1]);
+  }
+}
+
+/**
+ * Removes all key-value entries from the hash.
+ *
+ * @private
+ * @name clear
+ * @memberOf Hash
+ */
+function hashClear() {
+  this.__data__ = nativeCreate ? nativeCreate(null) : {};
+}
+
+/**
+ * Removes `key` and its value from the hash.
+ *
+ * @private
+ * @name delete
+ * @memberOf Hash
+ * @param {Object} hash The hash to modify.
+ * @param {string} key The key of the value to remove.
+ * @returns {boolean} Returns `true` if the entry was removed, else `false`.
+ */
+function hashDelete(key) {
+  return this.has(key) && delete this.__data__[key];
+}
+
+/**
+ * Gets the hash value for `key`.
+ *
+ * @private
+ * @name get
+ * @memberOf Hash
+ * @param {string} key The key of the value to get.
+ * @returns {*} Returns the entry value.
+ */
+function hashGet(key) {
+  var data = this.__data__;
+  if (nativeCreate) {
+    var result = data[key];
+    return result === HASH_UNDEFINED ? undefined : result;
+  }
+  return hasOwnProperty.call(data, key) ? data[key] : undefined;
+}
+
+/**
+ * Checks if a hash value for `key` exists.
+ *
+ * @private
+ * @name has
+ * @memberOf Hash
+ * @param {string} key The key of the entry to check.
+ * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
+ */
+function hashHas(key) {
+  var data = this.__data__;
+  return nativeCreate ? data[key] !== undefined : hasOwnProperty.call(data, key);
+}
+
+/**
+ * Sets the hash `key` to `value`.
+ *
+ * @private
+ * @name set
+ * @memberOf Hash
+ * @param {string} key The key of the value to set.
+ * @param {*} value The value to set.
+ * @returns {Object} Returns the hash instance.
+ */
+function hashSet(key, value) {
+  var data = this.__data__;
+  data[key] = (nativeCreate && value === undefined) ? HASH_UNDEFINED : value;
+  return this;
+}
+
+// Add methods to `Hash`.
+Hash.prototype.clear = hashClear;
+Hash.prototype['delete'] = hashDelete;
+Hash.prototype.get = hashGet;
+Hash.prototype.has = hashHas;
+Hash.prototype.set = hashSet;
+
+/**
+ * Creates an list cache object.
+ *
+ * @private
+ * @constructor
+ * @param {Array} [entries] The key-value pairs to cache.
+ */
+function ListCache(entries) {
+  var index = -1,
+      length = entries ? entries.length : 0;
+
+  this.clear();
+  while (++index < length) {
+    var entry = entries[index];
+    this.set(entry[0], entry[1]);
+  }
+}
+
+/**
+ * Removes all key-value entries from the list cache.
+ *
+ * @private
+ * @name clear
+ * @memberOf ListCache
+ */
+function listCacheClear() {
+  this.__data__ = [];
+}
+
+/**
+ * Removes `key` and its value from the list cache.
+ *
+ * @private
+ * @name delete
+ * @memberOf ListCache
+ * @param {string} key The key of the value to remove.
+ * @returns {boolean} Returns `true` if the entry was removed, else `false`.
+ */
+function listCacheDelete(key) {
+  var data = this.__data__,
+      index = assocIndexOf(data, key);
+
+  if (index < 0) {
+    return false;
+  }
+  var lastIndex = data.length - 1;
+  if (index == lastIndex) {
+    data.pop();
+  } else {
+    splice.call(data, index, 1);
+  }
+  return true;
+}
+
+/**
+ * Gets the list cache value for `key`.
+ *
+ * @private
+ * @name get
+ * @memberOf ListCache
+ * @param {string} key The key of the value to get.
+ * @returns {*} Returns the entry value.
+ */
+function listCacheGet(key) {
+  var data = this.__data__,
+      index = assocIndexOf(data, key);
+
+  return index < 0 ? undefined : data[index][1];
+}
+
+/**
+ * Checks if a list cache value for `key` exists.
+ *
+ * @private
+ * @name has
+ * @memberOf ListCache
+ * @param {string} key The key of the entry to check.
+ * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
+ */
+function listCacheHas(key) {
+  return assocIndexOf(this.__data__, key) > -1;
+}
+
+/**
+ * Sets the list cache `key` to `value`.
+ *
+ * @private
+ * @name set
+ * @memberOf ListCache
+ * @param {string} key The key of the value to set.
+ * @param {*} value The value to set.
+ * @returns {Object} Returns the list cache instance.
+ */
+function listCacheSet(key, value) {
+  var data = this.__data__,
+      index = assocIndexOf(data, key);
+
+  if (index < 0) {
+    data.push([key, value]);
+  } else {
+    data[index][1] = value;
+  }
+  return this;
+}
+
+// Add methods to `ListCache`.
+ListCache.prototype.clear = listCacheClear;
+ListCache.prototype['delete'] = listCacheDelete;
+ListCache.prototype.get = listCacheGet;
+ListCache.prototype.has = listCacheHas;
+ListCache.prototype.set = listCacheSet;
+
+/**
+ * Creates a map cache object to store key-value pairs.
+ *
+ * @private
+ * @constructor
+ * @param {Array} [entries] The key-value pairs to cache.
+ */
+function MapCache(entries) {
+  var index = -1,
+      length = entries ? entries.length : 0;
+
+  this.clear();
+  while (++index < length) {
+    var entry = entries[index];
+    this.set(entry[0], entry[1]);
+  }
+}
+
+/**
+ * Removes all key-value entries from the map.
+ *
+ * @private
+ * @name clear
+ * @memberOf MapCache
+ */
+function mapCacheClear() {
+  this.__data__ = {
+    'hash': new Hash,
+    'map': new (Map || ListCache),
+    'string': new Hash
+  };
+}
+
+/**
+ * Removes `key` and its value from the map.
+ *
+ * @private
+ * @name delete
+ * @memberOf MapCache
+ * @param {string} key The key of the value to remove.
+ * @returns {boolean} Returns `true` if the entry was removed, else `false`.
+ */
+function mapCacheDelete(key) {
+  return getMapData(this, key)['delete'](key);
+}
+
+/**
+ * Gets the map value for `key`.
+ *
+ * @private
+ * @name get
+ * @memberOf MapCache
+ * @param {string} key The key of the value to get.
+ * @returns {*} Returns the entry value.
+ */
+function mapCacheGet(key) {
+  return getMapData(this, key).get(key);
+}
+
+/**
+ * Checks if a map value for `key` exists.
+ *
+ * @private
+ * @name has
+ * @memberOf MapCache
+ * @param {string} key The key of the entry to check.
+ * @returns {boolean} Returns `true` if an entry for `key` exists, else `false`.
+ */
+function mapCacheHas(key) {
+  return getMapData(this, key).has(key);
+}
+
+/**
+ * Sets the map `key` to `value`.
+ *
+ * @private
+ * @name set
+ * @memberOf MapCache
+ * @param {string} key The key of the value to set.
+ * @param {*} value The value to set.
+ * @returns {Object} Returns the map cache instance.
+ */
+function mapCacheSet(key, value) {
+  getMapData(this, key).set(key, value);
+  return this;
+}
+
+// Add methods to `MapCache`.
+MapCache.prototype.clear = mapCacheClear;
+MapCache.prototype['delete'] = mapCacheDelete;
+MapCache.prototype.get = mapCacheGet;
+MapCache.prototype.has = mapCacheHas;
+MapCache.prototype.set = mapCacheSet;
+
+/**
+ *
+ * Creates an array cache object to store unique values.
+ *
+ * @private
+ * @constructor
+ * @param {Array} [values] The values to cache.
+ */
+function SetCache(values) {
+  var index = -1,
+      length = values ? values.length : 0;
+
+  this.__data__ = new MapCache;
+  while (++index < length) {
+    this.add(values[index]);
+  }
+}
+
+/**
+ * Adds `value` to the array cache.
+ *
+ * @private
+ * @name add
+ * @memberOf SetCache
+ * @alias push
+ * @param {*} value The value to cache.
+ * @returns {Object} Returns the cache instance.
+ */
+function setCacheAdd(value) {
+  this.__data__.set(value, HASH_UNDEFINED);
+  return this;
+}
+
+/**
+ * Checks if `value` is in the array cache.
+ *
+ * @private
+ * @name has
+ * @memberOf SetCache
+ * @param {*} value The value to search for.
+ * @returns {number} Returns `true` if `value` is found, else `false`.
+ */
+function setCacheHas(value) {
+  return this.__data__.has(value);
+}
+
+// Add methods to `SetCache`.
+SetCache.prototype.add = SetCache.prototype.push = setCacheAdd;
+SetCache.prototype.has = setCacheHas;
+
+/**
+ * Gets the index at which the `key` is found in `array` of key-value pairs.
+ *
+ * @private
+ * @param {Array} array The array to inspect.
+ * @param {*} key The key to search for.
+ * @returns {number} Returns the index of the matched value, else `-1`.
+ */
+function assocIndexOf(array, key) {
+  var length = array.length;
+  while (length--) {
+    if (eq(array[length][0], key)) {
+      return length;
+    }
+  }
+  return -1;
+}
+
+/**
+ * The base implementation of `_.isNative` without bad shim checks.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a native function,
+ *  else `false`.
+ */
+function baseIsNative(value) {
+  if (!isObject(value) || isMasked(value)) {
+    return false;
+  }
+  var pattern = (isFunction(value) || isHostObject(value)) ? reIsNative : reIsHostCtor;
+  return pattern.test(toSource(value));
+}
+
+/**
+ * The base implementation of `_.uniqBy` without support for iteratee shorthands.
+ *
+ * @private
+ * @param {Array} array The array to inspect.
+ * @param {Function} [iteratee] The iteratee invoked per element.
+ * @param {Function} [comparator] The comparator invoked per element.
+ * @returns {Array} Returns the new duplicate free array.
+ */
+function baseUniq(array, iteratee, comparator) {
+  var index = -1,
+      includes = arrayIncludes,
+      length = array.length,
+      isCommon = true,
+      result = [],
+      seen = result;
+
+  if (comparator) {
+    isCommon = false;
+    includes = arrayIncludesWith;
+  }
+  else if (length >= LARGE_ARRAY_SIZE) {
+    var set = iteratee ? null : createSet(array);
+    if (set) {
+      return setToArray(set);
+    }
+    isCommon = false;
+    includes = cacheHas;
+    seen = new SetCache;
+  }
+  else {
+    seen = iteratee ? [] : result;
+  }
+  outer:
+  while (++index < length) {
+    var value = array[index],
+        computed = iteratee ? iteratee(value) : value;
+
+    value = (comparator || value !== 0) ? value : 0;
+    if (isCommon && computed === computed) {
+      var seenIndex = seen.length;
+      while (seenIndex--) {
+        if (seen[seenIndex] === computed) {
+          continue outer;
+        }
+      }
+      if (iteratee) {
+        seen.push(computed);
+      }
+      result.push(value);
+    }
+    else if (!includes(seen, computed, comparator)) {
+      if (seen !== result) {
+        seen.push(computed);
+      }
+      result.push(value);
+    }
+  }
+  return result;
+}
+
+/**
+ * Creates a set object of `values`.
+ *
+ * @private
+ * @param {Array} values The values to add to the set.
+ * @returns {Object} Returns the new set.
+ */
+var createSet = !(Set && (1 / setToArray(new Set([,-0]))[1]) == INFINITY) ? noop : function(values) {
+  return new Set(values);
+};
+
+/**
+ * Gets the data for `map`.
+ *
+ * @private
+ * @param {Object} map The map to query.
+ * @param {string} key The reference key.
+ * @returns {*} Returns the map data.
+ */
+function getMapData(map, key) {
+  var data = map.__data__;
+  return isKeyable(key)
+    ? data[typeof key == 'string' ? 'string' : 'hash']
+    : data.map;
+}
+
+/**
+ * Gets the native function at `key` of `object`.
+ *
+ * @private
+ * @param {Object} object The object to query.
+ * @param {string} key The key of the method to get.
+ * @returns {*} Returns the function if it's native, else `undefined`.
+ */
+function getNative(object, key) {
+  var value = getValue(object, key);
+  return baseIsNative(value) ? value : undefined;
+}
+
+/**
+ * Checks if `value` is suitable for use as unique object key.
+ *
+ * @private
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is suitable, else `false`.
+ */
+function isKeyable(value) {
+  var type = typeof value;
+  return (type == 'string' || type == 'number' || type == 'symbol' || type == 'boolean')
+    ? (value !== '__proto__')
+    : (value === null);
+}
+
+/**
+ * Checks if `func` has its source masked.
+ *
+ * @private
+ * @param {Function} func The function to check.
+ * @returns {boolean} Returns `true` if `func` is masked, else `false`.
+ */
+function isMasked(func) {
+  return !!maskSrcKey && (maskSrcKey in func);
+}
+
+/**
+ * Converts `func` to its source code.
+ *
+ * @private
+ * @param {Function} func The function to process.
+ * @returns {string} Returns the source code.
+ */
+function toSource(func) {
+  if (func != null) {
+    try {
+      return funcToString.call(func);
+    } catch (e) {}
+    try {
+      return (func + '');
+    } catch (e) {}
+  }
+  return '';
+}
+
+/**
+ * Creates a duplicate-free version of an array, using
+ * [`SameValueZero`](http://ecma-international.org/ecma-262/7.0/#sec-samevaluezero)
+ * for equality comparisons, in which only the first occurrence of each
+ * element is kept.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Array
+ * @param {Array} array The array to inspect.
+ * @returns {Array} Returns the new duplicate free array.
+ * @example
+ *
+ * _.uniq([2, 1, 2]);
+ * // => [2, 1]
+ */
+function uniq(array) {
+  return (array && array.length)
+    ? baseUniq(array)
+    : [];
+}
+
+/**
+ * Performs a
+ * [`SameValueZero`](http://ecma-international.org/ecma-262/7.0/#sec-samevaluezero)
+ * comparison between two values to determine if they are equivalent.
+ *
+ * @static
+ * @memberOf _
+ * @since 4.0.0
+ * @category Lang
+ * @param {*} value The value to compare.
+ * @param {*} other The other value to compare.
+ * @returns {boolean} Returns `true` if the values are equivalent, else `false`.
+ * @example
+ *
+ * var object = { 'a': 1 };
+ * var other = { 'a': 1 };
+ *
+ * _.eq(object, object);
+ * // => true
+ *
+ * _.eq(object, other);
+ * // => false
+ *
+ * _.eq('a', 'a');
+ * // => true
+ *
+ * _.eq('a', Object('a'));
+ * // => false
+ *
+ * _.eq(NaN, NaN);
+ * // => true
+ */
+function eq(value, other) {
+  return value === other || (value !== value && other !== other);
+}
+
+/**
+ * Checks if `value` is classified as a `Function` object.
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is a function, else `false`.
+ * @example
+ *
+ * _.isFunction(_);
+ * // => true
+ *
+ * _.isFunction(/abc/);
+ * // => false
+ */
+function isFunction(value) {
+  // The use of `Object#toString` avoids issues with the `typeof` operator
+  // in Safari 8-9 which returns 'object' for typed array and other constructors.
+  var tag = isObject(value) ? objectToString.call(value) : '';
+  return tag == funcTag || tag == genTag;
+}
+
+/**
+ * Checks if `value` is the
+ * [language type](http://www.ecma-international.org/ecma-262/7.0/#sec-ecmascript-language-types)
+ * of `Object`. (e.g. arrays, functions, objects, regexes, `new Number(0)`, and `new String('')`)
+ *
+ * @static
+ * @memberOf _
+ * @since 0.1.0
+ * @category Lang
+ * @param {*} value The value to check.
+ * @returns {boolean} Returns `true` if `value` is an object, else `false`.
+ * @example
+ *
+ * _.isObject({});
+ * // => true
+ *
+ * _.isObject([1, 2, 3]);
+ * // => true
+ *
+ * _.isObject(_.noop);
+ * // => true
+ *
+ * _.isObject(null);
+ * // => false
+ */
+function isObject(value) {
+  var type = typeof value;
+  return !!value && (type == 'object' || type == 'function');
+}
+
+/**
+ * This method returns `undefined`.
+ *
+ * @static
+ * @memberOf _
+ * @since 2.3.0
+ * @category Util
+ * @example
+ *
+ * _.times(2, _.noop);
+ * // => [undefined, undefined]
+ */
+function noop() {
+  // No operation performed.
+}
+
+module.exports = uniq;
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{}],399:[function(require,module,exports){
 (function (global){
 /**
  * marked - a markdown parser
@@ -19764,7 +25092,7 @@ if (typeof module !== 'undefined' && typeof exports === 'object') {
 }());
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],398:[function(require,module,exports){
+},{}],400:[function(require,module,exports){
 //! moment.js
 //! version : 2.20.1
 //! authors : Tim Wood, Iskren Chernev, Moment.js contributors
@@ -24301,7 +29629,7 @@ return hooks;
 
 })));
 
-},{}],399:[function(require,module,exports){
+},{}],401:[function(require,module,exports){
 /*
 object-assign
 (c) Sindre Sorhus
@@ -24393,7 +29721,7 @@ module.exports = shouldUseNative() ? Object.assign : function (target, source) {
 	return to;
 };
 
-},{}],400:[function(require,module,exports){
+},{}],402:[function(require,module,exports){
 // shim for using process in browser
 var process = module.exports = {};
 
@@ -24579,7 +29907,7 @@ process.chdir = function (dir) {
 };
 process.umask = function() { return 0; };
 
-},{}],401:[function(require,module,exports){
+},{}],403:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -24642,7 +29970,7 @@ function checkPropTypes(typeSpecs, values, location, componentName, getStack) {
 module.exports = checkPropTypes;
 
 }).call(this,require('_process'))
-},{"./lib/ReactPropTypesSecret":406,"_process":400,"fbjs/lib/invariant":353,"fbjs/lib/warning":360}],402:[function(require,module,exports){
+},{"./lib/ReactPropTypesSecret":408,"_process":402,"fbjs/lib/invariant":354,"fbjs/lib/warning":361}],404:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -24663,7 +29991,7 @@ module.exports = function(isValidElement) {
   return factory(isValidElement, throwOnDirectAccess);
 };
 
-},{"./factoryWithTypeCheckers":404}],403:[function(require,module,exports){
+},{"./factoryWithTypeCheckers":406}],405:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -24723,7 +30051,7 @@ module.exports = function() {
   return ReactPropTypes;
 };
 
-},{"./lib/ReactPropTypesSecret":406,"fbjs/lib/emptyFunction":345,"fbjs/lib/invariant":353}],404:[function(require,module,exports){
+},{"./lib/ReactPropTypesSecret":408,"fbjs/lib/emptyFunction":346,"fbjs/lib/invariant":354}],406:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -25269,7 +30597,7 @@ module.exports = function(isValidElement, throwOnDirectAccess) {
 };
 
 }).call(this,require('_process'))
-},{"./checkPropTypes":401,"./lib/ReactPropTypesSecret":406,"_process":400,"fbjs/lib/emptyFunction":345,"fbjs/lib/invariant":353,"fbjs/lib/warning":360,"object-assign":399}],405:[function(require,module,exports){
+},{"./checkPropTypes":403,"./lib/ReactPropTypesSecret":408,"_process":402,"fbjs/lib/emptyFunction":346,"fbjs/lib/invariant":354,"fbjs/lib/warning":361,"object-assign":401}],407:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -25301,7 +30629,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 }).call(this,require('_process'))
-},{"./factoryWithThrowingShims":403,"./factoryWithTypeCheckers":404,"_process":400}],406:[function(require,module,exports){
+},{"./factoryWithThrowingShims":405,"./factoryWithTypeCheckers":406,"_process":402}],408:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -25315,12 +30643,12 @@ var ReactPropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
 
 module.exports = ReactPropTypesSecret;
 
-},{}],407:[function(require,module,exports){
+},{}],409:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib/ReactDOM');
 
-},{"./lib/ReactDOM":437}],408:[function(require,module,exports){
+},{"./lib/ReactDOM":439}],410:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -25392,7 +30720,7 @@ var ARIADOMPropertyConfig = {
 };
 
 module.exports = ARIADOMPropertyConfig;
-},{}],409:[function(require,module,exports){
+},{}],411:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -25414,7 +30742,7 @@ var AutoFocusUtils = {
 };
 
 module.exports = AutoFocusUtils;
-},{"./ReactDOMComponentTree":440,"fbjs/lib/focusNode":347}],410:[function(require,module,exports){
+},{"./ReactDOMComponentTree":442,"fbjs/lib/focusNode":348}],412:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -25796,7 +31124,7 @@ var BeforeInputEventPlugin = {
 };
 
 module.exports = BeforeInputEventPlugin;
-},{"./EventPropagators":426,"./FallbackCompositionState":427,"./SyntheticCompositionEvent":491,"./SyntheticInputEvent":495,"fbjs/lib/ExecutionEnvironment":339}],411:[function(require,module,exports){
+},{"./EventPropagators":428,"./FallbackCompositionState":429,"./SyntheticCompositionEvent":493,"./SyntheticInputEvent":497,"fbjs/lib/ExecutionEnvironment":340}],413:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -25949,7 +31277,7 @@ var CSSProperty = {
 };
 
 module.exports = CSSProperty;
-},{}],412:[function(require,module,exports){
+},{}],414:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -26164,7 +31492,7 @@ var CSSPropertyOperations = {
 
 module.exports = CSSPropertyOperations;
 }).call(this,require('_process'))
-},{"./CSSProperty":411,"./ReactInstrumentation":469,"./dangerousStyleValue":508,"_process":400,"fbjs/lib/ExecutionEnvironment":339,"fbjs/lib/camelizeStyleName":341,"fbjs/lib/hyphenateStyleName":352,"fbjs/lib/memoizeStringOnly":356,"fbjs/lib/warning":360}],413:[function(require,module,exports){
+},{"./CSSProperty":413,"./ReactInstrumentation":471,"./dangerousStyleValue":510,"_process":402,"fbjs/lib/ExecutionEnvironment":340,"fbjs/lib/camelizeStyleName":342,"fbjs/lib/hyphenateStyleName":353,"fbjs/lib/memoizeStringOnly":357,"fbjs/lib/warning":361}],415:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -26283,7 +31611,7 @@ var CallbackQueue = function () {
 
 module.exports = PooledClass.addPoolingTo(CallbackQueue);
 }).call(this,require('_process'))
-},{"./PooledClass":431,"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353}],414:[function(require,module,exports){
+},{"./PooledClass":433,"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354}],416:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -26593,7 +31921,7 @@ var ChangeEventPlugin = {
 };
 
 module.exports = ChangeEventPlugin;
-},{"./EventPluginHub":423,"./EventPropagators":426,"./ReactDOMComponentTree":440,"./ReactUpdates":484,"./SyntheticEvent":493,"./getEventTarget":516,"./inputValueTracking":522,"./isEventSupported":524,"./isTextInputElement":525,"fbjs/lib/ExecutionEnvironment":339}],415:[function(require,module,exports){
+},{"./EventPluginHub":425,"./EventPropagators":428,"./ReactDOMComponentTree":442,"./ReactUpdates":486,"./SyntheticEvent":495,"./getEventTarget":518,"./inputValueTracking":524,"./isEventSupported":526,"./isTextInputElement":527,"fbjs/lib/ExecutionEnvironment":340}],417:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -26819,7 +32147,7 @@ var DOMChildrenOperations = {
 
 module.exports = DOMChildrenOperations;
 }).call(this,require('_process'))
-},{"./DOMLazyTree":416,"./Danger":420,"./ReactDOMComponentTree":440,"./ReactInstrumentation":469,"./createMicrosoftUnsafeLocalFunction":507,"./setInnerHTML":529,"./setTextContent":530,"_process":400}],416:[function(require,module,exports){
+},{"./DOMLazyTree":418,"./Danger":422,"./ReactDOMComponentTree":442,"./ReactInstrumentation":471,"./createMicrosoftUnsafeLocalFunction":509,"./setInnerHTML":531,"./setTextContent":532,"_process":402}],418:[function(require,module,exports){
 /**
  * Copyright (c) 2015-present, Facebook, Inc.
  *
@@ -26935,7 +32263,7 @@ DOMLazyTree.queueHTML = queueHTML;
 DOMLazyTree.queueText = queueText;
 
 module.exports = DOMLazyTree;
-},{"./DOMNamespaces":417,"./createMicrosoftUnsafeLocalFunction":507,"./setInnerHTML":529,"./setTextContent":530}],417:[function(require,module,exports){
+},{"./DOMNamespaces":419,"./createMicrosoftUnsafeLocalFunction":509,"./setInnerHTML":531,"./setTextContent":532}],419:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -26953,7 +32281,7 @@ var DOMNamespaces = {
 };
 
 module.exports = DOMNamespaces;
-},{}],418:[function(require,module,exports){
+},{}],420:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -27162,7 +32490,7 @@ var DOMProperty = {
 
 module.exports = DOMProperty;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353}],419:[function(require,module,exports){
+},{"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354}],421:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -27397,7 +32725,7 @@ var DOMPropertyOperations = {
 
 module.exports = DOMPropertyOperations;
 }).call(this,require('_process'))
-},{"./DOMProperty":418,"./ReactDOMComponentTree":440,"./ReactInstrumentation":469,"./quoteAttributeValueForBrowser":526,"_process":400,"fbjs/lib/warning":360}],420:[function(require,module,exports){
+},{"./DOMProperty":420,"./ReactDOMComponentTree":442,"./ReactInstrumentation":471,"./quoteAttributeValueForBrowser":528,"_process":402,"fbjs/lib/warning":361}],422:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -27443,7 +32771,7 @@ var Danger = {
 
 module.exports = Danger;
 }).call(this,require('_process'))
-},{"./DOMLazyTree":416,"./reactProdInvariant":527,"_process":400,"fbjs/lib/ExecutionEnvironment":339,"fbjs/lib/createNodesFromMarkup":344,"fbjs/lib/emptyFunction":345,"fbjs/lib/invariant":353}],421:[function(require,module,exports){
+},{"./DOMLazyTree":418,"./reactProdInvariant":529,"_process":402,"fbjs/lib/ExecutionEnvironment":340,"fbjs/lib/createNodesFromMarkup":345,"fbjs/lib/emptyFunction":346,"fbjs/lib/invariant":354}],423:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -27467,7 +32795,7 @@ module.exports = Danger;
 var DefaultEventPluginOrder = ['ResponderEventPlugin', 'SimpleEventPlugin', 'TapEventPlugin', 'EnterLeaveEventPlugin', 'ChangeEventPlugin', 'SelectEventPlugin', 'BeforeInputEventPlugin'];
 
 module.exports = DefaultEventPluginOrder;
-},{}],422:[function(require,module,exports){
+},{}],424:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -27563,7 +32891,7 @@ var EnterLeaveEventPlugin = {
 };
 
 module.exports = EnterLeaveEventPlugin;
-},{"./EventPropagators":426,"./ReactDOMComponentTree":440,"./SyntheticMouseEvent":497}],423:[function(require,module,exports){
+},{"./EventPropagators":428,"./ReactDOMComponentTree":442,"./SyntheticMouseEvent":499}],425:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -27837,7 +33165,7 @@ var EventPluginHub = {
 
 module.exports = EventPluginHub;
 }).call(this,require('_process'))
-},{"./EventPluginRegistry":424,"./EventPluginUtils":425,"./ReactErrorUtils":460,"./accumulateInto":504,"./forEachAccumulated":512,"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353}],424:[function(require,module,exports){
+},{"./EventPluginRegistry":426,"./EventPluginUtils":427,"./ReactErrorUtils":462,"./accumulateInto":506,"./forEachAccumulated":514,"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354}],426:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -28090,7 +33418,7 @@ var EventPluginRegistry = {
 
 module.exports = EventPluginRegistry;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353}],425:[function(require,module,exports){
+},{"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354}],427:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -28316,7 +33644,7 @@ var EventPluginUtils = {
 
 module.exports = EventPluginUtils;
 }).call(this,require('_process'))
-},{"./ReactErrorUtils":460,"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353,"fbjs/lib/warning":360}],426:[function(require,module,exports){
+},{"./ReactErrorUtils":462,"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354,"fbjs/lib/warning":361}],428:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -28450,7 +33778,7 @@ var EventPropagators = {
 
 module.exports = EventPropagators;
 }).call(this,require('_process'))
-},{"./EventPluginHub":423,"./EventPluginUtils":425,"./accumulateInto":504,"./forEachAccumulated":512,"_process":400,"fbjs/lib/warning":360}],427:[function(require,module,exports){
+},{"./EventPluginHub":425,"./EventPluginUtils":427,"./accumulateInto":506,"./forEachAccumulated":514,"_process":402,"fbjs/lib/warning":361}],429:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -28543,7 +33871,7 @@ _assign(FallbackCompositionState.prototype, {
 PooledClass.addPoolingTo(FallbackCompositionState);
 
 module.exports = FallbackCompositionState;
-},{"./PooledClass":431,"./getTextContentAccessor":520,"object-assign":399}],428:[function(require,module,exports){
+},{"./PooledClass":433,"./getTextContentAccessor":522,"object-assign":401}],430:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -28778,7 +34106,7 @@ var HTMLDOMPropertyConfig = {
 };
 
 module.exports = HTMLDOMPropertyConfig;
-},{"./DOMProperty":418}],429:[function(require,module,exports){
+},{"./DOMProperty":420}],431:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -28835,7 +34163,7 @@ var KeyEscapeUtils = {
 };
 
 module.exports = KeyEscapeUtils;
-},{}],430:[function(require,module,exports){
+},{}],432:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -28973,7 +34301,7 @@ var LinkedValueUtils = {
 
 module.exports = LinkedValueUtils;
 }).call(this,require('_process'))
-},{"./ReactPropTypesSecret":477,"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353,"fbjs/lib/warning":360,"prop-types/factory":402,"react/lib/React":555}],431:[function(require,module,exports){
+},{"./ReactPropTypesSecret":479,"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354,"fbjs/lib/warning":361,"prop-types/factory":404,"react/lib/React":557}],433:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -29085,7 +34413,7 @@ var PooledClass = {
 
 module.exports = PooledClass;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353}],432:[function(require,module,exports){
+},{"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354}],434:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -29407,7 +34735,7 @@ var ReactBrowserEventEmitter = _assign({}, ReactEventEmitterMixin, {
 });
 
 module.exports = ReactBrowserEventEmitter;
-},{"./EventPluginRegistry":424,"./ReactEventEmitterMixin":461,"./ViewportMetrics":503,"./getVendorPrefixedEventName":521,"./isEventSupported":524,"object-assign":399}],433:[function(require,module,exports){
+},{"./EventPluginRegistry":426,"./ReactEventEmitterMixin":463,"./ViewportMetrics":505,"./getVendorPrefixedEventName":523,"./isEventSupported":526,"object-assign":401}],435:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
@@ -29560,7 +34888,7 @@ var ReactChildReconciler = {
 
 module.exports = ReactChildReconciler;
 }).call(this,require('_process'))
-},{"./KeyEscapeUtils":429,"./ReactReconciler":479,"./instantiateReactComponent":523,"./shouldUpdateReactComponent":531,"./traverseAllChildren":532,"_process":400,"fbjs/lib/warning":360,"react/lib/ReactComponentTreeHook":558}],434:[function(require,module,exports){
+},{"./KeyEscapeUtils":431,"./ReactReconciler":481,"./instantiateReactComponent":525,"./shouldUpdateReactComponent":533,"./traverseAllChildren":534,"_process":402,"fbjs/lib/warning":361,"react/lib/ReactComponentTreeHook":560}],436:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -29586,7 +34914,7 @@ var ReactComponentBrowserEnvironment = {
 };
 
 module.exports = ReactComponentBrowserEnvironment;
-},{"./DOMChildrenOperations":415,"./ReactDOMIDOperations":444}],435:[function(require,module,exports){
+},{"./DOMChildrenOperations":417,"./ReactDOMIDOperations":446}],437:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
@@ -29630,7 +34958,7 @@ var ReactComponentEnvironment = {
 
 module.exports = ReactComponentEnvironment;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353}],436:[function(require,module,exports){
+},{"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354}],438:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -30530,7 +35858,7 @@ var ReactCompositeComponent = {
 
 module.exports = ReactCompositeComponent;
 }).call(this,require('_process'))
-},{"./ReactComponentEnvironment":435,"./ReactErrorUtils":460,"./ReactInstanceMap":468,"./ReactInstrumentation":469,"./ReactNodeTypes":474,"./ReactReconciler":479,"./checkReactTypeSpec":506,"./reactProdInvariant":527,"./shouldUpdateReactComponent":531,"_process":400,"fbjs/lib/emptyObject":346,"fbjs/lib/invariant":353,"fbjs/lib/shallowEqual":359,"fbjs/lib/warning":360,"object-assign":399,"react/lib/React":555,"react/lib/ReactCurrentOwner":559}],437:[function(require,module,exports){
+},{"./ReactComponentEnvironment":437,"./ReactErrorUtils":462,"./ReactInstanceMap":470,"./ReactInstrumentation":471,"./ReactNodeTypes":476,"./ReactReconciler":481,"./checkReactTypeSpec":508,"./reactProdInvariant":529,"./shouldUpdateReactComponent":533,"_process":402,"fbjs/lib/emptyObject":347,"fbjs/lib/invariant":354,"fbjs/lib/shallowEqual":360,"fbjs/lib/warning":361,"object-assign":401,"react/lib/React":557,"react/lib/ReactCurrentOwner":561}],439:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -30641,7 +35969,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactDOM;
 }).call(this,require('_process'))
-},{"./ReactDOMComponentTree":440,"./ReactDOMInvalidARIAHook":446,"./ReactDOMNullInputValuePropHook":447,"./ReactDOMUnknownPropertyHook":454,"./ReactDefaultInjection":457,"./ReactInstrumentation":469,"./ReactMount":472,"./ReactReconciler":479,"./ReactUpdates":484,"./ReactVersion":485,"./findDOMNode":510,"./getHostComponentFromComposite":517,"./renderSubtreeIntoContainer":528,"_process":400,"fbjs/lib/ExecutionEnvironment":339,"fbjs/lib/warning":360}],438:[function(require,module,exports){
+},{"./ReactDOMComponentTree":442,"./ReactDOMInvalidARIAHook":448,"./ReactDOMNullInputValuePropHook":449,"./ReactDOMUnknownPropertyHook":456,"./ReactDefaultInjection":459,"./ReactInstrumentation":471,"./ReactMount":474,"./ReactReconciler":481,"./ReactUpdates":486,"./ReactVersion":487,"./findDOMNode":512,"./getHostComponentFromComposite":519,"./renderSubtreeIntoContainer":530,"_process":402,"fbjs/lib/ExecutionEnvironment":340,"fbjs/lib/warning":361}],440:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -31655,7 +36983,7 @@ _assign(ReactDOMComponent.prototype, ReactDOMComponent.Mixin, ReactMultiChild.Mi
 
 module.exports = ReactDOMComponent;
 }).call(this,require('_process'))
-},{"./AutoFocusUtils":409,"./CSSPropertyOperations":412,"./DOMLazyTree":416,"./DOMNamespaces":417,"./DOMProperty":418,"./DOMPropertyOperations":419,"./EventPluginHub":423,"./EventPluginRegistry":424,"./ReactBrowserEventEmitter":432,"./ReactDOMComponentFlags":439,"./ReactDOMComponentTree":440,"./ReactDOMInput":445,"./ReactDOMOption":448,"./ReactDOMSelect":449,"./ReactDOMTextarea":452,"./ReactInstrumentation":469,"./ReactMultiChild":473,"./ReactServerRenderingTransaction":481,"./escapeTextContentForBrowser":509,"./inputValueTracking":522,"./isEventSupported":524,"./reactProdInvariant":527,"./validateDOMNesting":533,"_process":400,"fbjs/lib/emptyFunction":345,"fbjs/lib/invariant":353,"fbjs/lib/shallowEqual":359,"fbjs/lib/warning":360,"object-assign":399}],439:[function(require,module,exports){
+},{"./AutoFocusUtils":411,"./CSSPropertyOperations":414,"./DOMLazyTree":418,"./DOMNamespaces":419,"./DOMProperty":420,"./DOMPropertyOperations":421,"./EventPluginHub":425,"./EventPluginRegistry":426,"./ReactBrowserEventEmitter":434,"./ReactDOMComponentFlags":441,"./ReactDOMComponentTree":442,"./ReactDOMInput":447,"./ReactDOMOption":450,"./ReactDOMSelect":451,"./ReactDOMTextarea":454,"./ReactInstrumentation":471,"./ReactMultiChild":475,"./ReactServerRenderingTransaction":483,"./escapeTextContentForBrowser":511,"./inputValueTracking":524,"./isEventSupported":526,"./reactProdInvariant":529,"./validateDOMNesting":535,"_process":402,"fbjs/lib/emptyFunction":346,"fbjs/lib/invariant":354,"fbjs/lib/shallowEqual":360,"fbjs/lib/warning":361,"object-assign":401}],441:[function(require,module,exports){
 /**
  * Copyright (c) 2015-present, Facebook, Inc.
  *
@@ -31671,7 +36999,7 @@ var ReactDOMComponentFlags = {
 };
 
 module.exports = ReactDOMComponentFlags;
-},{}],440:[function(require,module,exports){
+},{}],442:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -31866,7 +37194,7 @@ var ReactDOMComponentTree = {
 
 module.exports = ReactDOMComponentTree;
 }).call(this,require('_process'))
-},{"./DOMProperty":418,"./ReactDOMComponentFlags":439,"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353}],441:[function(require,module,exports){
+},{"./DOMProperty":420,"./ReactDOMComponentFlags":441,"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354}],443:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -31899,7 +37227,7 @@ function ReactDOMContainerInfo(topLevelWrapper, node) {
 
 module.exports = ReactDOMContainerInfo;
 }).call(this,require('_process'))
-},{"./validateDOMNesting":533,"_process":400}],442:[function(require,module,exports){
+},{"./validateDOMNesting":535,"_process":402}],444:[function(require,module,exports){
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
  *
@@ -31957,7 +37285,7 @@ _assign(ReactDOMEmptyComponent.prototype, {
 });
 
 module.exports = ReactDOMEmptyComponent;
-},{"./DOMLazyTree":416,"./ReactDOMComponentTree":440,"object-assign":399}],443:[function(require,module,exports){
+},{"./DOMLazyTree":418,"./ReactDOMComponentTree":442,"object-assign":401}],445:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -31974,7 +37302,7 @@ var ReactDOMFeatureFlags = {
 };
 
 module.exports = ReactDOMFeatureFlags;
-},{}],444:[function(require,module,exports){
+},{}],446:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -32005,7 +37333,7 @@ var ReactDOMIDOperations = {
 };
 
 module.exports = ReactDOMIDOperations;
-},{"./DOMChildrenOperations":415,"./ReactDOMComponentTree":440}],445:[function(require,module,exports){
+},{"./DOMChildrenOperations":417,"./ReactDOMComponentTree":442}],447:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -32292,7 +37620,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMInput;
 }).call(this,require('_process'))
-},{"./DOMPropertyOperations":419,"./LinkedValueUtils":430,"./ReactDOMComponentTree":440,"./ReactUpdates":484,"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353,"fbjs/lib/warning":360,"object-assign":399}],446:[function(require,module,exports){
+},{"./DOMPropertyOperations":421,"./LinkedValueUtils":432,"./ReactDOMComponentTree":442,"./ReactUpdates":486,"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354,"fbjs/lib/warning":361,"object-assign":401}],448:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -32385,7 +37713,7 @@ var ReactDOMInvalidARIAHook = {
 
 module.exports = ReactDOMInvalidARIAHook;
 }).call(this,require('_process'))
-},{"./DOMProperty":418,"_process":400,"fbjs/lib/warning":360,"react/lib/ReactComponentTreeHook":558}],447:[function(require,module,exports){
+},{"./DOMProperty":420,"_process":402,"fbjs/lib/warning":361,"react/lib/ReactComponentTreeHook":560}],449:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -32428,7 +37756,7 @@ var ReactDOMNullInputValuePropHook = {
 
 module.exports = ReactDOMNullInputValuePropHook;
 }).call(this,require('_process'))
-},{"_process":400,"fbjs/lib/warning":360,"react/lib/ReactComponentTreeHook":558}],448:[function(require,module,exports){
+},{"_process":402,"fbjs/lib/warning":361,"react/lib/ReactComponentTreeHook":560}],450:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -32550,7 +37878,7 @@ var ReactDOMOption = {
 
 module.exports = ReactDOMOption;
 }).call(this,require('_process'))
-},{"./ReactDOMComponentTree":440,"./ReactDOMSelect":449,"_process":400,"fbjs/lib/warning":360,"object-assign":399,"react/lib/React":555}],449:[function(require,module,exports){
+},{"./ReactDOMComponentTree":442,"./ReactDOMSelect":451,"_process":402,"fbjs/lib/warning":361,"object-assign":401,"react/lib/React":557}],451:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -32750,7 +38078,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMSelect;
 }).call(this,require('_process'))
-},{"./LinkedValueUtils":430,"./ReactDOMComponentTree":440,"./ReactUpdates":484,"_process":400,"fbjs/lib/warning":360,"object-assign":399}],450:[function(require,module,exports){
+},{"./LinkedValueUtils":432,"./ReactDOMComponentTree":442,"./ReactUpdates":486,"_process":402,"fbjs/lib/warning":361,"object-assign":401}],452:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -32960,7 +38288,7 @@ var ReactDOMSelection = {
 };
 
 module.exports = ReactDOMSelection;
-},{"./getNodeForCharacterOffset":519,"./getTextContentAccessor":520,"fbjs/lib/ExecutionEnvironment":339}],451:[function(require,module,exports){
+},{"./getNodeForCharacterOffset":521,"./getTextContentAccessor":522,"fbjs/lib/ExecutionEnvironment":340}],453:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -33122,7 +38450,7 @@ _assign(ReactDOMTextComponent.prototype, {
 
 module.exports = ReactDOMTextComponent;
 }).call(this,require('_process'))
-},{"./DOMChildrenOperations":415,"./DOMLazyTree":416,"./ReactDOMComponentTree":440,"./escapeTextContentForBrowser":509,"./reactProdInvariant":527,"./validateDOMNesting":533,"_process":400,"fbjs/lib/invariant":353,"object-assign":399}],452:[function(require,module,exports){
+},{"./DOMChildrenOperations":417,"./DOMLazyTree":418,"./ReactDOMComponentTree":442,"./escapeTextContentForBrowser":511,"./reactProdInvariant":529,"./validateDOMNesting":535,"_process":402,"fbjs/lib/invariant":354,"object-assign":401}],454:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -33282,7 +38610,7 @@ function _handleChange(event) {
 
 module.exports = ReactDOMTextarea;
 }).call(this,require('_process'))
-},{"./LinkedValueUtils":430,"./ReactDOMComponentTree":440,"./ReactUpdates":484,"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353,"fbjs/lib/warning":360,"object-assign":399}],453:[function(require,module,exports){
+},{"./LinkedValueUtils":432,"./ReactDOMComponentTree":442,"./ReactUpdates":486,"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354,"fbjs/lib/warning":361,"object-assign":401}],455:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2015-present, Facebook, Inc.
@@ -33418,7 +38746,7 @@ module.exports = {
   traverseEnterLeave: traverseEnterLeave
 };
 }).call(this,require('_process'))
-},{"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353}],454:[function(require,module,exports){
+},{"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354}],456:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -33530,7 +38858,7 @@ var ReactDOMUnknownPropertyHook = {
 
 module.exports = ReactDOMUnknownPropertyHook;
 }).call(this,require('_process'))
-},{"./DOMProperty":418,"./EventPluginRegistry":424,"_process":400,"fbjs/lib/warning":360,"react/lib/ReactComponentTreeHook":558}],455:[function(require,module,exports){
+},{"./DOMProperty":420,"./EventPluginRegistry":426,"_process":402,"fbjs/lib/warning":361,"react/lib/ReactComponentTreeHook":560}],457:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2016-present, Facebook, Inc.
@@ -33891,7 +39219,7 @@ if (/[?&]react_perf\b/.test(url)) {
 
 module.exports = ReactDebugTool;
 }).call(this,require('_process'))
-},{"./ReactHostOperationHistoryHook":465,"./ReactInvalidSetStateWarningHook":470,"_process":400,"fbjs/lib/ExecutionEnvironment":339,"fbjs/lib/performanceNow":358,"fbjs/lib/warning":360,"react/lib/ReactComponentTreeHook":558}],456:[function(require,module,exports){
+},{"./ReactHostOperationHistoryHook":467,"./ReactInvalidSetStateWarningHook":472,"_process":402,"fbjs/lib/ExecutionEnvironment":340,"fbjs/lib/performanceNow":359,"fbjs/lib/warning":361,"react/lib/ReactComponentTreeHook":560}],458:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -33957,7 +39285,7 @@ var ReactDefaultBatchingStrategy = {
 };
 
 module.exports = ReactDefaultBatchingStrategy;
-},{"./ReactUpdates":484,"./Transaction":502,"fbjs/lib/emptyFunction":345,"object-assign":399}],457:[function(require,module,exports){
+},{"./ReactUpdates":486,"./Transaction":504,"fbjs/lib/emptyFunction":346,"object-assign":401}],459:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -34041,7 +39369,7 @@ function inject() {
 module.exports = {
   inject: inject
 };
-},{"./ARIADOMPropertyConfig":408,"./BeforeInputEventPlugin":410,"./ChangeEventPlugin":414,"./DefaultEventPluginOrder":421,"./EnterLeaveEventPlugin":422,"./HTMLDOMPropertyConfig":428,"./ReactComponentBrowserEnvironment":434,"./ReactDOMComponent":438,"./ReactDOMComponentTree":440,"./ReactDOMEmptyComponent":442,"./ReactDOMTextComponent":451,"./ReactDOMTreeTraversal":453,"./ReactDefaultBatchingStrategy":456,"./ReactEventListener":462,"./ReactInjection":466,"./ReactReconcileTransaction":478,"./SVGDOMPropertyConfig":486,"./SelectEventPlugin":487,"./SimpleEventPlugin":488}],458:[function(require,module,exports){
+},{"./ARIADOMPropertyConfig":410,"./BeforeInputEventPlugin":412,"./ChangeEventPlugin":416,"./DefaultEventPluginOrder":423,"./EnterLeaveEventPlugin":424,"./HTMLDOMPropertyConfig":430,"./ReactComponentBrowserEnvironment":436,"./ReactDOMComponent":440,"./ReactDOMComponentTree":442,"./ReactDOMEmptyComponent":444,"./ReactDOMTextComponent":453,"./ReactDOMTreeTraversal":455,"./ReactDefaultBatchingStrategy":458,"./ReactEventListener":464,"./ReactInjection":468,"./ReactReconcileTransaction":480,"./SVGDOMPropertyConfig":488,"./SelectEventPlugin":489,"./SimpleEventPlugin":490}],460:[function(require,module,exports){
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
  *
@@ -34059,7 +39387,7 @@ module.exports = {
 var REACT_ELEMENT_TYPE = typeof Symbol === 'function' && Symbol['for'] && Symbol['for']('react.element') || 0xeac7;
 
 module.exports = REACT_ELEMENT_TYPE;
-},{}],459:[function(require,module,exports){
+},{}],461:[function(require,module,exports){
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
  *
@@ -34087,7 +39415,7 @@ var ReactEmptyComponent = {
 ReactEmptyComponent.injection = ReactEmptyComponentInjection;
 
 module.exports = ReactEmptyComponent;
-},{}],460:[function(require,module,exports){
+},{}],462:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -34165,7 +39493,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactErrorUtils;
 }).call(this,require('_process'))
-},{"_process":400}],461:[function(require,module,exports){
+},{"_process":402}],463:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -34195,7 +39523,7 @@ var ReactEventEmitterMixin = {
 };
 
 module.exports = ReactEventEmitterMixin;
-},{"./EventPluginHub":423}],462:[function(require,module,exports){
+},{"./EventPluginHub":425}],464:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -34348,7 +39676,7 @@ var ReactEventListener = {
 };
 
 module.exports = ReactEventListener;
-},{"./PooledClass":431,"./ReactDOMComponentTree":440,"./ReactUpdates":484,"./getEventTarget":516,"fbjs/lib/EventListener":338,"fbjs/lib/ExecutionEnvironment":339,"fbjs/lib/getUnboundedScrollPosition":350,"object-assign":399}],463:[function(require,module,exports){
+},{"./PooledClass":433,"./ReactDOMComponentTree":442,"./ReactUpdates":486,"./getEventTarget":518,"fbjs/lib/EventListener":339,"fbjs/lib/ExecutionEnvironment":340,"fbjs/lib/getUnboundedScrollPosition":351,"object-assign":401}],465:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -34368,7 +39696,7 @@ var ReactFeatureFlags = {
 };
 
 module.exports = ReactFeatureFlags;
-},{}],464:[function(require,module,exports){
+},{}],466:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
@@ -34436,7 +39764,7 @@ var ReactHostComponent = {
 
 module.exports = ReactHostComponent;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353}],465:[function(require,module,exports){
+},{"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354}],467:[function(require,module,exports){
 /**
  * Copyright (c) 2016-present, Facebook, Inc.
  *
@@ -34468,7 +39796,7 @@ var ReactHostOperationHistoryHook = {
 };
 
 module.exports = ReactHostOperationHistoryHook;
-},{}],466:[function(require,module,exports){
+},{}],468:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -34500,7 +39828,7 @@ var ReactInjection = {
 };
 
 module.exports = ReactInjection;
-},{"./DOMProperty":418,"./EventPluginHub":423,"./EventPluginUtils":425,"./ReactBrowserEventEmitter":432,"./ReactComponentEnvironment":435,"./ReactEmptyComponent":459,"./ReactHostComponent":464,"./ReactUpdates":484}],467:[function(require,module,exports){
+},{"./DOMProperty":420,"./EventPluginHub":425,"./EventPluginUtils":427,"./ReactBrowserEventEmitter":434,"./ReactComponentEnvironment":437,"./ReactEmptyComponent":461,"./ReactHostComponent":466,"./ReactUpdates":486}],469:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -34621,7 +39949,7 @@ var ReactInputSelection = {
 };
 
 module.exports = ReactInputSelection;
-},{"./ReactDOMSelection":450,"fbjs/lib/containsNode":342,"fbjs/lib/focusNode":347,"fbjs/lib/getActiveElement":348}],468:[function(require,module,exports){
+},{"./ReactDOMSelection":452,"fbjs/lib/containsNode":343,"fbjs/lib/focusNode":348,"fbjs/lib/getActiveElement":349}],470:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -34665,7 +39993,7 @@ var ReactInstanceMap = {
 };
 
 module.exports = ReactInstanceMap;
-},{}],469:[function(require,module,exports){
+},{}],471:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2016-present, Facebook, Inc.
@@ -34689,7 +40017,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = { debugTool: debugTool };
 }).call(this,require('_process'))
-},{"./ReactDebugTool":455,"_process":400}],470:[function(require,module,exports){
+},{"./ReactDebugTool":457,"_process":402}],472:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2016-present, Facebook, Inc.
@@ -34726,7 +40054,7 @@ var ReactInvalidSetStateWarningHook = {
 
 module.exports = ReactInvalidSetStateWarningHook;
 }).call(this,require('_process'))
-},{"_process":400,"fbjs/lib/warning":360}],471:[function(require,module,exports){
+},{"_process":402,"fbjs/lib/warning":361}],473:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -34774,7 +40102,7 @@ var ReactMarkupChecksum = {
 };
 
 module.exports = ReactMarkupChecksum;
-},{"./adler32":505}],472:[function(require,module,exports){
+},{"./adler32":507}],474:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -35312,7 +40640,7 @@ var ReactMount = {
 
 module.exports = ReactMount;
 }).call(this,require('_process'))
-},{"./DOMLazyTree":416,"./DOMProperty":418,"./ReactBrowserEventEmitter":432,"./ReactDOMComponentTree":440,"./ReactDOMContainerInfo":441,"./ReactDOMFeatureFlags":443,"./ReactFeatureFlags":463,"./ReactInstanceMap":468,"./ReactInstrumentation":469,"./ReactMarkupChecksum":471,"./ReactReconciler":479,"./ReactUpdateQueue":483,"./ReactUpdates":484,"./instantiateReactComponent":523,"./reactProdInvariant":527,"./setInnerHTML":529,"./shouldUpdateReactComponent":531,"_process":400,"fbjs/lib/emptyObject":346,"fbjs/lib/invariant":353,"fbjs/lib/warning":360,"react/lib/React":555,"react/lib/ReactCurrentOwner":559}],473:[function(require,module,exports){
+},{"./DOMLazyTree":418,"./DOMProperty":420,"./ReactBrowserEventEmitter":434,"./ReactDOMComponentTree":442,"./ReactDOMContainerInfo":443,"./ReactDOMFeatureFlags":445,"./ReactFeatureFlags":465,"./ReactInstanceMap":470,"./ReactInstrumentation":471,"./ReactMarkupChecksum":473,"./ReactReconciler":481,"./ReactUpdateQueue":485,"./ReactUpdates":486,"./instantiateReactComponent":525,"./reactProdInvariant":529,"./setInnerHTML":531,"./shouldUpdateReactComponent":533,"_process":402,"fbjs/lib/emptyObject":347,"fbjs/lib/invariant":354,"fbjs/lib/warning":361,"react/lib/React":557,"react/lib/ReactCurrentOwner":561}],475:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -35758,7 +41086,7 @@ var ReactMultiChild = {
 
 module.exports = ReactMultiChild;
 }).call(this,require('_process'))
-},{"./ReactChildReconciler":433,"./ReactComponentEnvironment":435,"./ReactInstanceMap":468,"./ReactInstrumentation":469,"./ReactReconciler":479,"./flattenChildren":511,"./reactProdInvariant":527,"_process":400,"fbjs/lib/emptyFunction":345,"fbjs/lib/invariant":353,"react/lib/ReactCurrentOwner":559}],474:[function(require,module,exports){
+},{"./ReactChildReconciler":435,"./ReactComponentEnvironment":437,"./ReactInstanceMap":470,"./ReactInstrumentation":471,"./ReactReconciler":481,"./flattenChildren":513,"./reactProdInvariant":529,"_process":402,"fbjs/lib/emptyFunction":346,"fbjs/lib/invariant":354,"react/lib/ReactCurrentOwner":561}],476:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -35798,7 +41126,7 @@ var ReactNodeTypes = {
 
 module.exports = ReactNodeTypes;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353,"react/lib/React":555}],475:[function(require,module,exports){
+},{"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354,"react/lib/React":557}],477:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -35891,7 +41219,7 @@ var ReactOwner = {
 
 module.exports = ReactOwner;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353}],476:[function(require,module,exports){
+},{"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354}],478:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -35916,7 +41244,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = ReactPropTypeLocationNames;
 }).call(this,require('_process'))
-},{"_process":400}],477:[function(require,module,exports){
+},{"_process":402}],479:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -35931,7 +41259,7 @@ module.exports = ReactPropTypeLocationNames;
 var ReactPropTypesSecret = 'SECRET_DO_NOT_PASS_THIS_OR_YOU_WILL_BE_FIRED';
 
 module.exports = ReactPropTypesSecret;
-},{}],478:[function(require,module,exports){
+},{}],480:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -36109,7 +41437,7 @@ PooledClass.addPoolingTo(ReactReconcileTransaction);
 
 module.exports = ReactReconcileTransaction;
 }).call(this,require('_process'))
-},{"./CallbackQueue":413,"./PooledClass":431,"./ReactBrowserEventEmitter":432,"./ReactInputSelection":467,"./ReactInstrumentation":469,"./ReactUpdateQueue":483,"./Transaction":502,"_process":400,"object-assign":399}],479:[function(require,module,exports){
+},{"./CallbackQueue":415,"./PooledClass":433,"./ReactBrowserEventEmitter":434,"./ReactInputSelection":469,"./ReactInstrumentation":471,"./ReactUpdateQueue":485,"./Transaction":504,"_process":402,"object-assign":401}],481:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -36275,7 +41603,7 @@ var ReactReconciler = {
 
 module.exports = ReactReconciler;
 }).call(this,require('_process'))
-},{"./ReactInstrumentation":469,"./ReactRef":480,"_process":400,"fbjs/lib/warning":360}],480:[function(require,module,exports){
+},{"./ReactInstrumentation":471,"./ReactRef":482,"_process":402,"fbjs/lib/warning":361}],482:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -36362,7 +41690,7 @@ ReactRef.detachRefs = function (instance, element) {
 };
 
 module.exports = ReactRef;
-},{"./ReactOwner":475}],481:[function(require,module,exports){
+},{"./ReactOwner":477}],483:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
@@ -36452,7 +41780,7 @@ PooledClass.addPoolingTo(ReactServerRenderingTransaction);
 
 module.exports = ReactServerRenderingTransaction;
 }).call(this,require('_process'))
-},{"./PooledClass":431,"./ReactInstrumentation":469,"./ReactServerUpdateQueue":482,"./Transaction":502,"_process":400,"object-assign":399}],482:[function(require,module,exports){
+},{"./PooledClass":433,"./ReactInstrumentation":471,"./ReactServerUpdateQueue":484,"./Transaction":504,"_process":402,"object-assign":401}],484:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2015-present, Facebook, Inc.
@@ -36591,7 +41919,7 @@ var ReactServerUpdateQueue = function () {
 
 module.exports = ReactServerUpdateQueue;
 }).call(this,require('_process'))
-},{"./ReactUpdateQueue":483,"_process":400,"fbjs/lib/warning":360}],483:[function(require,module,exports){
+},{"./ReactUpdateQueue":485,"_process":402,"fbjs/lib/warning":361}],485:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2015-present, Facebook, Inc.
@@ -36825,7 +42153,7 @@ var ReactUpdateQueue = {
 
 module.exports = ReactUpdateQueue;
 }).call(this,require('_process'))
-},{"./ReactInstanceMap":468,"./ReactInstrumentation":469,"./ReactUpdates":484,"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353,"fbjs/lib/warning":360,"react/lib/ReactCurrentOwner":559}],484:[function(require,module,exports){
+},{"./ReactInstanceMap":470,"./ReactInstrumentation":471,"./ReactUpdates":486,"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354,"fbjs/lib/warning":361,"react/lib/ReactCurrentOwner":561}],486:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -37076,7 +42404,7 @@ var ReactUpdates = {
 
 module.exports = ReactUpdates;
 }).call(this,require('_process'))
-},{"./CallbackQueue":413,"./PooledClass":431,"./ReactFeatureFlags":463,"./ReactReconciler":479,"./Transaction":502,"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353,"object-assign":399}],485:[function(require,module,exports){
+},{"./CallbackQueue":415,"./PooledClass":433,"./ReactFeatureFlags":465,"./ReactReconciler":481,"./Transaction":504,"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354,"object-assign":401}],487:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -37088,7 +42416,7 @@ module.exports = ReactUpdates;
 'use strict';
 
 module.exports = '15.6.2';
-},{}],486:[function(require,module,exports){
+},{}],488:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -37388,7 +42716,7 @@ Object.keys(ATTRS).forEach(function (key) {
 });
 
 module.exports = SVGDOMPropertyConfig;
-},{}],487:[function(require,module,exports){
+},{}],489:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -37574,7 +42902,7 @@ var SelectEventPlugin = {
 };
 
 module.exports = SelectEventPlugin;
-},{"./EventPropagators":426,"./ReactDOMComponentTree":440,"./ReactInputSelection":467,"./SyntheticEvent":493,"./isTextInputElement":525,"fbjs/lib/ExecutionEnvironment":339,"fbjs/lib/getActiveElement":348,"fbjs/lib/shallowEqual":359}],488:[function(require,module,exports){
+},{"./EventPropagators":428,"./ReactDOMComponentTree":442,"./ReactInputSelection":469,"./SyntheticEvent":495,"./isTextInputElement":527,"fbjs/lib/ExecutionEnvironment":340,"fbjs/lib/getActiveElement":349,"fbjs/lib/shallowEqual":360}],490:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -37800,7 +43128,7 @@ var SimpleEventPlugin = {
 
 module.exports = SimpleEventPlugin;
 }).call(this,require('_process'))
-},{"./EventPropagators":426,"./ReactDOMComponentTree":440,"./SyntheticAnimationEvent":489,"./SyntheticClipboardEvent":490,"./SyntheticDragEvent":492,"./SyntheticEvent":493,"./SyntheticFocusEvent":494,"./SyntheticKeyboardEvent":496,"./SyntheticMouseEvent":497,"./SyntheticTouchEvent":498,"./SyntheticTransitionEvent":499,"./SyntheticUIEvent":500,"./SyntheticWheelEvent":501,"./getEventCharCode":513,"./reactProdInvariant":527,"_process":400,"fbjs/lib/EventListener":338,"fbjs/lib/emptyFunction":345,"fbjs/lib/invariant":353}],489:[function(require,module,exports){
+},{"./EventPropagators":428,"./ReactDOMComponentTree":442,"./SyntheticAnimationEvent":491,"./SyntheticClipboardEvent":492,"./SyntheticDragEvent":494,"./SyntheticEvent":495,"./SyntheticFocusEvent":496,"./SyntheticKeyboardEvent":498,"./SyntheticMouseEvent":499,"./SyntheticTouchEvent":500,"./SyntheticTransitionEvent":501,"./SyntheticUIEvent":502,"./SyntheticWheelEvent":503,"./getEventCharCode":515,"./reactProdInvariant":529,"_process":402,"fbjs/lib/EventListener":339,"fbjs/lib/emptyFunction":346,"fbjs/lib/invariant":354}],491:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -37837,7 +43165,7 @@ function SyntheticAnimationEvent(dispatchConfig, dispatchMarker, nativeEvent, na
 SyntheticEvent.augmentClass(SyntheticAnimationEvent, AnimationEventInterface);
 
 module.exports = SyntheticAnimationEvent;
-},{"./SyntheticEvent":493}],490:[function(require,module,exports){
+},{"./SyntheticEvent":495}],492:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -37873,7 +43201,7 @@ function SyntheticClipboardEvent(dispatchConfig, dispatchMarker, nativeEvent, na
 SyntheticEvent.augmentClass(SyntheticClipboardEvent, ClipboardEventInterface);
 
 module.exports = SyntheticClipboardEvent;
-},{"./SyntheticEvent":493}],491:[function(require,module,exports){
+},{"./SyntheticEvent":495}],493:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -37907,7 +43235,7 @@ function SyntheticCompositionEvent(dispatchConfig, dispatchMarker, nativeEvent, 
 SyntheticEvent.augmentClass(SyntheticCompositionEvent, CompositionEventInterface);
 
 module.exports = SyntheticCompositionEvent;
-},{"./SyntheticEvent":493}],492:[function(require,module,exports){
+},{"./SyntheticEvent":495}],494:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -37941,7 +43269,7 @@ function SyntheticDragEvent(dispatchConfig, dispatchMarker, nativeEvent, nativeE
 SyntheticMouseEvent.augmentClass(SyntheticDragEvent, DragEventInterface);
 
 module.exports = SyntheticDragEvent;
-},{"./SyntheticMouseEvent":497}],493:[function(require,module,exports){
+},{"./SyntheticMouseEvent":499}],495:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -38212,7 +43540,7 @@ function getPooledWarningPropertyDefinition(propName, getVal) {
   }
 }
 }).call(this,require('_process'))
-},{"./PooledClass":431,"_process":400,"fbjs/lib/emptyFunction":345,"fbjs/lib/warning":360,"object-assign":399}],494:[function(require,module,exports){
+},{"./PooledClass":433,"_process":402,"fbjs/lib/emptyFunction":346,"fbjs/lib/warning":361,"object-assign":401}],496:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -38246,7 +43574,7 @@ function SyntheticFocusEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticFocusEvent, FocusEventInterface);
 
 module.exports = SyntheticFocusEvent;
-},{"./SyntheticUIEvent":500}],495:[function(require,module,exports){
+},{"./SyntheticUIEvent":502}],497:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -38281,7 +43609,7 @@ function SyntheticInputEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticEvent.augmentClass(SyntheticInputEvent, InputEventInterface);
 
 module.exports = SyntheticInputEvent;
-},{"./SyntheticEvent":493}],496:[function(require,module,exports){
+},{"./SyntheticEvent":495}],498:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -38363,7 +43691,7 @@ function SyntheticKeyboardEvent(dispatchConfig, dispatchMarker, nativeEvent, nat
 SyntheticUIEvent.augmentClass(SyntheticKeyboardEvent, KeyboardEventInterface);
 
 module.exports = SyntheticKeyboardEvent;
-},{"./SyntheticUIEvent":500,"./getEventCharCode":513,"./getEventKey":514,"./getEventModifierState":515}],497:[function(require,module,exports){
+},{"./SyntheticUIEvent":502,"./getEventCharCode":515,"./getEventKey":516,"./getEventModifierState":517}],499:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -38433,7 +43761,7 @@ function SyntheticMouseEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticMouseEvent, MouseEventInterface);
 
 module.exports = SyntheticMouseEvent;
-},{"./SyntheticUIEvent":500,"./ViewportMetrics":503,"./getEventModifierState":515}],498:[function(require,module,exports){
+},{"./SyntheticUIEvent":502,"./ViewportMetrics":505,"./getEventModifierState":517}],500:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -38476,7 +43804,7 @@ function SyntheticTouchEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticUIEvent.augmentClass(SyntheticTouchEvent, TouchEventInterface);
 
 module.exports = SyntheticTouchEvent;
-},{"./SyntheticUIEvent":500,"./getEventModifierState":515}],499:[function(require,module,exports){
+},{"./SyntheticUIEvent":502,"./getEventModifierState":517}],501:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -38513,7 +43841,7 @@ function SyntheticTransitionEvent(dispatchConfig, dispatchMarker, nativeEvent, n
 SyntheticEvent.augmentClass(SyntheticTransitionEvent, TransitionEventInterface);
 
 module.exports = SyntheticTransitionEvent;
-},{"./SyntheticEvent":493}],500:[function(require,module,exports){
+},{"./SyntheticEvent":495}],502:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -38570,7 +43898,7 @@ function SyntheticUIEvent(dispatchConfig, dispatchMarker, nativeEvent, nativeEve
 SyntheticEvent.augmentClass(SyntheticUIEvent, UIEventInterface);
 
 module.exports = SyntheticUIEvent;
-},{"./SyntheticEvent":493,"./getEventTarget":516}],501:[function(require,module,exports){
+},{"./SyntheticEvent":495,"./getEventTarget":518}],503:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -38619,7 +43947,7 @@ function SyntheticWheelEvent(dispatchConfig, dispatchMarker, nativeEvent, native
 SyntheticMouseEvent.augmentClass(SyntheticWheelEvent, WheelEventInterface);
 
 module.exports = SyntheticWheelEvent;
-},{"./SyntheticMouseEvent":497}],502:[function(require,module,exports){
+},{"./SyntheticMouseEvent":499}],504:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -38847,7 +44175,7 @@ var TransactionImpl = {
 
 module.exports = TransactionImpl;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353}],503:[function(require,module,exports){
+},{"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354}],505:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -38870,7 +44198,7 @@ var ViewportMetrics = {
 };
 
 module.exports = ViewportMetrics;
-},{}],504:[function(require,module,exports){
+},{}],506:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
@@ -38928,7 +44256,7 @@ function accumulateInto(current, next) {
 
 module.exports = accumulateInto;
 }).call(this,require('_process'))
-},{"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353}],505:[function(require,module,exports){
+},{"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354}],507:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -38970,7 +44298,7 @@ function adler32(data) {
 }
 
 module.exports = adler32;
-},{}],506:[function(require,module,exports){
+},{}],508:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -39057,7 +44385,7 @@ function checkReactTypeSpec(typeSpecs, values, location, componentName, element,
 
 module.exports = checkReactTypeSpec;
 }).call(this,require('_process'))
-},{"./ReactPropTypeLocationNames":476,"./ReactPropTypesSecret":477,"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353,"fbjs/lib/warning":360,"react/lib/ReactComponentTreeHook":558}],507:[function(require,module,exports){
+},{"./ReactPropTypeLocationNames":478,"./ReactPropTypesSecret":479,"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354,"fbjs/lib/warning":361,"react/lib/ReactComponentTreeHook":560}],509:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -39087,7 +44415,7 @@ var createMicrosoftUnsafeLocalFunction = function (func) {
 };
 
 module.exports = createMicrosoftUnsafeLocalFunction;
-},{}],508:[function(require,module,exports){
+},{}],510:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -39166,7 +44494,7 @@ function dangerousStyleValue(name, value, component, isCustomProperty) {
 
 module.exports = dangerousStyleValue;
 }).call(this,require('_process'))
-},{"./CSSProperty":411,"_process":400,"fbjs/lib/warning":360}],509:[function(require,module,exports){
+},{"./CSSProperty":413,"_process":402,"fbjs/lib/warning":361}],511:[function(require,module,exports){
 /**
  * Copyright (c) 2016-present, Facebook, Inc.
  *
@@ -39286,7 +44614,7 @@ function escapeTextContentForBrowser(text) {
 }
 
 module.exports = escapeTextContentForBrowser;
-},{}],510:[function(require,module,exports){
+},{}],512:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -39346,7 +44674,7 @@ function findDOMNode(componentOrElement) {
 
 module.exports = findDOMNode;
 }).call(this,require('_process'))
-},{"./ReactDOMComponentTree":440,"./ReactInstanceMap":468,"./getHostComponentFromComposite":517,"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353,"fbjs/lib/warning":360,"react/lib/ReactCurrentOwner":559}],511:[function(require,module,exports){
+},{"./ReactDOMComponentTree":442,"./ReactInstanceMap":470,"./getHostComponentFromComposite":519,"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354,"fbjs/lib/warning":361,"react/lib/ReactCurrentOwner":561}],513:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -39422,7 +44750,7 @@ function flattenChildren(children, selfDebugID) {
 
 module.exports = flattenChildren;
 }).call(this,require('_process'))
-},{"./KeyEscapeUtils":429,"./traverseAllChildren":532,"_process":400,"fbjs/lib/warning":360,"react/lib/ReactComponentTreeHook":558}],512:[function(require,module,exports){
+},{"./KeyEscapeUtils":431,"./traverseAllChildren":534,"_process":402,"fbjs/lib/warning":361,"react/lib/ReactComponentTreeHook":560}],514:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -39451,7 +44779,7 @@ function forEachAccumulated(arr, cb, scope) {
 }
 
 module.exports = forEachAccumulated;
-},{}],513:[function(require,module,exports){
+},{}],515:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -39499,7 +44827,7 @@ function getEventCharCode(nativeEvent) {
 }
 
 module.exports = getEventCharCode;
-},{}],514:[function(require,module,exports){
+},{}],516:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -39609,7 +44937,7 @@ function getEventKey(nativeEvent) {
 }
 
 module.exports = getEventKey;
-},{"./getEventCharCode":513}],515:[function(require,module,exports){
+},{"./getEventCharCode":515}],517:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -39650,7 +44978,7 @@ function getEventModifierState(nativeEvent) {
 }
 
 module.exports = getEventModifierState;
-},{}],516:[function(require,module,exports){
+},{}],518:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -39683,7 +45011,7 @@ function getEventTarget(nativeEvent) {
 }
 
 module.exports = getEventTarget;
-},{}],517:[function(require,module,exports){
+},{}],519:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -39711,7 +45039,7 @@ function getHostComponentFromComposite(inst) {
 }
 
 module.exports = getHostComponentFromComposite;
-},{"./ReactNodeTypes":474}],518:[function(require,module,exports){
+},{"./ReactNodeTypes":476}],520:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -39750,7 +45078,7 @@ function getIteratorFn(maybeIterable) {
 }
 
 module.exports = getIteratorFn;
-},{}],519:[function(require,module,exports){
+},{}],521:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -39822,7 +45150,7 @@ function getNodeForCharacterOffset(root, offset) {
 }
 
 module.exports = getNodeForCharacterOffset;
-},{}],520:[function(require,module,exports){
+},{}],522:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -39853,7 +45181,7 @@ function getTextContentAccessor() {
 }
 
 module.exports = getTextContentAccessor;
-},{"fbjs/lib/ExecutionEnvironment":339}],521:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":340}],523:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -39952,7 +45280,7 @@ function getVendorPrefixedEventName(eventName) {
 }
 
 module.exports = getVendorPrefixedEventName;
-},{"fbjs/lib/ExecutionEnvironment":339}],522:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":340}],524:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -40073,7 +45401,7 @@ var inputValueTracking = {
 };
 
 module.exports = inputValueTracking;
-},{"./ReactDOMComponentTree":440}],523:[function(require,module,exports){
+},{"./ReactDOMComponentTree":442}],525:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -40202,7 +45530,7 @@ _assign(ReactCompositeComponentWrapper.prototype, ReactCompositeComponent, {
 
 module.exports = instantiateReactComponent;
 }).call(this,require('_process'))
-},{"./ReactCompositeComponent":436,"./ReactEmptyComponent":459,"./ReactHostComponent":464,"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353,"fbjs/lib/warning":360,"object-assign":399,"react/lib/getNextDebugID":573}],524:[function(require,module,exports){
+},{"./ReactCompositeComponent":438,"./ReactEmptyComponent":461,"./ReactHostComponent":466,"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354,"fbjs/lib/warning":361,"object-assign":401,"react/lib/getNextDebugID":575}],526:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -40260,7 +45588,7 @@ function isEventSupported(eventNameSuffix, capture) {
 }
 
 module.exports = isEventSupported;
-},{"fbjs/lib/ExecutionEnvironment":339}],525:[function(require,module,exports){
+},{"fbjs/lib/ExecutionEnvironment":340}],527:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -40309,7 +45637,7 @@ function isTextInputElement(elem) {
 }
 
 module.exports = isTextInputElement;
-},{}],526:[function(require,module,exports){
+},{}],528:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -40333,7 +45661,7 @@ function quoteAttributeValueForBrowser(value) {
 }
 
 module.exports = quoteAttributeValueForBrowser;
-},{"./escapeTextContentForBrowser":509}],527:[function(require,module,exports){
+},{"./escapeTextContentForBrowser":511}],529:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -40370,7 +45698,7 @@ function reactProdInvariant(code) {
 }
 
 module.exports = reactProdInvariant;
-},{}],528:[function(require,module,exports){
+},{}],530:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -40384,7 +45712,7 @@ module.exports = reactProdInvariant;
 var ReactMount = require('./ReactMount');
 
 module.exports = ReactMount.renderSubtreeIntoContainer;
-},{"./ReactMount":472}],529:[function(require,module,exports){
+},{"./ReactMount":474}],531:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -40480,7 +45808,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = setInnerHTML;
-},{"./DOMNamespaces":417,"./createMicrosoftUnsafeLocalFunction":507,"fbjs/lib/ExecutionEnvironment":339}],530:[function(require,module,exports){
+},{"./DOMNamespaces":419,"./createMicrosoftUnsafeLocalFunction":509,"fbjs/lib/ExecutionEnvironment":340}],532:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -40530,7 +45858,7 @@ if (ExecutionEnvironment.canUseDOM) {
 }
 
 module.exports = setTextContent;
-},{"./escapeTextContentForBrowser":509,"./setInnerHTML":529,"fbjs/lib/ExecutionEnvironment":339}],531:[function(require,module,exports){
+},{"./escapeTextContentForBrowser":511,"./setInnerHTML":531,"fbjs/lib/ExecutionEnvironment":340}],533:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -40570,7 +45898,7 @@ function shouldUpdateReactComponent(prevElement, nextElement) {
 }
 
 module.exports = shouldUpdateReactComponent;
-},{}],532:[function(require,module,exports){
+},{}],534:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -40746,7 +46074,7 @@ function traverseAllChildren(children, callback, traverseContext) {
 
 module.exports = traverseAllChildren;
 }).call(this,require('_process'))
-},{"./KeyEscapeUtils":429,"./ReactElementSymbol":458,"./getIteratorFn":518,"./reactProdInvariant":527,"_process":400,"fbjs/lib/invariant":353,"fbjs/lib/warning":360,"react/lib/ReactCurrentOwner":559}],533:[function(require,module,exports){
+},{"./KeyEscapeUtils":431,"./ReactElementSymbol":460,"./getIteratorFn":520,"./reactProdInvariant":529,"_process":402,"fbjs/lib/invariant":354,"fbjs/lib/warning":361,"react/lib/ReactCurrentOwner":561}],535:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2015-present, Facebook, Inc.
@@ -41117,7 +46445,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = validateDOMNesting;
 }).call(this,require('_process'))
-},{"_process":400,"fbjs/lib/emptyFunction":345,"fbjs/lib/warning":360,"object-assign":399}],534:[function(require,module,exports){
+},{"_process":402,"fbjs/lib/emptyFunction":346,"fbjs/lib/warning":361,"object-assign":401}],536:[function(require,module,exports){
 (function (process){
 exports.__esModule = true;
 exports.Helmet = undefined;
@@ -41412,7 +46740,7 @@ HelmetExport.renderStatic = HelmetExport.rewind;
 exports.Helmet = HelmetExport;
 exports.default = HelmetExport;
 }).call(this,require('_process'))
-},{"./HelmetConstants.js":535,"./HelmetUtils.js":536,"_process":400,"deep-equal":334,"prop-types":405,"react":578,"react-side-effect":552}],535:[function(require,module,exports){
+},{"./HelmetConstants.js":537,"./HelmetUtils.js":538,"_process":402,"deep-equal":334,"prop-types":407,"react":580,"react-side-effect":554}],537:[function(require,module,exports){
 exports.__esModule = true;
 var ATTRIBUTE_NAMES = exports.ATTRIBUTE_NAMES = {
     BODY: "bodyAttributes",
@@ -41477,7 +46805,7 @@ var HTML_TAG_MAP = exports.HTML_TAG_MAP = Object.keys(REACT_TAG_MAP).reduce(func
 var SELF_CLOSING_TAGS = exports.SELF_CLOSING_TAGS = [TAG_NAMES.NOSCRIPT, TAG_NAMES.SCRIPT, TAG_NAMES.STYLE];
 
 var HELMET_ATTRIBUTE = exports.HELMET_ATTRIBUTE = "data-react-helmet";
-},{}],536:[function(require,module,exports){
+},{}],538:[function(require,module,exports){
 (function (global){
 exports.__esModule = true;
 exports.warn = exports.requestAnimationFrame = exports.reducePropsToState = exports.mapStateOnServer = exports.handleClientStateChange = exports.convertReactPropstoHtmlAttributes = undefined;
@@ -42016,7 +47344,7 @@ exports.reducePropsToState = reducePropsToState;
 exports.requestAnimationFrame = requestAnimationFrame;
 exports.warn = warn;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./HelmetConstants.js":535,"object-assign":399,"react":578}],537:[function(require,module,exports){
+},{"./HelmetConstants.js":537,"object-assign":401,"react":580}],539:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -42141,7 +47469,7 @@ var ReactMde = /** @class */ (function (_super) {
 }(React.Component));
 exports.ReactMde = ReactMde;
 
-},{"./ReactMdePreview":539,"./ReactMdeTextArea":540,"./ReactMdeToolbar":541,"./helpers/ReactMdeSelectionHelper":548,"react":578}],538:[function(require,module,exports){
+},{"./ReactMdePreview":541,"./ReactMdeTextArea":542,"./ReactMdeToolbar":543,"./helpers/ReactMdeSelectionHelper":550,"react":580}],540:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var React = require("react");
@@ -42282,7 +47610,7 @@ exports.getDefaultCommands = function () { return [
     [exports.makeUnorderedListCommand, exports.makeOrderedListCommand],
 ]; };
 
-},{"./helpers/ReactMdeCommandHelper":547,"./helpers/ReactMdeTextHelper":549,"react":578}],539:[function(require,module,exports){
+},{"./helpers/ReactMdeCommandHelper":549,"./helpers/ReactMdeTextHelper":551,"react":580}],541:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -42327,7 +47655,7 @@ var ReactMdePreview = /** @class */ (function (_super) {
 }(React.Component));
 exports.ReactMdePreview = ReactMdePreview;
 
-},{"./components/MarkdownHelp":546,"react":578,"showdown":581}],540:[function(require,module,exports){
+},{"./components/MarkdownHelp":548,"react":580,"showdown":583}],542:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -42393,7 +47721,7 @@ var ReactMdeTextArea = /** @class */ (function (_super) {
 }(React.Component));
 exports.ReactMdeTextArea = ReactMdeTextArea;
 
-},{"./helpers/ReactMdeSelectionHelper":548,"react":578}],541:[function(require,module,exports){
+},{"./helpers/ReactMdeSelectionHelper":550,"react":580}],543:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var React = require("react");
@@ -42413,7 +47741,7 @@ exports.ReactMdeToolbar = function (_a) {
     }))); })));
 };
 
-},{"./components/HeaderGroup":542,"./components/HeaderItem":543,"./components/HeaderItemDropdown":544,"react":578}],542:[function(require,module,exports){
+},{"./components/HeaderGroup":544,"./components/HeaderItem":545,"./components/HeaderItemDropdown":546,"react":580}],544:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var React = require("react");
@@ -42421,7 +47749,7 @@ exports.HeaderGroup = function (props) {
     return (React.createElement("ul", { className: "mde-header-group" }, props.children));
 };
 
-},{"react":578}],543:[function(require,module,exports){
+},{"react":580}],545:[function(require,module,exports){
 "use strict";
 var __assign = (this && this.__assign) || Object.assign || function(t) {
     for (var s, i = 1, n = arguments.length; i < n; i++) {
@@ -42448,7 +47776,7 @@ exports.HeaderItem = function (props) {
         React.createElement("button", __assign({ type: "button" }, buttonProps, { onClick: onClick }), iconElement)));
 };
 
-},{"react":578}],544:[function(require,module,exports){
+},{"react":580}],546:[function(require,module,exports){
 "use strict";
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = Object.setPrototypeOf ||
@@ -42530,7 +47858,7 @@ var HeaderItemDropdown = /** @class */ (function (_super) {
 }(React.Component));
 exports.HeaderItemDropdown = HeaderItemDropdown;
 
-},{"./HeaderItemDropdownItem":545,"react":578}],545:[function(require,module,exports){
+},{"./HeaderItemDropdownItem":547,"react":580}],547:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var React = require("react");
@@ -42540,7 +47868,7 @@ exports.HeaderItemDropdownItem = function (props) {
         React.createElement("button", { type: "button", onClick: onClick }, children)));
 };
 
-},{"react":578}],546:[function(require,module,exports){
+},{"react":580}],548:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var React = require("react");
@@ -42557,7 +47885,7 @@ exports.MarkdownHelp.defaultProps = {
     markdownReferenceUrl: "http://commonmark.org/help/",
 };
 
-},{"react":578}],547:[function(require,module,exports){
+},{"react":580}],549:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var ReactMdeTextHelper_1 = require("./ReactMdeTextHelper");
@@ -42624,7 +47952,7 @@ function makeACommandThatInsertsBeforeAndAfter(text, selection, insertion) {
 }
 exports.makeACommandThatInsertsBeforeAndAfter = makeACommandThatInsertsBeforeAndAfter;
 
-},{"./ReactMdeTextHelper":549}],548:[function(require,module,exports){
+},{"./ReactMdeTextHelper":551}],550:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 /**
@@ -42660,7 +47988,7 @@ function setSelection(element, start, end) {
 }
 exports.setSelection = setSelection;
 
-},{}],549:[function(require,module,exports){
+},{}],551:[function(require,module,exports){
 "use strict";
 // TEXT INSERTION HELPERS
 var __assign = (this && this.__assign) || Object.assign || function(t) {
@@ -42924,7 +48252,7 @@ function selectCurrentWordIfCaretIsInsideOne(text, selection) {
 }
 exports.selectCurrentWordIfCaretIsInsideOne = selectCurrentWordIfCaretIsInsideOne;
 
-},{}],550:[function(require,module,exports){
+},{}],552:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var ReactMdeCommands = require("./ReactMdeCommands");
@@ -42947,11 +48275,11 @@ var ReactMde_1 = require("./ReactMde");
 exports.ReactMde = ReactMde_1.ReactMde;
 exports.default = ReactMde_1.ReactMde;
 
-},{"./ReactMde":537,"./ReactMdeCommands":538,"./ReactMdePreview":539,"./ReactMdeTextArea":540,"./ReactMdeToolbar":541,"./helpers/ReactMdeCommandHelper":547,"./helpers/ReactMdeSelectionHelper":548,"./helpers/ReactMdeTextHelper":549,"./types":551}],551:[function(require,module,exports){
+},{"./ReactMde":539,"./ReactMdeCommands":540,"./ReactMdePreview":541,"./ReactMdeTextArea":542,"./ReactMdeToolbar":543,"./helpers/ReactMdeCommandHelper":549,"./helpers/ReactMdeSelectionHelper":550,"./helpers/ReactMdeTextHelper":551,"./types":553}],553:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 
-},{}],552:[function(require,module,exports){
+},{}],554:[function(require,module,exports){
 'use strict';
 
 var _react = require('react');
@@ -43070,11 +48398,11 @@ module.exports = function withSideEffect(reducePropsToState, handleStateChangeOn
     return SideEffect;
   };
 };
-},{"exenv":337,"react":578,"shallowequal":580}],553:[function(require,module,exports){
-arguments[4][429][0].apply(exports,arguments)
-},{"dup":429}],554:[function(require,module,exports){
+},{"exenv":338,"react":580,"shallowequal":582}],555:[function(require,module,exports){
 arguments[4][431][0].apply(exports,arguments)
-},{"./reactProdInvariant":576,"_process":400,"dup":431,"fbjs/lib/invariant":353}],555:[function(require,module,exports){
+},{"dup":431}],556:[function(require,module,exports){
+arguments[4][433][0].apply(exports,arguments)
+},{"./reactProdInvariant":578,"_process":402,"dup":433,"fbjs/lib/invariant":354}],557:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -43206,7 +48534,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = React;
 }).call(this,require('_process'))
-},{"./ReactBaseClasses":556,"./ReactChildren":557,"./ReactDOMFactories":560,"./ReactElement":561,"./ReactElementValidator":563,"./ReactPropTypes":566,"./ReactVersion":568,"./canDefineProperty":569,"./createClass":571,"./lowPriorityWarning":574,"./onlyChild":575,"_process":400,"object-assign":399}],556:[function(require,module,exports){
+},{"./ReactBaseClasses":558,"./ReactChildren":559,"./ReactDOMFactories":562,"./ReactElement":563,"./ReactElementValidator":565,"./ReactPropTypes":568,"./ReactVersion":570,"./canDefineProperty":571,"./createClass":573,"./lowPriorityWarning":576,"./onlyChild":577,"_process":402,"object-assign":401}],558:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -43349,7 +48677,7 @@ module.exports = {
   PureComponent: ReactPureComponent
 };
 }).call(this,require('_process'))
-},{"./ReactNoopUpdateQueue":564,"./canDefineProperty":569,"./lowPriorityWarning":574,"./reactProdInvariant":576,"_process":400,"fbjs/lib/emptyObject":346,"fbjs/lib/invariant":353,"object-assign":399}],557:[function(require,module,exports){
+},{"./ReactNoopUpdateQueue":566,"./canDefineProperty":571,"./lowPriorityWarning":576,"./reactProdInvariant":578,"_process":402,"fbjs/lib/emptyObject":347,"fbjs/lib/invariant":354,"object-assign":401}],559:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -43538,7 +48866,7 @@ var ReactChildren = {
 };
 
 module.exports = ReactChildren;
-},{"./PooledClass":554,"./ReactElement":561,"./traverseAllChildren":577,"fbjs/lib/emptyFunction":345}],558:[function(require,module,exports){
+},{"./PooledClass":556,"./ReactElement":563,"./traverseAllChildren":579,"fbjs/lib/emptyFunction":346}],560:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2016-present, Facebook, Inc.
@@ -43917,7 +49245,7 @@ var ReactComponentTreeHook = {
 
 module.exports = ReactComponentTreeHook;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":559,"./reactProdInvariant":576,"_process":400,"fbjs/lib/invariant":353,"fbjs/lib/warning":360}],559:[function(require,module,exports){
+},{"./ReactCurrentOwner":561,"./reactProdInvariant":578,"_process":402,"fbjs/lib/invariant":354,"fbjs/lib/warning":361}],561:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -43944,7 +49272,7 @@ var ReactCurrentOwner = {
 };
 
 module.exports = ReactCurrentOwner;
-},{}],560:[function(require,module,exports){
+},{}],562:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -44113,7 +49441,7 @@ var ReactDOMFactories = {
 
 module.exports = ReactDOMFactories;
 }).call(this,require('_process'))
-},{"./ReactElement":561,"./ReactElementValidator":563,"_process":400}],561:[function(require,module,exports){
+},{"./ReactElement":563,"./ReactElementValidator":565,"_process":402}],563:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
@@ -44454,9 +49782,9 @@ ReactElement.isValidElement = function (object) {
 
 module.exports = ReactElement;
 }).call(this,require('_process'))
-},{"./ReactCurrentOwner":559,"./ReactElementSymbol":562,"./canDefineProperty":569,"_process":400,"fbjs/lib/warning":360,"object-assign":399}],562:[function(require,module,exports){
-arguments[4][458][0].apply(exports,arguments)
-},{"dup":458}],563:[function(require,module,exports){
+},{"./ReactCurrentOwner":561,"./ReactElementSymbol":564,"./canDefineProperty":571,"_process":402,"fbjs/lib/warning":361,"object-assign":401}],564:[function(require,module,exports){
+arguments[4][460][0].apply(exports,arguments)
+},{"dup":460}],565:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
@@ -44711,7 +50039,7 @@ var ReactElementValidator = {
 
 module.exports = ReactElementValidator;
 }).call(this,require('_process'))
-},{"./ReactComponentTreeHook":558,"./ReactCurrentOwner":559,"./ReactElement":561,"./canDefineProperty":569,"./checkReactTypeSpec":570,"./getIteratorFn":572,"./lowPriorityWarning":574,"_process":400,"fbjs/lib/warning":360}],564:[function(require,module,exports){
+},{"./ReactComponentTreeHook":560,"./ReactCurrentOwner":561,"./ReactElement":563,"./canDefineProperty":571,"./checkReactTypeSpec":572,"./getIteratorFn":574,"./lowPriorityWarning":576,"_process":402,"fbjs/lib/warning":361}],566:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2015-present, Facebook, Inc.
@@ -44806,9 +50134,9 @@ var ReactNoopUpdateQueue = {
 
 module.exports = ReactNoopUpdateQueue;
 }).call(this,require('_process'))
-},{"_process":400,"fbjs/lib/warning":360}],565:[function(require,module,exports){
-arguments[4][476][0].apply(exports,arguments)
-},{"_process":400,"dup":476}],566:[function(require,module,exports){
+},{"_process":402,"fbjs/lib/warning":361}],567:[function(require,module,exports){
+arguments[4][478][0].apply(exports,arguments)
+},{"_process":402,"dup":478}],568:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -44825,11 +50153,11 @@ var _require = require('./ReactElement'),
 var factory = require('prop-types/factory');
 
 module.exports = factory(isValidElement);
-},{"./ReactElement":561,"prop-types/factory":402}],567:[function(require,module,exports){
-arguments[4][477][0].apply(exports,arguments)
-},{"dup":477}],568:[function(require,module,exports){
-arguments[4][485][0].apply(exports,arguments)
-},{"dup":485}],569:[function(require,module,exports){
+},{"./ReactElement":563,"prop-types/factory":404}],569:[function(require,module,exports){
+arguments[4][479][0].apply(exports,arguments)
+},{"dup":479}],570:[function(require,module,exports){
+arguments[4][487][0].apply(exports,arguments)
+},{"dup":487}],571:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -44855,7 +50183,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = canDefineProperty;
 }).call(this,require('_process'))
-},{"_process":400}],570:[function(require,module,exports){
+},{"_process":402}],572:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -44942,7 +50270,7 @@ function checkReactTypeSpec(typeSpecs, values, location, componentName, element,
 
 module.exports = checkReactTypeSpec;
 }).call(this,require('_process'))
-},{"./ReactComponentTreeHook":558,"./ReactPropTypeLocationNames":565,"./ReactPropTypesSecret":567,"./reactProdInvariant":576,"_process":400,"fbjs/lib/invariant":353,"fbjs/lib/warning":360}],571:[function(require,module,exports){
+},{"./ReactComponentTreeHook":560,"./ReactPropTypeLocationNames":567,"./ReactPropTypesSecret":569,"./reactProdInvariant":578,"_process":402,"fbjs/lib/invariant":354,"fbjs/lib/warning":361}],573:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -44963,9 +50291,9 @@ var ReactNoopUpdateQueue = require('./ReactNoopUpdateQueue');
 var factory = require('create-react-class/factory');
 
 module.exports = factory(Component, isValidElement, ReactNoopUpdateQueue);
-},{"./ReactBaseClasses":556,"./ReactElement":561,"./ReactNoopUpdateQueue":564,"create-react-class/factory":333}],572:[function(require,module,exports){
-arguments[4][518][0].apply(exports,arguments)
-},{"dup":518}],573:[function(require,module,exports){
+},{"./ReactBaseClasses":558,"./ReactElement":563,"./ReactNoopUpdateQueue":566,"create-react-class/factory":333}],574:[function(require,module,exports){
+arguments[4][520][0].apply(exports,arguments)
+},{"dup":520}],575:[function(require,module,exports){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
  *
@@ -44984,7 +50312,7 @@ function getNextDebugID() {
 }
 
 module.exports = getNextDebugID;
-},{}],574:[function(require,module,exports){
+},{}],576:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2014-present, Facebook, Inc.
@@ -45049,7 +50377,7 @@ if (process.env.NODE_ENV !== 'production') {
 
 module.exports = lowPriorityWarning;
 }).call(this,require('_process'))
-},{"_process":400}],575:[function(require,module,exports){
+},{"_process":402}],577:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -45087,9 +50415,9 @@ function onlyChild(children) {
 
 module.exports = onlyChild;
 }).call(this,require('_process'))
-},{"./ReactElement":561,"./reactProdInvariant":576,"_process":400,"fbjs/lib/invariant":353}],576:[function(require,module,exports){
-arguments[4][527][0].apply(exports,arguments)
-},{"dup":527}],577:[function(require,module,exports){
+},{"./ReactElement":563,"./reactProdInvariant":578,"_process":402,"fbjs/lib/invariant":354}],578:[function(require,module,exports){
+arguments[4][529][0].apply(exports,arguments)
+},{"dup":529}],579:[function(require,module,exports){
 (function (process){
 /**
  * Copyright (c) 2013-present, Facebook, Inc.
@@ -45265,12 +50593,12 @@ function traverseAllChildren(children, callback, traverseContext) {
 
 module.exports = traverseAllChildren;
 }).call(this,require('_process'))
-},{"./KeyEscapeUtils":553,"./ReactCurrentOwner":559,"./ReactElementSymbol":562,"./getIteratorFn":572,"./reactProdInvariant":576,"_process":400,"fbjs/lib/invariant":353,"fbjs/lib/warning":360}],578:[function(require,module,exports){
+},{"./KeyEscapeUtils":555,"./ReactCurrentOwner":561,"./ReactElementSymbol":564,"./getIteratorFn":574,"./reactProdInvariant":578,"_process":402,"fbjs/lib/invariant":354,"fbjs/lib/warning":361}],580:[function(require,module,exports){
 'use strict';
 
 module.exports = require('./lib/React');
 
-},{"./lib/React":555}],579:[function(require,module,exports){
+},{"./lib/React":557}],581:[function(require,module,exports){
 (function (global){
 /**
  * Copyright (c) 2014, Facebook, Inc.
@@ -46010,7 +51338,7 @@ module.exports = require('./lib/React');
 );
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{}],580:[function(require,module,exports){
+},{}],582:[function(require,module,exports){
 module.exports = function shallowEqual(objA, objB, compare, compareContext) {
 
     var ret = compare ? compare.call(compareContext, objA, objB) : void 0;
@@ -46062,7 +51390,7 @@ module.exports = function shallowEqual(objA, objB, compare, compareContext) {
 
 };
 
-},{}],581:[function(require,module,exports){
+},{}],583:[function(require,module,exports){
 ;/*! showdown v 1.8.6 - 22-12-2017 */
 (function(){
 /**
@@ -50568,7 +55896,7 @@ if (typeof define === 'function' && define.amd) {
 
 
 
-},{}],582:[function(require,module,exports){
+},{}],584:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -50609,7 +55937,7 @@ var MIDDLEWARE_REGISTERED = exports.MIDDLEWARE_REGISTERED = 'onMiddlewareRegiste
 
 // misc
 var DEVTOOLS_KEY = exports.DEVTOOLS_KEY = '__hello__stent__';
-},{}],583:[function(require,module,exports){
+},{}],585:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -50695,7 +56023,7 @@ function createMachine(name, config) {
   return machine;
 }
 module.exports = exports['default'];
-},{"./helpers/handleAction":586,"./helpers/handleActionLatest":587,"./helpers/registerMethods":592,"./helpers/validateConfig":595}],584:[function(require,module,exports){
+},{"./helpers/handleAction":588,"./helpers/handleActionLatest":589,"./helpers/registerMethods":594,"./helpers/validateConfig":597}],586:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -50801,7 +56129,7 @@ function connect() {
 
   return { 'with': withFunc };
 }
-},{"../":597,"../constants":582,"./handleMiddleware":589}],585:[function(require,module,exports){
+},{"../":599,"../constants":584,"./handleMiddleware":591}],587:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -50814,7 +56142,7 @@ function call(func) {
   return { __type: 'call', func: func, args: args };
 };
 module.exports = exports['default'];
-},{}],586:[function(require,module,exports){
+},{}],588:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -50890,7 +56218,7 @@ function handleAction(machine, action) {
   _handleMiddleware2.default.apply(undefined, [_constants.MIDDLEWARE_ACTION_PROCESSED, machine, action].concat(payload));
 };
 module.exports = exports['default'];
-},{"../constants":582,"./handleGenerator":588,"./handleMiddleware":589,"./updateState":594}],587:[function(require,module,exports){
+},{"../constants":584,"./handleGenerator":590,"./handleMiddleware":591,"./updateState":596}],589:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -50914,7 +56242,7 @@ function handleActionLatest(machine, action) {
   actions[action] = _handleAction2.default.apply(undefined, [machine, action].concat(payload));
 };
 module.exports = exports['default'];
-},{"./handleAction":586}],588:[function(require,module,exports){
+},{"./handleAction":588}],590:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -51012,7 +56340,7 @@ function handleGenerator(machine, generator, done, resultOfPreviousOperation) {
   return cancelGenerator;
 }
 module.exports = exports['default'];
-},{"../constants":582,"./handleMiddleware":589,"./updateState":594}],589:[function(require,module,exports){
+},{"../constants":584,"./handleMiddleware":591,"./updateState":596}],591:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -51045,7 +56373,7 @@ function handleMiddleware(hook, machine) {
   })(0);
 }
 module.exports = exports['default'];
-},{"../":597}],590:[function(require,module,exports){
+},{"../":599}],592:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -51063,7 +56391,7 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 exports.call = _call2.default;
 exports.connect = _connect2.default;
-},{"./connect":584,"./generators/call":585}],591:[function(require,module,exports){
+},{"./connect":586,"./generators/call":587}],593:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -51076,7 +56404,7 @@ function isEmptyObject(obj) {
   return true;
 }
 module.exports = exports['default'];
-},{}],592:[function(require,module,exports){
+},{}],594:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -51124,7 +56452,7 @@ function registerMethods(machine, transitions, dispatch, dispatchLatest) {
   }
 }
 module.exports = exports['default'];
-},{"../constants":582,"./toCamelCase":593}],593:[function(require,module,exports){
+},{"../constants":584,"./toCamelCase":595}],595:[function(require,module,exports){
 "use strict";
 
 exports.__esModule = true;
@@ -51136,7 +56464,7 @@ exports.default = function (text) {
 };
 
 module.exports = exports['default'];
-},{}],594:[function(require,module,exports){
+},{}],596:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -51179,7 +56507,7 @@ function updateState(machine, state) {
   (0, _handleMiddleware2.default)(_constants.MIDDLEWARE_PROCESS_STATE_CHANGE, machine);
 }
 module.exports = exports['default'];
-},{"../constants":582,"./handleMiddleware":589,"./isEmptyObject":591,"./validateState":596}],595:[function(require,module,exports){
+},{"../constants":584,"./handleMiddleware":591,"./isEmptyObject":593,"./validateState":598}],597:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -51202,7 +56530,7 @@ function validateConfig(config) {
   return true;
 }
 module.exports = exports['default'];
-},{"../constants":582}],596:[function(require,module,exports){
+},{"../constants":584}],598:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -51218,7 +56546,7 @@ function validateState(state) {
   throw new Error((0, _constants.ERROR_WRONG_STATE_FORMAT)(state));
 }
 module.exports = exports['default'];
-},{"../constants":582}],597:[function(require,module,exports){
+},{"../constants":584}],599:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -51314,7 +56642,7 @@ exports.Machine = factory;
 if (typeof window !== 'undefined') {
   window[_constants.DEVTOOLS_KEY] = factory;
 }
-},{"./constants":582,"./createMachine":583,"./helpers/connect":584,"./helpers/generators/call":585,"./helpers/handleMiddleware":589}],598:[function(require,module,exports){
+},{"./constants":584,"./createMachine":585,"./helpers/connect":586,"./helpers/generators/call":587,"./helpers/handleMiddleware":591}],600:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -51400,7 +56728,7 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 module.exports = exports['default'];
-},{"../helpers/connect":584,"react":578}],599:[function(require,module,exports){
+},{"../helpers/connect":586,"react":580}],601:[function(require,module,exports){
 'use strict';
 
 exports.__esModule = true;
@@ -51413,8 +56741,10 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 exports.default = { connect: _connect2.default };
 module.exports = exports['default'];
-},{"./connect":598}],600:[function(require,module,exports){
+},{"./connect":600}],602:[function(require,module,exports){
 'use strict';
+
+var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
 
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
@@ -51470,6 +56800,8 @@ var _moment = require('moment');
 
 var _moment2 = _interopRequireDefault(_moment);
 
+var _constants = require('./constants');
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -51511,37 +56843,37 @@ var App = function (_React$Component) {
     value: function componentDidMount() {
       var _this2 = this;
 
-      setInterval(function () {
+      this._interval = setInterval(function () {
         _this2.setState({ now: (0, _moment2.default)() });
       }, 10000);
+    }
+  }, {
+    key: 'componentWillUnmount',
+    value: function componentWillUnmount() {
+      clearInterval(this._interval);
     }
   }, {
     key: '_renderGroupedByTag',
     value: function _renderGroupedByTag() {
       var _this3 = this;
 
-      var notes = this.props.notes;
+      var notesByTag = this.props.notesByTag;
 
 
-      if (notes === null || notes.length === 0) return null;
-
-      var groupedByTag = notes.reduce(function (result, note) {
-        if (!note.tags || note.tags.length === 0) {
-          if (!result['#notag']) result['#notag'] = 0;
-          result['#notag'] += 1;
-        } else {
-          note.tags.forEach(function (tag) {
-            if (!result[tag]) result[tag] = 0;
-            result[tag] += 1;
-          });
-        }
-        return result;
-      }, {});
+      var sortedByCount = Object.keys(notesByTag).map(function (tag) {
+        return [tag, notesByTag[tag]];
+      }).sort(function (a, b) {
+        return b[1] - a[1];
+      });
 
       return _react2.default.createElement(
         'div',
         { className: 'summary' },
-        Object.keys(groupedByTag).map(function (tag, i) {
+        sortedByCount.map(function (_ref, i) {
+          var _ref2 = _slicedToArray(_ref, 2),
+              tag = _ref2[0],
+              count = _ref2[1];
+
           return _react2.default.createElement(
             'a',
             { key: i, className: 'tagSummaryLink', onClick: function onClick() {
@@ -51549,10 +56881,10 @@ var App = function (_React$Component) {
               } },
             _react2.default.createElement('i', { className: 'fa fa-hashtag' }),
             removeHash(tag),
-            groupedByTag[tag] > 1 && _react2.default.createElement(
+            count > 1 && _react2.default.createElement(
               'sup',
               null,
-              groupedByTag[tag]
+              count
             )
           );
         })
@@ -51601,19 +56933,7 @@ var App = function (_React$Component) {
               _react2.default.createElement(
                 'small',
                 null,
-                'Ctrl + n'
-              )
-            ),
-            _react2.default.createElement(
-              'a',
-              { className: 'button', onClick: function onClick() {
-                  return _this4.props.search();
-                } },
-              _react2.default.createElement('i', { className: 'fa fa-search' }),
-              _react2.default.createElement(
-                'small',
-                null,
-                'Ctrl + f'
+                'Enter'
               )
             )
           ),
@@ -51638,7 +56958,7 @@ App.propTypes = {
   newNote: _propTypes2.default.func,
   search: _propTypes2.default.func,
   isSidebarOpen: _propTypes2.default.bool,
-  notes: _propTypes2.default.array
+  notesByTag: _propTypes2.default.object
 };
 
 var AppConnected = (0, _react3.connect)(App).with('Weather', 'Sidebar', 'Notes').map(function (weather, sidebar, notes) {
@@ -51651,13 +56971,13 @@ var AppConnected = (0, _react3.connect)(App).with('Weather', 'Sidebar', 'Notes')
     search: function search(what) {
       return sidebar.open(_react2.default.createElement(_Search2.default, { what: what }));
     },
-    notes: notes.state.notes
+    notesByTag: notes.state.notesByTag
   };
 });
 
 _reactDom2.default.render(_react2.default.createElement(AppConnected, null), document.querySelector('#container'));
 
-},{"./components/Editor":601,"./components/Search":603,"./components/Time":604,"./components/Weather":605,"./helpers/debug":607,"./helpers/getGlobalStyles":609,"./helpers/shortcuts":611,"./stent/Notes":612,"./stent/Sidebar":613,"./stent/Weather":614,"babel-polyfill":1,"moment":398,"prop-types":405,"react":578,"react-dom":407,"react-helmet":534,"stent/lib/react":599}],601:[function(require,module,exports){
+},{"./components/Editor":603,"./components/Search":605,"./components/Time":606,"./components/Weather":607,"./constants":608,"./helpers/debug":610,"./helpers/getGlobalStyles":612,"./helpers/shortcuts":614,"./stent/Notes":616,"./stent/Sidebar":617,"./stent/Weather":618,"babel-polyfill":1,"moment":400,"prop-types":407,"react":580,"react-dom":409,"react-helmet":536,"stent/lib/react":601}],603:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -51696,10 +57016,8 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
-var ENTER = 13;
 var ESCAPE = 27;
-var N = 78;
-var F = 70;
+var S = 83;
 
 var Editor = function (_React$Component) {
   _inherits(Editor, _React$Component);
@@ -51758,14 +57076,11 @@ var Editor = function (_React$Component) {
   }, {
     key: '_onEditorAreaKeyDown',
     value: function _onEditorAreaKeyDown(event) {
-      if (event.keyCode === ENTER && event.ctrlKey) {
+      if (event.keyCode === S && event.ctrlKey || event.keyCode === S && event.metaKey) {
+        event.preventDefault();
         this._save();
       } else if (event.keyCode === ESCAPE) {
         this._exit();
-      } else if (event.ctrlKey && event.keyCode === N) {
-        this.props.newNote();
-      } else if (event.ctrlKey && event.keyCode === F) {
-        this.props.search();
       }
     }
   }, {
@@ -51872,7 +57187,7 @@ var WiredEditor = (0, _react3.connect)(Editor).with('Sidebar', 'Notes').map(func
 
 exports.default = WiredEditor;
 
-},{"./Search":603,"moment":398,"prop-types":405,"react":578,"react-mde":550,"stent/lib/react":599}],602:[function(require,module,exports){
+},{"./Search":605,"moment":400,"prop-types":407,"react":580,"react-mde":552,"stent/lib/react":601}],604:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -51893,10 +57208,6 @@ var _marked = require('marked');
 
 var _marked2 = _interopRequireDefault(_marked);
 
-var _moment = require('moment');
-
-var _moment2 = _interopRequireDefault(_moment);
-
 var _react3 = require('stent/lib/react');
 
 var _html = require('linkifyjs/html');
@@ -51915,22 +57226,42 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
+var MAX_CONTENT_TO_BE_COLLAPSABLE = 340;
+
 var Note = function (_React$Component) {
   _inherits(Note, _React$Component);
 
   function Note(props) {
     _classCallCheck(this, Note);
 
-    return _possibleConstructorReturn(this, (Note.__proto__ || Object.getPrototypeOf(Note)).call(this, props));
+    var _this = _possibleConstructorReturn(this, (Note.__proto__ || Object.getPrototypeOf(Note)).call(this, props));
+
+    var content = props.note.content || '';
+    var collapsed = content.replace(/\r?\n|\r/g, '').length > MAX_CONTENT_TO_BE_COLLAPSABLE;
+
+    _this.state = { collapsed: collapsed };
+    return _this;
   }
 
   _createClass(Note, [{
+    key: '_delete',
+    value: function _delete() {
+      if (confirm('Are you sure?')) {
+        this.props.delete(this.props.note.id);
+      }
+    }
+  }, {
+    key: '_collapsed',
+    value: function _collapsed() {
+      this.setState({ collapsed: !this.state.collapsed });
+    }
+  }, {
     key: 'render',
     value: function render() {
+      var _this2 = this;
+
       var _props$note = this.props.note,
           content = _props$note.content,
-          created = _props$note.created,
-          tags = _props$note.tags,
           id = _props$note.id,
           done = _props$note.done;
       var _props = this.props,
@@ -51942,7 +57273,7 @@ var Note = function (_React$Component) {
 
       return _react2.default.createElement(
         'div',
-        { className: 'note note-' + (done ? 'done' : 'notdone') },
+        { className: 'note note-' + (done ? 'done' : 'notdone') + ' ' + (!this.state.collapsed ? 'note-expanded' : '') },
         _react2.default.createElement(
           'div',
           { className: 'noteMeta' },
@@ -51963,7 +57294,7 @@ var Note = function (_React$Component) {
           _react2.default.createElement(
             'a',
             { className: 'button', onClick: function onClick() {
-                return null;
+                return _this2._delete();
               } },
             _react2.default.createElement('i', { className: 'fa fa-trash-o' })
           )
@@ -51972,6 +57303,9 @@ var Note = function (_React$Component) {
           className: 'noteContent',
           dangerouslySetInnerHTML: {
             __html: (0, _html2.default)((0, _marked2.default)(content))
+          } }),
+        this.state.collapsed && _react2.default.createElement('a', { className: 'gradient', onClick: function onClick() {
+            return _this2._collapsed();
           } })
       );
     }
@@ -51985,7 +57319,8 @@ var Note = function (_React$Component) {
 Note.propTypes = {
   note: _propTypes2.default.object,
   changeStatus: _propTypes2.default.func,
-  edit: _propTypes2.default.func
+  edit: _propTypes2.default.func,
+  delete: _propTypes2.default.func
 };
 
 exports.default = (0, _react3.connect)(Note).with('Sidebar', 'Notes').map(function (sidebar, notes) {
@@ -51995,18 +57330,14 @@ exports.default = (0, _react3.connect)(Note).with('Sidebar', 'Notes').map(functi
     },
     edit: function edit(id, content) {
       return sidebar.open(_react2.default.createElement(_Editor2.default, { id: id, text: content }));
+    },
+    delete: function _delete(id) {
+      return notes.delete(id);
     }
   };
 });
 
-/*
-
-<strong>created</strong>: { moment(new Date(created)).format('MMMM Do YYYY, HH:MM') }<br />
-          <strong>tags</strong>: { tags.join(', ') }<br />
-
-          */
-
-},{"./Editor":601,"linkifyjs/html":377,"marked":397,"moment":398,"prop-types":405,"react":578,"stent/lib/react":599}],603:[function(require,module,exports){
+},{"./Editor":603,"linkifyjs/html":378,"marked":399,"prop-types":407,"react":580,"stent/lib/react":601}],605:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52025,14 +57356,6 @@ var _propTypes2 = _interopRequireDefault(_propTypes);
 
 var _react3 = require('stent/lib/react');
 
-var _extractTags = require('../helpers/extractTags');
-
-var _extractTags2 = _interopRequireDefault(_extractTags);
-
-var _lodash = require('lodash.intersection');
-
-var _lodash2 = _interopRequireDefault(_lodash);
-
 var _Note = require('./Note');
 
 var _Note2 = _interopRequireDefault(_Note);
@@ -52040,6 +57363,10 @@ var _Note2 = _interopRequireDefault(_Note);
 var _Editor = require('./Editor');
 
 var _Editor2 = _interopRequireDefault(_Editor);
+
+var _uid = require('../helpers/uid');
+
+var _uid2 = _interopRequireDefault(_uid);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -52050,21 +57377,6 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
 var ESCAPE = 27;
-var N = 78;
-
-var searchCriteria = function searchCriteria(text) {
-  return text.split(/ /gi).reduce(function (result, token) {
-    var tags = (0, _extractTags2.default)(token);
-
-    if (tags && tags.length > 0) {
-      result.tags = result.tags.concat(tags);
-    } else if (token !== '' && token !== ' ' && token.length >= 2) {
-      result.text.push(token);
-    }
-
-    return result;
-  }, { tags: [], text: [] });
-};
 
 var Search = function (_React$Component) {
   _inherits(Search, _React$Component);
@@ -52077,7 +57389,10 @@ var Search = function (_React$Component) {
     _this._onChange = _this._onChange.bind(_this);
     _this._exit = _this._exit.bind(_this);
     _this._onInputKeydown = _this._onInputKeydown.bind(_this);
-    _this.state = { text: props.what || '' };
+    _this.state = {
+      text: props.what || '',
+      page: 0
+    };
     return _this;
   }
 
@@ -52091,6 +57406,7 @@ var Search = function (_React$Component) {
         _this2.input.selectionStart = _this2.input.selectionEnd = 10000;
       }, 100);
       this._setShortcuts();
+      this.props.search(this.state.text);
     }
   }, {
     key: 'componentWillUnmount',
@@ -52101,7 +57417,8 @@ var Search = function (_React$Component) {
     key: 'componentWillReceiveProps',
     value: function componentWillReceiveProps(newProps) {
       if (newProps.what !== this.state.text) {
-        this.setState({ text: newProps.what });
+        this.setState({ text: newProps.what || '' });
+        this.props.search(newProps.what);
       }
     }
   }, {
@@ -52113,14 +57430,13 @@ var Search = function (_React$Component) {
     key: '_onChange',
     value: function _onChange(text) {
       this.setState({ text: text });
+      this.props.search(this.state.text);
     }
   }, {
     key: '_onInputKeydown',
     value: function _onInputKeydown(event) {
       if (event.keyCode === ESCAPE) {
         this._exit();
-      } else if (event.ctrlKey && event.keyCode === N) {
-        this.props.newNote();
       }
     }
   }, {
@@ -52138,27 +57454,13 @@ var Search = function (_React$Component) {
     value: function render() {
       var _this3 = this;
 
-      var criteria = searchCriteria(this.state.text);
-      var filtered = this.props.notes;
+      var notes = this.props.notes;
 
-      if (criteria.tags.length === 0 && criteria.text.length === 0) {
-        filtered = [];
-      } else {
-        if (criteria.tags.length > 0) {
-          filtered = filtered.filter(function (note) {
-            if (!note.tags || note.tags.length === 0) return false;
-            return (0, _lodash2.default)(note.tags, criteria.tags).length === criteria.tags.length;
-          });
-        }
-        if (criteria.text.length > 0) {
-          filtered = filtered.filter(function (note) {
-            return criteria.text.reduce(function (ok, t) {
-              if (ok) return ok;
-              return note.content.match(new RegExp(t, 'gi'));
-            }, false);
-          });
-        }
-      }
+      var done = 0;
+
+      notes.forEach(function (data, i) {
+        if (data.done) done += 1;
+      });
 
       return _react2.default.createElement(
         'div',
@@ -52176,8 +57478,17 @@ var Search = function (_React$Component) {
             onChange: function onChange(event) {
               return _this3._onChange(event.target.value);
             } }),
-          filtered.map(function (data, i) {
-            return _react2.default.createElement(_Note2.default, { key: i, note: data });
+          _react2.default.createElement(
+            'div',
+            { className: 'progress' },
+            _react2.default.createElement('div', { className: 'progressBar', style: { width: Math.ceil(done / notes.length * 100) + '%' } })
+          )
+        ),
+        _react2.default.createElement(
+          'div',
+          { className: 'list' },
+          notes.slice(0, (this.state.page + 1) * 10).map(function (note, i) {
+            return _react2.default.createElement(_Note2.default, { note: note, key: (0, _uid2.default)() + '_' + i });
           })
         ),
         _react2.default.createElement(
@@ -52191,8 +57502,7 @@ var Search = function (_React$Component) {
               { className: 'button close', onClick: this._exit },
               _react2.default.createElement('i', { className: 'fa fa-close' })
             )
-          ),
-          _react2.default.createElement('div', null)
+          )
         )
       );
     }
@@ -52205,7 +57515,8 @@ Search.propTypes = {
   exit: _propTypes2.default.func,
   newNote: _propTypes2.default.func,
   what: _propTypes2.default.string,
-  notes: _propTypes2.default.array
+  notes: _propTypes2.default.array,
+  search: _propTypes2.default.func
 };
 
 exports.default = (0, _react3.connect)(Search).with('Sidebar', 'Notes').map(function (sidebar, notes) {
@@ -52213,14 +57524,17 @@ exports.default = (0, _react3.connect)(Search).with('Sidebar', 'Notes').map(func
     exit: function exit() {
       return sidebar.close();
     },
-    notes: notes.state.notes,
+    search: function search(str) {
+      return notes.search(str);
+    },
     newNote: function newNote() {
       return sidebar.open(_react2.default.createElement(_Editor2.default, null));
-    }
+    },
+    notes: notes.state.filtered
   };
 });
 
-},{"../helpers/extractTags":608,"./Editor":601,"./Note":602,"lodash.intersection":396,"prop-types":405,"react":578,"stent/lib/react":599}],604:[function(require,module,exports){
+},{"../helpers/uid":615,"./Editor":603,"./Note":604,"prop-types":407,"react":580,"stent/lib/react":601}],606:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52254,13 +57568,18 @@ var Time = function (_React$Component) {
     var _this = _possibleConstructorReturn(this, (Time.__proto__ || Object.getPrototypeOf(Time)).call(this, props));
 
     _this.state = { moment: (0, _moment2.default)() };
-    setInterval(function () {
+    _this._interval = setInterval(function () {
       _this.setState({ moment: (0, _moment2.default)() });
     }, 1000);
     return _this;
   }
 
   _createClass(Time, [{
+    key: 'componentWillUnmount',
+    value: function componentWillUnmount() {
+      clearInterval(this._interval);
+    }
+  }, {
     key: 'render',
     value: function render() {
       return _react2.default.createElement(
@@ -52293,7 +57612,7 @@ var Time = function (_React$Component) {
 exports.default = Time;
 ;
 
-},{"moment":398,"react":578}],605:[function(require,module,exports){
+},{"moment":400,"react":580}],607:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52602,7 +57921,7 @@ exports.default = (0, _react3.connect)(Weather).with('Weather', 'Sidebar').map(f
   };
 });
 
-},{"moment":398,"prop-types":405,"react":578,"stent/lib/react":599}],606:[function(require,module,exports){
+},{"moment":400,"prop-types":407,"react":580,"stent/lib/react":601}],608:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52614,6 +57933,7 @@ var BG_COLOR_OPACITY = 0.5;
 var COLORS_PER_TEMPERATURE = exports.COLORS_PER_TEMPERATURE = [{ temperature: -65, color: 'rgba(130, 22, 146, ' + BG_COLOR_OPACITY + ')' }, { temperature: -55, color: 'rgba(130, 22, 146, ' + BG_COLOR_OPACITY + ')' }, { temperature: -45, color: 'rgba(130, 22, 146, ' + BG_COLOR_OPACITY + ')' }, { temperature: -40, color: 'rgba(130, 22, 146, ' + BG_COLOR_OPACITY + ')' }, { temperature: -30, color: 'rgba(130, 87, 219, ' + BG_COLOR_OPACITY + ')' }, { temperature: -20, color: 'rgba(32, 140, 236, ' + BG_COLOR_OPACITY + ')' }, { temperature: -10, color: 'rgba(32, 196, 232, ' + BG_COLOR_OPACITY + ')' }, { temperature: 0, color: 'rgba(35, 221, 221, ' + BG_COLOR_OPACITY + ')' }, { temperature: 10, color: 'rgba(194, 255, 40, ' + BG_COLOR_OPACITY + ')' }, { temperature: 20, color: 'rgba(255, 240, 40, ' + BG_COLOR_OPACITY + ')' }, { temperature: 25, color: 'rgba(255, 194, 40, ' + BG_COLOR_OPACITY + ')' }, { temperature: 30, color: 'rgba(252, 128, 20, ' + BG_COLOR_OPACITY + ')' }];
 var BG_DEFAULT_COLOR = exports.BG_DEFAULT_COLOR = 'rgba(255, 255, 255, 1)';
 var GOOGLE_MAPS_API_KEY = exports.GOOGLE_MAPS_API_KEY = 'AIzaSyAj1B0ZHdivYN5cG8-7Ry5fnLvtuY9rm0o';
+var NO_TAG = exports.NO_TAG = '#notag';
 
 function calculateBGColor(temperature) {
   for (var i = 0; i < COLORS_PER_TEMPERATURE.length - 1; i++) {
@@ -52624,7 +57944,28 @@ function calculateBGColor(temperature) {
   return COLORS_PER_TEMPERATURE[COLORS_PER_TEMPERATURE.length - 1].color;
 }
 
-},{}],607:[function(require,module,exports){
+},{}],609:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _dexie = require('dexie');
+
+var _dexie2 = _interopRequireDefault(_dexie);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+var db = new _dexie2.default('DB__');
+
+db.version(1).stores({
+  notes: '++id, content, tags, created, edited, done'
+});
+
+exports.default = db;
+
+},{"dexie":337}],610:[function(require,module,exports){
 'use strict';
 
 var _stent = require('stent');
@@ -52634,18 +57975,30 @@ var _kukerEmitters = require('kuker-emitters');
 _stent.Machine.addMiddleware((0, _kukerEmitters.StentEmitter)());
 (0, _kukerEmitters.ReactEmitter)();
 
-},{"kuker-emitters":376,"stent":597}],608:[function(require,module,exports){
-"use strict";
+},{"kuker-emitters":377,"stent":599}],611:[function(require,module,exports){
+'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = extractTags;
+
+var _lodash = require('lodash.uniq');
+
+var _lodash2 = _interopRequireDefault(_lodash);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
 function extractTags(str) {
-  return str.match(/#[\wа-я]+/gi);
+  var tags = str.match(/#[\wа-я]+/gi);
+
+  if (tags && tags.length > 0) {
+    return (0, _lodash2.default)(tags);
+  }
+  return tags;
 };
 
-},{}],609:[function(require,module,exports){
+},{"lodash.uniq":398}],612:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52684,7 +58037,7 @@ function getGlobalStyles(today) {
   return '\n    body {\n      background: linear-gradient(\n        174deg,\n        ' + bgColor + ' 0%,\n        ' + getTimeBGColor(bgColor) + ' 100%\n      );\n    }\n  ';
 };
 
-},{"../constants":606,"chromath":2,"moment":398}],610:[function(require,module,exports){
+},{"../constants":608,"chromath":2,"moment":400}],613:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52741,7 +58094,7 @@ function normalizeDarkSkyData(data) {
   return { days: days, hours: hours, timezone: data.timezone };
 };
 
-},{"moment":398}],611:[function(require,module,exports){
+},{"moment":400}],614:[function(require,module,exports){
 'use strict';
 
 var _react = require('react');
@@ -52763,22 +58116,37 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 Mousetrap.bind('ctrl+u', function (e) {
   _stent.Machine.get('Weather').refresh();
 });
-Mousetrap.bind('ctrl+n', function (e) {
+Mousetrap.bind('enter', function (e) {
   _stent.Machine.get('Sidebar').open(_react2.default.createElement(_Editor2.default, null));
 });
-Mousetrap.bind('ctrl+f', function (e) {
+Mousetrap.bind('shift+enter', function (e) {
   _stent.Machine.get('Sidebar').open(_react2.default.createElement(_Search2.default, null));
 });
 Mousetrap.bind('escape', function (e) {
   _stent.Machine.get('Sidebar').close();
 });
 
-},{"../components/Editor":601,"../components/Search":603,"react":578,"stent":597}],612:[function(require,module,exports){
+},{"../components/Editor":603,"../components/Search":605,"react":580,"stent":599}],615:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+var id = 0;
+var getId = function getId() {
+  return ++id;
+};
+
+exports.default = getId;
+
+},{}],616:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
 
 var _stent = require('stent');
 
@@ -52786,91 +58154,111 @@ var _moment = require('moment');
 
 var _moment2 = _interopRequireDefault(_moment);
 
-var _localforage = require('localforage');
-
-var _localforage2 = _interopRequireDefault(_localforage);
-
 var _helpers = require('stent/lib/helpers');
 
 var _extractTags = require('../helpers/extractTags');
 
 var _extractTags2 = _interopRequireDefault(_extractTags);
 
+var _lodash = require('lodash.remove');
+
+var _lodash2 = _interopRequireDefault(_lodash);
+
+var _lodash3 = require('lodash.intersection');
+
+var _lodash4 = _interopRequireDefault(_lodash3);
+
+var _db = require('../db');
+
+var _db2 = _interopRequireDefault(_db);
+
+var _constants = require('../constants');
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-var NOTES_KEY = '__notes';
-
-function hashCode(str) {
-  return str.split('').reduce(function (prevHash, currVal) {
-    return (prevHash << 5) - prevHash + currVal.charCodeAt(0);
-  }, 0);
-}
-
-function Note(content) {
-  this.content = content;
-  this.tags = (0, _extractTags2.default)(content);
-  this.created = (0, _moment2.default)().toString();
-  this.edited = (0, _moment2.default)().toString();
-  this.id = hashCode(this.created);
-  this.done = false;
-}
-
-function storeData(notes) {
-  try {
-    _localforage2.default.setItem(NOTES_KEY, JSON.stringify(notes));
-  } catch (error) {
-    console.log('Can not store the notes in the local db!', error);
-  }
-}
-function fetchData() {
-  try {
-    return _localforage2.default.getItem(NOTES_KEY).then(function (data) {
-      return JSON.parse(data);
-    });
-  } catch (error) {
-    console.log('Can not get the notes from the local db!', error);
-    return [];
-  }
-}
-
 var Notes = _stent.Machine.create('Notes', {
-  state: { name: 'idle', notes: [] },
+  state: { name: 'idle', notesByTag: {}, filtered: [] },
   transitions: {
     'idle': {
       'create': function create(state, content) {
-        state.notes.push(new Note(content));
-        storeData(state.notes);
-        return state;
+        _db2.default.notes.add({
+          content: content,
+          tags: (0, _extractTags2.default)(content) || [],
+          created: (0, _moment2.default)().toString(),
+          edited: (0, _moment2.default)().toString(),
+          done: false
+        });
+        this.fetch();
       },
-      'fetch': /*#__PURE__*/regeneratorRuntime.mark(function fetch() {
-        var notes;
+      'fetch': /*#__PURE__*/regeneratorRuntime.mark(function fetch(state) {
+        var notesByTag;
         return regeneratorRuntime.wrap(function fetch$(_context) {
           while (1) {
             switch (_context.prev = _context.next) {
               case 0:
-                _context.next = 2;
-                return (0, _helpers.call)(fetchData);
+                notesByTag = {};
+                _context.next = 3;
+                return (0, _helpers.call)(_db2.default.notes.each.bind(_db2.default.notes), function (_ref) {
+                  var tags = _ref.tags;
 
-              case 2:
-                notes = _context.sent;
-
-
-                notes.sort(function (b, a) {
-                  return new Date(a.edited) - new Date(b.created);
+                  if (tags) {
+                    if (tags.length > 0) {
+                      tags.forEach(function (tag) {
+                        if (!notesByTag[tag]) notesByTag[tag] = 0;
+                        notesByTag[tag] += 1;
+                      });
+                    } else {
+                      if (!notesByTag[_constants.NO_TAG]) notesByTag[_constants.NO_TAG] = 0;
+                      notesByTag[_constants.NO_TAG] += 1;
+                    }
+                  }
                 });
 
-                return _context.abrupt('return', { name: 'idle', notes: notes ? notes : [] });
+              case 3:
+                return _context.abrupt('return', _extends({}, state, { notesByTag: notesByTag }));
 
-              case 5:
+              case 4:
               case 'end':
                 return _context.stop();
             }
           }
         }, fetch, this);
       }),
+      'search': /*#__PURE__*/regeneratorRuntime.mark(function search(state, str) {
+        var criteria, dbResult, filtered;
+        return regeneratorRuntime.wrap(function search$(_context2) {
+          while (1) {
+            switch (_context2.prev = _context2.next) {
+              case 0:
+                criteria = this.searchCriteria(str);
+                _context2.next = 3;
+                return (0, _helpers.call)(_db2.default.notes.filter.bind(_db2.default.notes), function (note) {
+                  if (note.tags.length === 0 && criteria.tags.indexOf(_constants.NO_TAG) >= 0) return true;
+                  if (note.tags.length > 0 && (0, _lodash4.default)(note.tags, criteria.tags).length === criteria.tags.length) {
+                    return true;
+                  }
+                  return false;
+                });
+
+              case 3:
+                dbResult = _context2.sent;
+                _context2.next = 6;
+                return (0, _helpers.call)(dbResult.toArray.bind(dbResult));
+
+              case 6:
+                filtered = _context2.sent;
+                return _context2.abrupt('return', _extends({}, state, { filtered: filtered }));
+
+              case 8:
+              case 'end':
+                return _context2.stop();
+            }
+          }
+        }, search, this);
+      }),
       'edit': function edit(state, noteId, data) {
-        var found = state.notes.find(function (_ref) {
-          var id = _ref.id;
+        var found = state.notes.find(function (_ref2) {
+          var id = _ref2.id;
           return id === noteId;
         });
 
@@ -52878,22 +58266,59 @@ var Notes = _stent.Machine.create('Notes', {
           Object.keys(data).forEach(function (prop) {
             found[prop] = data[prop];
             if (prop === 'content') {
-              found.tags = (0, _extractTags2.default)(data[prop]);
+              found.tags = (0, _extractTags2.default)(data[prop]) || [];
             }
           });
         }
-        storeData(state.notes);
+        return state;
+      },
+      delete: function _delete(state, noteId) {
+        (0, _lodash2.default)(state.notes, function (_ref3) {
+          var id = _ref3.id;
+          return id === noteId;
+        });
+        this.sort();
         return state;
       }
     }
+  },
+  sort: function sort() {
+    if (this.state.notes && this.state.notes.length > 0) {
+      this.state.notes.sort(function (b, a) {
+        return new Date(a.edited) - new Date(b.edited);
+      });
+    }
+  },
+  searchCriteria: function searchCriteria() {
+    var text = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
+
+    return text.split(/ /gi).reduce(function (result, token) {
+      var tags = (0, _extractTags2.default)(token);
+
+      if (tags && tags.length > 0) {
+        result.tags = result.tags.concat(tags);
+      } else if (token !== '' && token !== ' ' && token.length >= 2) {
+        result.text.push(token);
+      }
+
+      return result;
+    }, { tags: [], text: [] });
   }
 });
 
 Notes.fetch();
 
+// for (let i = 0; i < 1000; i++) {
+//   if (i % 20 === 0) {
+//     Notes.create('TODO ' + i + ' Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry\'s standard dummy text ever since the 1500s,\n\nwhen an unknown printer took a galley of type and scrambled it to make a type specimen book.\n\nIt has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.\n\nIt was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.');
+//   } else {
+//     Notes.create('TODO ' + i + ' one liner #todo');
+//   }
+// }
+
 exports.default = Notes;
 
-},{"../helpers/extractTags":608,"localforage":395,"moment":398,"stent":597,"stent/lib/helpers":590}],613:[function(require,module,exports){
+},{"../constants":608,"../db":609,"../helpers/extractTags":611,"lodash.intersection":396,"lodash.remove":397,"moment":400,"stent":599,"stent/lib/helpers":592}],617:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -52924,7 +58349,7 @@ var Sidebar = _stent.Machine.create('Sidebar', {
 
 exports.default = Sidebar;
 
-},{"stent":597}],614:[function(require,module,exports){
+},{"stent":599}],618:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -53163,4 +58588,4 @@ var Weather = _stent.Machine.create('Weather', {
 
 exports.default = Weather;
 
-},{"../constants":606,"../helpers/normalizeDarkSkyData":610,"moment":398,"stent":597,"stent/lib/helpers":590}]},{},[600]);
+},{"../constants":608,"../helpers/normalizeDarkSkyData":613,"moment":400,"stent":599,"stent/lib/helpers":592}]},{},[602]);

@@ -6,9 +6,12 @@ export default class Time extends React.Component {
     super(props);
 
     this.state = { moment: moment() };
-    setInterval(() => {
+    this._interval = setInterval(() => {
       this.setState({ moment: moment() });
     }, 1000);
+  }
+  componentWillUnmount() {
+    clearInterval(this._interval);
   }
   render() {
     return (

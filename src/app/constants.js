@@ -16,6 +16,7 @@ export const COLORS_PER_TEMPERATURE = [
 ];
 export const BG_DEFAULT_COLOR = 'rgba(255, 255, 255, 1)';
 export const GOOGLE_MAPS_API_KEY = 'AIzaSyAj1B0ZHdivYN5cG8-7Ry5fnLvtuY9rm0o';
+export const NO_TAG = '#notag';
 
 export function calculateBGColor(temperature) {
   for (let i = 0; i < COLORS_PER_TEMPERATURE.length - 1; i++) {

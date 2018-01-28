@@ -10,6 +10,7 @@ body, html {
 }
 *, *:before, *:after {
   box-sizing: border-box;
+  outline: none;
 }
 iframe{
   overflow:hidden;
@@ -159,7 +160,8 @@ iframe{
   width: 200px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(2, 50%);
+  /* grid-template-columns: repeat(2, 50%); */
+  grid-template-columns: 1fr;
   align-content: center;
 }
 .notes .summary {
@@ -250,27 +252,66 @@ iframe{
   font-size: 1em;
   height: 100%;
   display: grid;
-  grid-template-rows: auto 2em;
+  grid-template-rows: 70px 1fr 40px;
   grid-row-gap: 1em;
 }
 .search .searchInput {
-  font-size: 1em;
+  font-size: 2em;
   font-family: inherit;
   width: 100%;
   outline: none;
   border: none;
   display: block;
+  margin-bottom: 0.5em;
+}
+.search .progress {
+  background: #e6e6e6;
+  width: 100%;
+  height: 6px;
   margin-bottom: 1em;
+}
+.search .progressBar {
+  background: green;
+  height: 100%;
+  transition: width 500ms ease-out;
+}
+.search .list {
+  overflow-y: scroll;
+  overflow-x: hidden;
 }
 
 
 .note {
   display: block;
   border-top: solid 1px rgba(0, 0, 0, 0.2);
+  max-height: 12em;
+  overflow: hidden;
+  position: relative;
   padding: 1em;
+  -webkit-box-shadow: 0px 0px 1px 1px rgba(222, 222, 222, 0.75);
+  -moz-box-shadow: 0px 0px 1px 1px rgba(222, 222, 222, 0.75);
+  box-shadow: 0px 0px 1px 1px rgba(222, 222, 222, 0.75);
+  margin-bottom: 0.4em;
+  margin-left: 0.2em;
+  margin-right: 0.5em;
+}
+.note .gradient {
+  display: block;
+  cursor: pointer;
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 50px;
+  background: -moz-linear-gradient(top, rgba(255,255,255,0) 0%, rgba(255,255,255,1) 60%, rgba(255,255,255,1) 100%);
+  background: -webkit-linear-gradient(top, rgba(255,255,255,0) 0%,rgba(255,255,255,1) 60%,rgba(255,255,255,1) 100%);
+  background: linear-gradient(to bottom, rgba(255,255,255,0) 0%,rgba(255,255,255,1) 60%,rgba(255,255,255,1) 100%);
+}
+.note-expanded {
+  overflow: auto;
+  max-height: none; 
 }
 .note-done {
-  background: rgba(21, 255, 0, 0.2);
+  border-left: solid 5px green;
 }
 .note::after {
   content: " ";
@@ -284,16 +325,19 @@ iframe{
 .noteMeta {
   float: right;
   text-align: right;
-  margin: 0.3em 0 1em 1em;
   font-size: 0.7em;
-  line-height: 1.3;
+  opacity: 0;
+  line-height: 0;
+  transition: opacity 300ms ease;
 }
 .noteMeta .button {
   font-size: 2em;
   opacity: 0.2;
   margin-left: 0.4em;
 }
+.note:hover .noteMeta {
+  opacity: 1;
+}
 .noteContent p {
-  margin-top: 0;
-  margin-bottom: 0.5em;
+  margin: 0;
 }

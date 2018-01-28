@@ -1,25 +1,11 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'stent/lib/react';
-import extractTags from '../helpers/extractTags';
-import intersection from 'lodash.intersection';
 import Note from './Note';
 import Editor from './Editor';
+import getId from '../helpers/uid';
 
 const ESCAPE = 27;
-const N = 78;
-
-const searchCriteria = text => text.split(/ /gi).reduce((result, token) => {
-  const tags = extractTags(token);
-
-  if (tags && tags.length > 0) {
-    result.tags = result.tags.concat(tags);
-  } else if (token !== '' && token !== ' ' && token.length >= 2) {
-    result.text.push(token);
-  }
-
-  return result;
-}, { tags: [], text: [] });
 
 class Search extends React.Component {
   constructor(props) {
@@ -28,7 +14,10 @@ class Search extends React.Component {
     this._onChange = this._onChange.bind(this);
     this._exit = this._exit.bind(this);
     this._onInputKeydown = this._onInputKeydown.bind(this);
-    this.state = { text: props.what || '' };
+    this.state = {
+      text: props.what || '',
+      page: 0
+    };
   }
   componentDidMount() {
     setTimeout(() => {
@@ -36,13 +25,15 @@ class Search extends React.Component {
       this.input.selectionStart = this.input.selectionEnd = 10000;
     }, 100);
     this._setShortcuts();
+    this.props.search(this.state.text);
   }
   componentWillUnmount() {
     this._unsetShortcuts();
   }
   componentWillReceiveProps(newProps) {
     if (newProps.what !== this.state.text) {
-      this.setState({ text: newProps.what });
+      this.setState({ text: newProps.what || '' });
+      this.props.search(newProps.what);
     }
   }
   _exit() {
@@ -50,12 +41,11 @@ class Search extends React.Component {
   }
   _onChange(text) {
     this.setState({ text });
+    this.props.search(this.state.text);
   }
   _onInputKeydown(event) {
     if (event.keyCode === ESCAPE) {
       this._exit();
-    } else if (event.ctrlKey && event.keyCode === N) {
-      this.props.newNote();
     }
   }
   _setShortcuts() {
@@ -65,25 +55,12 @@ class Search extends React.Component {
     this.input && this.input.removeEventListener('keydown', this._onInputKeydown);
   }
   render() {
-    const criteria = searchCriteria(this.state.text);
-    var filtered = this.props.notes;
+    var { notes } = this.props;
+    var done = 0;
 
-    if (criteria.tags.length === 0 && criteria.text.length === 0) {
-      filtered = [];
-    } else {
-      if (criteria.tags.length > 0) {
-        filtered = filtered.filter(note => {
-          if (!note.tags || note.tags.length === 0) return false;
-          return intersection(note.tags, criteria.tags).length === criteria.tags.length;
-        });
-      }
-      if (criteria.text.length > 0) {
-        filtered = filtered.filter(note => criteria.text.reduce((ok, t) => {
-          if (ok) return ok;
-          return note.content.match(new RegExp(t, 'gi'));
-        }, false));
-      }
-    }
+    notes.forEach((data, i) => {
+      if (data.done) done += 1;
+    });
 
     return (
       <div className='search'>
@@ -94,14 +71,19 @@ class Search extends React.Component {
             ref={ input => (this.input = input) }
             value={ this.state.text }
             onChange={ event => this._onChange(event.target.value) } />
-          { filtered.map((data, i) => <Note key={ i } note={ data } />) }
+          <div className='progress'>
+            <div className='progressBar' style={{ width: `${ Math.ceil(done / notes.length * 100) }%` }} />
+          </div>
+        </div>
+        <div className='list'>
+          { notes
+            .slice(0, (this.state.page + 1) * 10)
+            .map((note, i) => <Note note={ note } key={ `${ getId() }_${ i }` } />)
+          }
         </div>
         <nav>
           <div>
             <a className='button close' onClick={ this._exit }><i className='fa fa-close'></i></a>
-          </div>
-          <div>
-
           </div>
         </nav>
       </div>
@@ -113,13 +95,15 @@ Search.propTypes = {
   exit: PropTypes.func,
   newNote: PropTypes.func,
   what: PropTypes.string,
-  notes: PropTypes.array
+  notes: PropTypes.array,
+  search: PropTypes.func
 };
 
 export default connect(Search)
   .with('Sidebar', 'Notes')
   .map((sidebar, notes) => ({
     exit: () => sidebar.close(),
-    notes: notes.state.notes,
-    newNote: () => sidebar.open(<Editor />)
+    search: str => notes.search(str),
+    newNote: () => sidebar.open(<Editor />),
+    notes: notes.state.filtered
   }));

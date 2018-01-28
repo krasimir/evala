@@ -5,10 +5,8 @@ import ReactMde, { ReactMdeCommands } from 'react-mde';
 import Search from './Search';
 import moment from 'moment';
 
-const ENTER = 13;
 const ESCAPE = 27;
-const N = 78;
-const F = 70;
+const S = 83;
 
 class Editor extends React.Component {
   constructor(props) {
@@ -53,14 +51,11 @@ class Editor extends React.Component {
     }
   }
   _onEditorAreaKeyDown(event) {
-    if (event.keyCode === ENTER && event.ctrlKey) {
+    if (event.keyCode === S && event.ctrlKey || event.keyCode === S && event.metaKey) {
+      event.preventDefault();
       this._save();
     } else if (event.keyCode === ESCAPE) {
       this._exit();
-    } else if (event.ctrlKey && event.keyCode === N) {
-      this.props.newNote();
-    } else if (event.ctrlKey && event.keyCode === F) {
-      this.props.search();
     }
   }
   _setShortcuts() {
