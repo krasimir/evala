@@ -3,9 +3,10 @@ import PropTypes from 'prop-types';
 import { connect } from 'stent/lib/react';
 import Note from './Note';
 import Editor from './Editor';
-import getId from '../helpers/uid';
+import getId from '../helpers/getId';
 
 const ESCAPE = 27;
+const NOTES_PER_PAGE = 15;
 
 class Search extends React.Component {
   constructor(props) {
@@ -30,18 +31,13 @@ class Search extends React.Component {
   componentWillUnmount() {
     this._unsetShortcuts();
   }
-  componentWillReceiveProps(newProps) {
-    if (newProps.what !== this.state.text) {
-      this.setState({ text: newProps.what || '' });
-      this.props.search(newProps.what);
-    }
-  }
   _exit() {
     this.props.exit();
   }
   _onChange(text) {
-    this.setState({ text });
-    this.props.search(this.state.text);
+    this.setState({ text }, () => {
+      this.props.search(text);
+    });
   }
   _onInputKeydown(event) {
     if (event.keyCode === ESCAPE) {
@@ -57,7 +53,11 @@ class Search extends React.Component {
   render() {
     var { notes } = this.props;
     var done = 0;
-
+    const from = this.state.page * NOTES_PER_PAGE;
+    const to = from + NOTES_PER_PAGE;
+    const totalPages = Math.ceil(notes.length / NOTES_PER_PAGE);
+    const pagination = notes.length > NOTES_PER_PAGE;
+    
     notes.forEach((data, i) => {
       if (data.done) done += 1;
     });
@@ -77,9 +77,12 @@ class Search extends React.Component {
         </div>
         <div className='list'>
           { notes
-            .slice(0, (this.state.page + 1) * 10)
+            .slice(from, to)
             .map((note, i) => <Note note={ note } key={ `${ getId() }_${ i }` } />)
           }
+          { pagination && <div className='pagination'>
+            <p>{ this.state.page + 1 } / { totalPages }</p>
+          </div> }
         </div>
         <nav>
           <div>

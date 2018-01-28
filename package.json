@@ -35,7 +35,6 @@
     "kuker-emitters": "^6.7.2",
     "linkifyjs": "^2.1.5",
     "lodash.intersection": "^4.4.0",
-    "lodash.remove": "^4.7.0",
     "lodash.uniq": "^4.5.0",
     "marked": "^0.3.12",
     "moment": "^2.20.1",

@@ -3,7 +3,6 @@ import PropTypes from 'prop-types';
 import { connect } from 'stent/lib/react';
 import ReactMde, { ReactMdeCommands } from 'react-mde';
 import Search from './Search';
-import moment from 'moment';
 
 const ESCAPE = 27;
 const S = 83;

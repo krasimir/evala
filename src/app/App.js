@@ -15,7 +15,7 @@ import './stent/Notes';
 import './helpers/shortcuts';
 import { connect } from 'stent/lib/react';
 import moment from 'moment';
-import { NO_TAG } from './constants';
+import getId from './helpers/getId';
 
 function removeHash(tag) {
   if (tag.charAt(0) === '#') {
@@ -109,7 +109,7 @@ const AppConnected = connect(App)
     today: weather.today(),
     sidebarContent: sidebar.state.content,
     newNote: () => sidebar.open(<Editor />),
-    search: what => sidebar.open(<Search what={ what } />),
+    search: what => sidebar.open(<Search what={ what } key={ getId() }/>),
     notesByTag: notes.state.notesByTag
   }));
 

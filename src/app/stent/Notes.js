@@ -2,7 +2,6 @@ import { Machine } from 'stent';
 import moment from 'moment';
 import { call } from 'stent/lib/helpers';
 import extractTags from '../helpers/extractTags';
-import remove from 'lodash.remove';
 import intersection from 'lodash.intersection';
 import db from '../db';
 import { NO_TAG } from '../constants';
@@ -41,15 +40,23 @@ const Notes = Machine.create('Notes', {
         return { ...state, notesByTag };
       },
       'search': function * (state, str) {
-        const criteria = this.searchCriteria(str);
+        const { tags, text } = this.searchCriteria(str);
 
-        const dbResult = yield call(db.notes.filter.bind(db.notes), note => {
-          if (note.tags.length === 0 && criteria.tags.indexOf(NO_TAG) >= 0) return true;
-          if (note.tags.length > 0 && intersection(note.tags, criteria.tags).length === criteria.tags.length) {
-            return true;
-          }
-          return false;
-        });
+        if (tags.length === 0 && text.length === 0) return { ...state, filtered: [] };
+
+        const dbResult = yield call(() => db.notes
+          .filter(note => {
+            if (note.tags.length === 0 && tags.indexOf(NO_TAG) >= 0) return true;
+            if (note.tags.length > 0 && intersection(note.tags, tags).length === tags.length) {
+              return true;
+            }
+            return false;
+          })
+          .and(note => {
+            if (text.length === 0) return true;
+            return text.some(t => note.content.match(new RegExp(t, 'i')));
+          })
+        );
         const filtered = yield call(dbResult.toArray.bind(dbResult));
 
         return { ...state, filtered };
@@ -63,7 +70,7 @@ const Notes = Machine.create('Notes', {
         this.fetch();
       },
       delete: function (state, id) {
-        
+        // TODO
       }
     }
   },
@@ -89,7 +96,7 @@ const Notes = Machine.create('Notes', {
 
 Notes.fetch();
 
-// for (let i = 0; i < 1000; i++) {
+// for (let i = 0; i < 100; i++) {
 //   if (i % 20 === 0) {
 //     Notes.create('TODO ' + i + ' Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry\'s standard dummy text ever since the 1500s,\n\nwhen an unknown printer took a galley of type and scrambled it to make a type specimen book.\n\nIt has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.\n\nIt was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.');
 //   } else {
