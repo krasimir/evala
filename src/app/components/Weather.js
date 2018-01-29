@@ -2,20 +2,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'stent/lib/react';
 import moment from 'moment';
-
-// https://erikflowers.github.io/weather-icons/
-const ICONS_MAPPING = {
-  'clear-day': 'wi-day-sunny',
-  'clear-night': 'wi-night-clear',
-  'partly-cloudy-day': 'wi-day-cloudy',
-  'partly-cloudy-night': 'wi-night-alt-cloudy',
-  'cloudy': 'wi-cloudy',
-  'rain': 'wi-rain',
-  'sleet': 'wi-sleet',
-  'snow': 'wi-snow',
-  'wind': 'wi-windy',
-  'fog': 'wi-fog'
-};
+import { ICONS_MAPPING } from '../constants';
 
 class Weather extends React.Component {
   constructor(props) {
@@ -45,8 +32,15 @@ class Weather extends React.Component {
       this.props.openSidebar(newDisplay ? <div>{ this._renderHours() }</div> : null);
     });
   }
-  _renderItem({ temperature, apparentTemperature, icon }) {
-    const iconClass = ICONS_MAPPING[icon];
+  _renderItem({ temperature, apparentTemperature, icon, sunset, sunrise }) {
+    var isItDay = true;
+    const now = moment();
+
+    if (sunset && sunrise) {
+      isItDay = now.isAfter(sunrise) && now.isBefore(sunset);
+    }
+
+    const iconClass = ICONS_MAPPING[icon][isItDay ? 0 : 1];
 
     return (
       <span>
@@ -91,8 +85,17 @@ class Weather extends React.Component {
     const { state, data, lastUpdated, error } = this.props;
 
     if (state === 'no-data' || state === 'fetching') {
-      return <div className='weather'>...</div>;
+      return (
+        <div className='weather' style={{ maxWidth: '500px' }}>
+          <span className='big'>
+            { Object.keys(ICONS_MAPPING).map((key, i) => {
+              return <i key={ i } className={ `weatherIcon wi ${ ICONS_MAPPING[key][0] }` }></i>;
+            })}
+          </span>
+        </div>
+      );
     }
+
     if (state === 'error') {
       console.error(error);
       return <div className='weather'>Error getting<br />the weather information.</div>;

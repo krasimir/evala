@@ -12,7 +12,9 @@ export default function normalizeDarkSkyData(data) {
     apparentTemperatureMax,
     apparentTemperatureMin,
     temperatureMax,
-    temperatureMin
+    temperatureMin,
+    sunriseTime,
+    sunsetTime
   }) => ({
     time: toDateTime(time),
     summary: summary,
@@ -20,7 +22,9 @@ export default function normalizeDarkSkyData(data) {
     max: Math.floor(temperatureMax),
     min: Math.floor(temperatureMin),
     temperature: Math.floor((temperatureMax + temperatureMin) / 2),
-    apparentTemperature: Math.floor((apparentTemperatureMax + apparentTemperatureMin) / 2)
+    apparentTemperature: Math.floor((apparentTemperatureMax + apparentTemperatureMin) / 2),
+    sunrise: toDateTime(sunriseTime),
+    sunset: toDateTime(sunsetTime)
   }));
   const hours = data.hourly.data.map(({
     time,

@@ -55358,6 +55358,8 @@ var _moment = require('moment');
 
 var _moment2 = _interopRequireDefault(_moment);
 
+var _constants = require('../constants');
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -55365,20 +55367,6 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-// https://erikflowers.github.io/weather-icons/
-var ICONS_MAPPING = {
-  'clear-day': 'wi-day-sunny',
-  'clear-night': 'wi-night-clear',
-  'partly-cloudy-day': 'wi-day-cloudy',
-  'partly-cloudy-night': 'wi-night-alt-cloudy',
-  'cloudy': 'wi-cloudy',
-  'rain': 'wi-rain',
-  'sleet': 'wi-sleet',
-  'snow': 'wi-snow',
-  'wind': 'wi-windy',
-  'fog': 'wi-fog'
-};
 
 var Weather = function (_React$Component) {
   _inherits(Weather, _React$Component);
@@ -55437,9 +55425,18 @@ var Weather = function (_React$Component) {
     value: function _renderItem(_ref) {
       var temperature = _ref.temperature,
           apparentTemperature = _ref.apparentTemperature,
-          icon = _ref.icon;
+          icon = _ref.icon,
+          sunset = _ref.sunset,
+          sunrise = _ref.sunrise;
 
-      var iconClass = ICONS_MAPPING[icon];
+      var isItDay = true;
+      var now = (0, _moment2.default)();
+
+      if (sunset && sunrise) {
+        isItDay = now.isAfter(sunrise) && now.isBefore(sunset);
+      }
+
+      var iconClass = _constants.ICONS_MAPPING[icon][isItDay ? 0 : 1];
 
       return _react2.default.createElement(
         'span',
@@ -55535,10 +55532,17 @@ var Weather = function (_React$Component) {
       if (state === 'no-data' || state === 'fetching') {
         return _react2.default.createElement(
           'div',
-          { className: 'weather' },
-          '...'
+          { className: 'weather', style: { maxWidth: '500px' } },
+          _react2.default.createElement(
+            'span',
+            { className: 'big' },
+            Object.keys(_constants.ICONS_MAPPING).map(function (key, i) {
+              return _react2.default.createElement('i', { key: i, className: 'weatherIcon wi ' + _constants.ICONS_MAPPING[key][0] });
+            })
+          )
         );
       }
+
       if (state === 'error') {
         console.error(error);
         return _react2.default.createElement(
@@ -55644,13 +55648,21 @@ exports.default = (0, _react3.connect)(Weather).with('Weather', 'Sidebar').map(f
   };
 });
 
-},{"moment":399,"prop-types":406,"react":579,"stent/lib/react":600}],607:[function(require,module,exports){
+},{"../constants":607,"moment":399,"prop-types":406,"react":579,"stent/lib/react":600}],607:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
+exports.ICONS_MAPPING = exports.NO_TAG = exports.GOOGLE_MAPS_API_KEY = exports.BG_DEFAULT_COLOR = exports.COLORS_PER_TEMPERATURE = undefined;
 exports.calculateBGColor = calculateBGColor;
+
+var _chromath = require('chromath');
+
+var _chromath2 = _interopRequireDefault(_chromath);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
 var BG_COLOR_OPACITY = 0.5;
 
 var COLORS_PER_TEMPERATURE = exports.COLORS_PER_TEMPERATURE = [{ temperature: -65, color: 'rgba(130, 22, 146, ' + BG_COLOR_OPACITY + ')' }, { temperature: -55, color: 'rgba(130, 22, 146, ' + BG_COLOR_OPACITY + ')' }, { temperature: -45, color: 'rgba(130, 22, 146, ' + BG_COLOR_OPACITY + ')' }, { temperature: -40, color: 'rgba(130, 22, 146, ' + BG_COLOR_OPACITY + ')' }, { temperature: -30, color: 'rgba(130, 87, 219, ' + BG_COLOR_OPACITY + ')' }, { temperature: -20, color: 'rgba(32, 140, 236, ' + BG_COLOR_OPACITY + ')' }, { temperature: -10, color: 'rgba(32, 196, 232, ' + BG_COLOR_OPACITY + ')' }, { temperature: 0, color: 'rgba(35, 221, 221, ' + BG_COLOR_OPACITY + ')' }, { temperature: 10, color: 'rgba(194, 255, 40, ' + BG_COLOR_OPACITY + ')' }, { temperature: 20, color: 'rgba(255, 240, 40, ' + BG_COLOR_OPACITY + ')' }, { temperature: 25, color: 'rgba(255, 194, 40, ' + BG_COLOR_OPACITY + ')' }, { temperature: 30, color: 'rgba(252, 128, 20, ' + BG_COLOR_OPACITY + ')' }];
@@ -55661,13 +55673,33 @@ var NO_TAG = exports.NO_TAG = '#notag';
 function calculateBGColor(temperature) {
   for (var i = 0; i < COLORS_PER_TEMPERATURE.length - 1; i++) {
     if (temperature >= COLORS_PER_TEMPERATURE[i].temperature && temperature < COLORS_PER_TEMPERATURE[i + 1].temperature) {
-      return COLORS_PER_TEMPERATURE[i].color;
+      var from = COLORS_PER_TEMPERATURE[i].color;
+      var to = COLORS_PER_TEMPERATURE[i + 1].color;
+      var lower = temperature - COLORS_PER_TEMPERATURE[i].temperature;
+      var higher = COLORS_PER_TEMPERATURE[i + 1].temperature - COLORS_PER_TEMPERATURE[i].temperature;
+      var percentage = lower / higher;
+
+      return _chromath2.default.towards(from, to, percentage).toString();
     }
   }
   return COLORS_PER_TEMPERATURE[COLORS_PER_TEMPERATURE.length - 1].color;
 }
 
-},{}],608:[function(require,module,exports){
+// https://erikflowers.github.io/weather-icons/
+var ICONS_MAPPING = exports.ICONS_MAPPING = {
+  'clear-day': ['wi-day-sunny', 'wi-night-clear'],
+  'clear-night': ['wi-day-sunny', 'wi-night-clear'],
+  'partly-cloudy-day': ['wi-day-cloudy', 'wi-night-alt-cloudy'],
+  'partly-cloudy-night': ['wi-day-cloudy', 'wi-night-alt-cloudy'],
+  'cloudy': ['wi-day-cloudy', 'wi-night-alt-cloudy'],
+  'rain': ['wi-rain', 'wi-night-rain'],
+  'sleet': ['wi-sleet', 'wi-night-sleet'],
+  'snow': ['wi-snow', 'wi-night-alt-snow'],
+  'wind': ['wi-windy', 'wi-night-cloudy-windy'],
+  'fog': ['wi-fog', 'wi-night-fog']
+};
+
+},{"chromath":2}],608:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -55757,7 +55789,7 @@ function getGlobalStyles(today) {
     bgColor = (0, _constants.calculateBGColor)(temperature);
   }
 
-  return '\n    body {\n      background: linear-gradient(\n        174deg,\n        ' + bgColor + ' 0%,\n        ' + getTimeBGColor(bgColor) + ' 100%\n      );\n    }\n  ';
+  return '\n    body {\n      background: linear-gradient(\n        174deg,\n        ' + _chromath2.default.tint(bgColor, 0.4).toRGBString() + ' 0%,\n        ' + getTimeBGColor(bgColor) + ' 100%\n      );\n    }\n  ';
 };
 
 },{"../constants":607,"chromath":2,"moment":399}],612:[function(require,module,exports){
@@ -55801,7 +55833,9 @@ function normalizeDarkSkyData(data) {
         apparentTemperatureMax = _ref.apparentTemperatureMax,
         apparentTemperatureMin = _ref.apparentTemperatureMin,
         temperatureMax = _ref.temperatureMax,
-        temperatureMin = _ref.temperatureMin;
+        temperatureMin = _ref.temperatureMin,
+        sunriseTime = _ref.sunriseTime,
+        sunsetTime = _ref.sunsetTime;
     return {
       time: toDateTime(time),
       summary: summary,
@@ -55809,7 +55843,9 @@ function normalizeDarkSkyData(data) {
       max: Math.floor(temperatureMax),
       min: Math.floor(temperatureMin),
       temperature: Math.floor((temperatureMax + temperatureMin) / 2),
-      apparentTemperature: Math.floor((apparentTemperatureMax + apparentTemperatureMin) / 2)
+      apparentTemperature: Math.floor((apparentTemperatureMax + apparentTemperatureMin) / 2),
+      sunrise: toDateTime(sunriseTime),
+      sunset: toDateTime(sunsetTime)
     };
   });
   var hours = data.hourly.data.map(function (_ref2) {

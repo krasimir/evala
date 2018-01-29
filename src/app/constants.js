@@ -1,3 +1,5 @@
+import Chromath from 'chromath';
+
 const BG_COLOR_OPACITY = 0.5;
 
 export const COLORS_PER_TEMPERATURE = [
@@ -24,8 +26,28 @@ export function calculateBGColor(temperature) {
       temperature >= COLORS_PER_TEMPERATURE[i].temperature &&
       temperature < COLORS_PER_TEMPERATURE[i + 1].temperature
     ) {
-      return COLORS_PER_TEMPERATURE[i].color;
+      const from = COLORS_PER_TEMPERATURE[i].color;
+      const to = COLORS_PER_TEMPERATURE[i + 1].color;
+      const lower = temperature - COLORS_PER_TEMPERATURE[i].temperature;
+      const higher = COLORS_PER_TEMPERATURE[i + 1].temperature - COLORS_PER_TEMPERATURE[i].temperature;
+      const percentage = lower / higher;
+
+      return Chromath.towards(from, to, percentage).toString();
     }
   }
   return COLORS_PER_TEMPERATURE[COLORS_PER_TEMPERATURE.length - 1].color;
 }
+
+// https://erikflowers.github.io/weather-icons/
+export const ICONS_MAPPING = {
+  'clear-day': ['wi-day-sunny', 'wi-night-clear'],
+  'clear-night': ['wi-day-sunny', 'wi-night-clear'],
+  'partly-cloudy-day': ['wi-day-cloudy', 'wi-night-alt-cloudy'],
+  'partly-cloudy-night': ['wi-day-cloudy', 'wi-night-alt-cloudy'],
+  'cloudy': ['wi-day-cloudy', 'wi-night-alt-cloudy'],
+  'rain': ['wi-rain', 'wi-night-rain'],
+  'sleet': ['wi-sleet', 'wi-night-sleet'],
+  'snow': ['wi-snow', 'wi-night-alt-snow'],
+  'wind': ['wi-windy', 'wi-night-cloudy-windy'],
+  'fog': ['wi-fog', 'wi-night-fog']
+};

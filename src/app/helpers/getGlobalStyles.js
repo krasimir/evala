@@ -24,7 +24,7 @@ export default function getGlobalStyles(today) {
     body {
       background: linear-gradient(
         174deg,
-        ${ bgColor } 0%,
+        ${ Chromath.tint(bgColor, 0.4).toRGBString() } 0%,
         ${ getTimeBGColor(bgColor) } 100%
       );
     }
