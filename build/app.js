@@ -54885,6 +54885,7 @@ var Note = function (_React$Component) {
 
     var _this = _possibleConstructorReturn(this, (Note.__proto__ || Object.getPrototypeOf(Note)).call(this, props));
 
+    _this._changeStatus = _this._changeStatus.bind(_this);
     var content = props.note.content || '';
     var collapsed = content.replace(/\r?\n|\r/g, '').length > MAX_CONTENT_TO_BE_COLLAPSABLE;
 
@@ -54893,6 +54894,11 @@ var Note = function (_React$Component) {
   }
 
   _createClass(Note, [{
+    key: 'componentWillReceiveProps',
+    value: function componentWillReceiveProps(newProps) {
+      console.log(newProps);
+    }
+  }, {
     key: '_delete',
     value: function _delete() {
       if (confirm('Are you sure?')) {
@@ -54905,17 +54911,25 @@ var Note = function (_React$Component) {
       this.setState({ collapsed: !this.state.collapsed });
     }
   }, {
+    key: '_changeStatus',
+    value: function _changeStatus() {
+      var _props$note = this.props.note,
+          done = _props$note.done,
+          id = _props$note.id;
+
+
+      this.props.changeStatus(id, !done);
+    }
+  }, {
     key: 'render',
     value: function render() {
       var _this2 = this;
 
-      var _props$note = this.props.note,
-          content = _props$note.content,
-          id = _props$note.id,
-          done = _props$note.done;
-      var _props = this.props,
-          changeStatus = _props.changeStatus,
-          edit = _props.edit;
+      var _props$note2 = this.props.note,
+          content = _props$note2.content,
+          id = _props$note2.id,
+          done = _props$note2.done;
+      var edit = this.props.edit;
 
 
       if (!content) return null;
@@ -54928,9 +54942,7 @@ var Note = function (_React$Component) {
           { className: 'noteMeta' },
           _react2.default.createElement(
             'a',
-            { className: 'button', onClick: function onClick() {
-                return changeStatus(id, !done);
-              } },
+            { className: 'button', onClick: this._changeStatus },
             done ? _react2.default.createElement('i', { className: 'fa fa-check-square-o green' }) : _react2.default.createElement('i', { className: 'fa fa-square-o' })
           ),
           _react2.default.createElement(
@@ -54974,14 +54986,12 @@ Note.propTypes = {
 
 exports.default = (0, _react3.connect)(Note).with('Sidebar', 'Notes').map(function (sidebar, notes) {
   return {
-    changeStatus: function changeStatus(id, done) {
-      return notes.edit(id, { done: done });
-    },
     edit: function edit(id, content) {
       return sidebar.open(_react2.default.createElement(_Editor2.default, { id: id, text: content }));
     },
     delete: function _delete(id) {
-      return notes.delete(id);
+      notes.delete(id);
+      sidebar.close();
     }
   };
 });
@@ -55041,9 +55051,11 @@ var Search = function (_React$Component) {
     _this._onInputKeydown = _this._onInputKeydown.bind(_this);
     _this._nextPage = _this._nextPage.bind(_this);
     _this._prevPage = _this._prevPage.bind(_this);
+    _this._changeStatus = _this._changeStatus.bind(_this);
     _this.state = {
       text: props.what || '',
-      page: 0
+      page: 0,
+      notes: props.notes
     };
     return _this;
   }
@@ -55064,6 +55076,13 @@ var Search = function (_React$Component) {
     key: 'componentWillUnmount',
     value: function componentWillUnmount() {
       this._unsetShortcuts();
+    }
+  }, {
+    key: 'componentWillReceiveProps',
+    value: function componentWillReceiveProps(newProps) {
+      if (newProps.notes) {
+        this.setState({ notes: newProps.notes });
+      }
     }
   }, {
     key: '_exit',
@@ -55107,21 +55126,36 @@ var Search = function (_React$Component) {
       this.setState({ page: this.state.page - 1 });
     }
   }, {
+    key: '_changeStatus',
+    value: function _changeStatus(id, done) {
+      this.props.changeStatus(id, done);
+      this.setState({
+        notes: this.state.notes.map(function (note) {
+          if (note.id === id) note.done = done;
+          return note;
+        })
+      });
+    }
+  }, {
     key: 'render',
     value: function render() {
       var _this4 = this;
 
-      var notes = this.props.notes;
-
       var done = 0;
-      var from = this.state.page * NOTES_PER_PAGE;
+      var _state = this.state,
+          notes = _state.notes,
+          page = _state.page;
+
+      var from = page * NOTES_PER_PAGE;
       var to = from + NOTES_PER_PAGE;
       var totalPages = Math.ceil(notes.length / NOTES_PER_PAGE);
       var pagination = notes.length > NOTES_PER_PAGE;
 
-      notes.forEach(function (data, i) {
-        if (data.done) done += 1;
+      notes.forEach(function (note) {
+        if (note.done) done += 1;
       });
+
+      var progressBarValue = notes.length > 0 ? Math.ceil(done / notes.length * 100) : 0;
 
       return _react2.default.createElement(
         'div',
@@ -55142,19 +55176,22 @@ var Search = function (_React$Component) {
           _react2.default.createElement(
             'div',
             { className: 'progress' },
-            _react2.default.createElement('div', { className: 'progressBar', style: { width: Math.ceil(done / notes.length * 100) + '%' } })
+            _react2.default.createElement('div', { className: 'progressBar', style: { width: progressBarValue + '%' } })
           )
         ),
         _react2.default.createElement(
           'div',
           { className: 'list' },
           notes.slice(from, to).map(function (note, i) {
-            return _react2.default.createElement(_Note2.default, { note: note, key: (0, _getId2.default)() + '_' + i });
+            return _react2.default.createElement(_Note2.default, {
+              note: note,
+              key: (0, _getId2.default)() + '_' + i,
+              changeStatus: _this4._changeStatus });
           }),
           pagination && _react2.default.createElement(
             'div',
             { className: 'pagination' },
-            this.state.page > 0 ? _react2.default.createElement(
+            page > 0 ? _react2.default.createElement(
               'a',
               { className: 'button', onClick: this._prevPage },
               _react2.default.createElement('i', { className: 'fa fa-long-arrow-left' })
@@ -55162,11 +55199,11 @@ var Search = function (_React$Component) {
             _react2.default.createElement(
               'span',
               null,
-              this.state.page + 1,
+              page + 1,
               ' / ',
               totalPages
             ),
-            this.state.page < totalPages - 1 ? _react2.default.createElement(
+            page < totalPages - 1 ? _react2.default.createElement(
               'a',
               { className: 'button', onClick: this._nextPage },
               _react2.default.createElement('i', { className: 'fa fa-long-arrow-right' })
@@ -55198,7 +55235,8 @@ Search.propTypes = {
   newNote: _propTypes2.default.func,
   what: _propTypes2.default.string,
   notes: _propTypes2.default.array,
-  search: _propTypes2.default.func
+  search: _propTypes2.default.func.isRequired,
+  changeStatus: _propTypes2.default.func.isRequired
 };
 
 exports.default = (0, _react3.connect)(Search).with('Sidebar', 'Notes').map(function (sidebar, notes) {
@@ -55208,6 +55246,9 @@ exports.default = (0, _react3.connect)(Search).with('Sidebar', 'Notes').map(func
     },
     search: function search(str) {
       return notes.search(str);
+    },
+    changeStatus: function changeStatus(id, done) {
+      return notes.changeStatus(id, done);
     },
     newNote: function newNote() {
       return sidebar.open(_react2.default.createElement(_Editor2.default, null));
@@ -55973,9 +56014,42 @@ var Notes = _stent.Machine.create('Notes', {
           }
         }, edit, this);
       }),
-      delete: function _delete(state, id) {
-        // TODO
-      }
+      'change status': /*#__PURE__*/regeneratorRuntime.mark(function changeStatus(state, id, done) {
+        return regeneratorRuntime.wrap(function changeStatus$(_context4) {
+          while (1) {
+            switch (_context4.prev = _context4.next) {
+              case 0:
+                _context4.next = 2;
+                return (0, _helpers.call)(_db2.default.notes.update.bind(_db2.default.notes), id, {
+                  done: done,
+                  edited: (0, _moment2.default)().toString()
+                });
+
+              case 2:
+              case 'end':
+                return _context4.stop();
+            }
+          }
+        }, changeStatus, this);
+      }),
+      delete: /*#__PURE__*/regeneratorRuntime.mark(function _delete(state, id) {
+        return regeneratorRuntime.wrap(function _delete$(_context5) {
+          while (1) {
+            switch (_context5.prev = _context5.next) {
+              case 0:
+                _context5.next = 2;
+                return (0, _helpers.call)(_db2.default.notes.delete.bind(_db2.default.notes), id);
+
+              case 2:
+                this.fetch();
+
+              case 3:
+              case 'end':
+                return _context5.stop();
+            }
+          }
+        }, _delete, this);
+      })
     }
   },
   sort: function sort() {

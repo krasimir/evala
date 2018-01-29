@@ -11,12 +11,16 @@ class Note extends React.Component {
   constructor(props) {
     super(props);
 
+    this._changeStatus = this._changeStatus.bind(this);
     const content = props.note.content || '';
     const collapsed = content
       .replace(/\r?\n|\r/g, '')
       .length > MAX_CONTENT_TO_BE_COLLAPSABLE;
 
     this.state = { collapsed };
+  }
+  componentWillReceiveProps(newProps) {
+    console.log(newProps);
   }
   _delete() {
     if (confirm('Are you sure?')) {
@@ -26,16 +30,21 @@ class Note extends React.Component {
   _collapsed() {
     this.setState({ collapsed: !this.state.collapsed });
   }
+  _changeStatus() {
+    const { done, id } = this.props.note;
+
+    this.props.changeStatus(id, !done);
+  }
   render() {
     const { content, id, done } = this.props.note;
-    const { changeStatus, edit } = this.props;
+    const { edit } = this.props;
 
     if (!content) return null;
 
     return (
       <div className={ `note note-${ done ? 'done' : 'notdone' } ${ !this.state.collapsed ? 'note-expanded' : '' }` }>
         <div className='noteMeta'>
-          <a className='button' onClick={ () => changeStatus(id, !done) }>
+          <a className='button' onClick={ this._changeStatus }>
             { done ? <i className='fa fa-check-square-o green'></i> : <i className='fa fa-square-o'></i> }
           </a>
           <a className='button' onClick={ () => edit(id, content) }>
@@ -66,8 +75,10 @@ Note.propTypes = {
 export default connect(Note)
   .with('Sidebar', 'Notes')
   .map((sidebar, notes) => ({
-    changeStatus: (id, done) => notes.edit(id, { done }),
     edit: (id, content) => sidebar.open(<Editor id={ id } text={ content } />),
-    delete: id => notes.delete(id)
+    delete: id => {
+      notes.delete(id);
+      sidebar.close();
+    }
   }));
 

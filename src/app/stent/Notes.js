@@ -69,8 +69,15 @@ const Notes = Machine.create('Notes', {
         });
         this.fetch();
       },
-      delete: function (state, id) {
-        // TODO
+      'change status': function * (state, id, done) {
+        yield call(db.notes.update.bind(db.notes), id, {
+          done,
+          edited: moment().toString()
+        });
+      },
+      delete: function * (state, id) {
+        yield call(db.notes.delete.bind(db.notes), id);
+        this.fetch();
       }
     }
   },

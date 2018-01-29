@@ -17,9 +17,11 @@ class Search extends React.Component {
     this._onInputKeydown = this._onInputKeydown.bind(this);
     this._nextPage = this._nextPage.bind(this);
     this._prevPage = this._prevPage.bind(this);
+    this._changeStatus = this._changeStatus.bind(this);
     this.state = {
       text: props.what || '',
-      page: 0
+      page: 0,
+      notes: props.notes
     };
   }
   componentDidMount() {
@@ -32,6 +34,11 @@ class Search extends React.Component {
   }
   componentWillUnmount() {
     this._unsetShortcuts();
+  }
+  componentWillReceiveProps(newProps) {
+    if (newProps.notes) {
+      this.setState({ notes: newProps.notes });
+    }
   }
   _exit() {
     this.props.exit();
@@ -58,17 +65,28 @@ class Search extends React.Component {
   _prevPage() {
     this.setState({ page: this.state.page - 1 });
   }
+  _changeStatus(id, done) {
+    this.props.changeStatus(id, done);
+    this.setState({
+      notes: this.state.notes.map(note => {
+        if (note.id === id) note.done = done;
+        return note;
+      })
+    });
+  }
   render() {
-    var { notes } = this.props;
     var done = 0;
-    const from = this.state.page * NOTES_PER_PAGE;
+    const { notes, page } = this.state;
+    const from = page * NOTES_PER_PAGE;
     const to = from + NOTES_PER_PAGE;
     const totalPages = Math.ceil(notes.length / NOTES_PER_PAGE);
     const pagination = notes.length > NOTES_PER_PAGE;
-    
-    notes.forEach((data, i) => {
-      if (data.done) done += 1;
+
+    notes.forEach(note => {
+      if (note.done) done += 1;
     });
+
+    const progressBarValue = notes.length > 0 ? Math.ceil(done / notes.length * 100) : 0;
 
     return (
       <div className='search'>
@@ -80,20 +98,24 @@ class Search extends React.Component {
             value={ this.state.text }
             onChange={ event => this._onChange(event.target.value) } />
           <div className='progress'>
-            <div className='progressBar' style={{ width: `${ Math.ceil(done / notes.length * 100) }%` }} />
+            <div className='progressBar' style={{ width: `${ progressBarValue }%` }} />
           </div>
         </div>
         <div className='list'>
           { notes
             .slice(from, to)
-            .map((note, i) => <Note note={ note } key={ `${ getId() }_${ i }` } />)
-          }
+            .map((note, i) => (
+              <Note
+                note={ note }
+                key={ `${ getId() }_${ i }` }
+                changeStatus={ this._changeStatus } />
+            )) }
           { pagination && <div className='pagination'>
-            { this.state.page > 0 ? <a className='button' onClick={ this._prevPage }>
+            { page > 0 ? <a className='button' onClick={ this._prevPage }>
               <i className='fa fa-long-arrow-left'></i>
             </a> : <span></span> }
-            <span>{ this.state.page + 1 } / { totalPages }</span>
-            { this.state.page < totalPages - 1 ? <a className='button' onClick={ this._nextPage }>
+            <span>{ page + 1 } / { totalPages }</span>
+            { page < totalPages - 1 ? <a className='button' onClick={ this._nextPage }>
               <i className='fa fa-long-arrow-right'></i>
             </a> : <span></span> }
           </div> }
@@ -113,7 +135,8 @@ Search.propTypes = {
   newNote: PropTypes.func,
   what: PropTypes.string,
   notes: PropTypes.array,
-  search: PropTypes.func
+  search: PropTypes.func.isRequired,
+  changeStatus: PropTypes.func.isRequired
 };
 
 export default connect(Search)
@@ -121,6 +144,7 @@ export default connect(Search)
   .map((sidebar, notes) => ({
     exit: () => sidebar.close(),
     search: str => notes.search(str),
+    changeStatus: (id, done) => notes.changeStatus(id, done),
     newNote: () => sidebar.open(<Editor />),
     notes: notes.state.filtered
   }));
