@@ -44,9 +44,8 @@ iframe{
   display: grid;
   width: 100%;
   height: 100%;
-  grid-template-columns: 50% 50%;
-  grid-template-rows: 40% 60%;
-  grid-template-areas: "time weather" "notes notes";
+  grid-template-columns: 100%;
+  grid-template-rows: 50% 50%;
   height: 100%;
   width: 100%;
   transition: width 300ms ease-out;
@@ -64,12 +63,20 @@ iframe{
 
 
 .time {
-  padding: 2em;
-  justify-self: right;
-  align-self: end;
-  text-align: right;
   overflow: hidden;
-  min-width: 400px;
+  border: solid 1px #F00;
+  width: 300px;
+  height: 300px;
+}
+.time ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  position: relative;
+}
+.time ul li {
+  position: absolute;
+  border: solid 1px #00f;
 }
 .time .big {
   font-size: 5.4em;
@@ -138,7 +145,6 @@ iframe{
 
 .notes {
   padding: 2em;
-  grid-area: notes;
   width: 100%;
   text-align: center;
 }
@@ -350,4 +356,7 @@ iframe{
 }
 .noteContent p {
   margin: 0;
+}
+.noteContent h1, .noteContent h2, .noteContent h3, .noteContent h4, .noteContent h5 {
+  line-height: 1.1em;
 }

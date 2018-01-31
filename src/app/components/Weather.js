@@ -82,6 +82,7 @@ class Weather extends React.Component {
     );
   }
   render() {
+    return null;
     const { state, data, lastUpdated, error } = this.props;
 
     if (state === 'no-data' || state === 'fetching') {

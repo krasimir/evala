@@ -72,8 +72,10 @@ class App extends React.Component {
           <style>{ getGlobalStyles(this.props.today) }</style>
           { newTitle && <title>{ newTitle }</title> }
         </Helmet>
-        <Time />
-        <Weather />
+        <div>
+          <Time />
+          <Weather />
+        </div>
         <div className='notes'>
           <nav>
             <a className='button' onClick={ () => this.props.newNote() }>

@@ -54574,8 +54574,12 @@ var App = function (_React$Component) {
             newTitle
           )
         ),
-        _react2.default.createElement(_Time2.default, null),
-        _react2.default.createElement(_Weather2.default, null),
+        _react2.default.createElement(
+          'div',
+          null,
+          _react2.default.createElement(_Time2.default, null),
+          _react2.default.createElement(_Weather2.default, null)
+        ),
         _react2.default.createElement(
           'div',
           { className: 'notes' },
@@ -55282,6 +55286,18 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
+var CLOCK_SIZE = 300;
+var CLOCK_CENTER = { x: CLOCK_SIZE / 2, y: CLOCK_SIZE / 2 };
+
+function getClockItemStylse(hour) {
+  var deg = hour % 12 / 12 * 360;
+
+  return {
+    top: CLOCK_CENTER.x + Math.cos(deg) * CLOCK_SIZE + 'px',
+    left: CLOCK_CENTER.y + Math.cos(deg) * CLOCK_SIZE + 'px'
+  };
+}
+
 var Time = function (_React$Component) {
   _inherits(Time, _React$Component);
 
@@ -55309,21 +55325,68 @@ var Time = function (_React$Component) {
         'div',
         { className: 'time' },
         _react2.default.createElement(
-          'span',
-          { className: 'big' },
-          this.state.moment.format('HH:mm')
-        ),
-        _react2.default.createElement(
-          'span',
-          { className: 'medium' },
-          this.state.moment.format('MMMM Do YYYY')
-        ),
-        _react2.default.createElement(
-          'span',
-          { className: 'small' },
-          'Happy ',
-          this.state.moment.format('dddd'),
-          '!'
+          'ul',
+          null,
+          _react2.default.createElement(
+            'li',
+            { style: getClockItemStylse(0) },
+            '12'
+          ),
+          _react2.default.createElement(
+            'li',
+            { style: getClockItemStylse(1) },
+            '1'
+          ),
+          _react2.default.createElement(
+            'li',
+            { style: getClockItemStylse(2) },
+            '2'
+          ),
+          _react2.default.createElement(
+            'li',
+            { style: getClockItemStylse(3) },
+            '3'
+          ),
+          _react2.default.createElement(
+            'li',
+            { style: getClockItemStylse(4) },
+            '4'
+          ),
+          _react2.default.createElement(
+            'li',
+            { style: getClockItemStylse(5) },
+            '5'
+          ),
+          _react2.default.createElement(
+            'li',
+            { style: getClockItemStylse(6) },
+            '6'
+          ),
+          _react2.default.createElement(
+            'li',
+            { style: getClockItemStylse(7) },
+            '7'
+          ),
+          _react2.default.createElement(
+            'li',
+            { style: getClockItemStylse(8) },
+            '8'
+          ),
+          _react2.default.createElement(
+            'li',
+            { style: getClockItemStylse(9) },
+            '9'
+          ),
+          _react2.default.createElement(
+            'li',
+            { style: getClockItemStylse(10) },
+            '10'
+          ),
+          _react2.default.createElement(
+            'li',
+            { style: getClockItemStylse(11) },
+            '11'
+          )
         )
       );
     }
@@ -55334,6 +55397,10 @@ var Time = function (_React$Component) {
 
 exports.default = Time;
 ;
+
+{/* <span className='big'>{ this.state.moment.format('HH:mm') }</span>
+  <span className='medium'>{ this.state.moment.format('MMMM Do YYYY') }</span>
+  <span className='small'>Happy { this.state.moment.format('dddd') }!</span> */}
 
 },{"moment":399,"react":579}],606:[function(require,module,exports){
 'use strict';
@@ -55522,6 +55589,7 @@ var Weather = function (_React$Component) {
     value: function render() {
       var _this6 = this;
 
+      return null;
       var _props = this.props,
           state = _props.state,
           data = _props.data,
