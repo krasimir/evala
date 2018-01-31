@@ -74,7 +74,7 @@ class App extends React.Component {
         </Helmet>
         <div>
           <Time />
-          <Weather />
+          {/* <Weather /> */}
         </div>
         <div className='notes'>
           <nav>

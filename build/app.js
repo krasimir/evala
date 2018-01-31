@@ -54577,8 +54577,7 @@ var App = function (_React$Component) {
         _react2.default.createElement(
           'div',
           null,
-          _react2.default.createElement(_Time2.default, null),
-          _react2.default.createElement(_Weather2.default, null)
+          _react2.default.createElement(_Time2.default, null)
         ),
         _react2.default.createElement(
           'div',
@@ -55274,9 +55273,17 @@ var _react = require('react');
 
 var _react2 = _interopRequireDefault(_react);
 
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
 var _moment = require('moment');
 
 var _moment2 = _interopRequireDefault(_moment);
+
+var _react3 = require('stent/lib/react');
+
+var _constants = require('../constants');
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -55284,19 +55291,28 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } /* eslint-disable max-len */
 
-var CLOCK_SIZE = 300;
-var CLOCK_CENTER = { x: CLOCK_SIZE / 2, y: CLOCK_SIZE / 2 };
 
+var CLOCK_SIZE = 200;
+var CLOCK_HOURS = ['00', '01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', '23'];
+
+function toRadians(degrees) {
+  return degrees * Math.PI / 180;
+};
 function getClockItemStylse(hour) {
-  var deg = hour % 12 / 12 * 360;
+  var deg = hour / CLOCK_HOURS.length * 360 - 90;
+  var left = Math.cos(toRadians(deg)) * CLOCK_SIZE;
+  var top = Math.sin(toRadians(deg)) * CLOCK_SIZE;
 
   return {
-    top: CLOCK_CENTER.x + Math.cos(deg) * CLOCK_SIZE + 'px',
-    left: CLOCK_CENTER.y + Math.cos(deg) * CLOCK_SIZE + 'px'
+    left: left + 'px',
+    top: top + 'px'
   };
 }
+var CLOCK_STYLES = CLOCK_HOURS.map(function (hour, i) {
+  return getClockItemStylse(i);
+});
 
 var Time = function (_React$Component) {
   _inherits(Time, _React$Component);
@@ -55306,17 +55322,109 @@ var Time = function (_React$Component) {
 
     var _this = _possibleConstructorReturn(this, (Time.__proto__ || Object.getPrototypeOf(Time)).call(this, props));
 
-    _this.state = { moment: (0, _moment2.default)() };
+    _this.state = {
+      now: (0, _moment2.default)(),
+      today: null
+    };
     _this._interval = setInterval(function () {
-      _this.setState({ moment: (0, _moment2.default)() });
-    }, 1000);
+      _this.setState({ now: (0, _moment2.default)() });
+    }, 60000);
     return _this;
   }
 
   _createClass(Time, [{
+    key: '_renderWeatherItem',
+    value: function _renderWeatherItem(item) {
+      var isItDay = true;
+      var _state$today = this.state.today,
+          sunrise = _state$today.sunrise,
+          sunset = _state$today.sunset;
+      var now = this.state.now;
+      var time = item.time,
+          temperature = item.temperature,
+          apparentTemperature = item.apparentTemperature,
+          icon = item.icon;
+
+
+      if (sunset && sunrise) {
+        isItDay = now.isAfter(sunrise) && now.isBefore(sunset);
+      }
+
+      var iconClass = _constants.ICONS_MAPPING[icon][isItDay ? 0 : 1];
+
+      return _react2.default.createElement(
+        'div',
+        { className: 'weatherItem' },
+        time.format('HH:mm'),
+        iconClass && _react2.default.createElement('i', { className: 'wi ' + iconClass }),
+        temperature,
+        _react2.default.createElement(
+          'sup',
+          { style: { fontSize: '0.5em' } },
+          '\u2103'
+        ),
+        _react2.default.createElement(
+          'span',
+          { style: { opacity: 0.4 } },
+          '/',
+          apparentTemperature,
+          _react2.default.createElement(
+            'sup',
+            { style: { fontSize: '0.5em' } },
+            '\u2103'
+          )
+        )
+      );
+    }
+  }, {
+    key: '_renderWeatherClock',
+    value: function _renderWeatherClock() {
+      var _this2 = this;
+
+      if (!this.props.data) return null;
+
+      var weather = this.props.data.hours.reduce(function (result, hourWeather) {
+        result[hourWeather.time.format('HH')] = hourWeather;
+        return result;
+      }, {});
+
+      return _react2.default.createElement(
+        'ul',
+        { className: 'clock' },
+        CLOCK_HOURS.map(function (hour, i) {
+          return _react2.default.createElement(
+            'li',
+            {
+              key: i,
+              style: CLOCK_STYLES[i] },
+            _react2.default.createElement('div', { className: 'dot' }),
+            _this2._renderWeatherItem(weather[hour])
+          );
+        })
+      );
+    }
+  }, {
+    key: 'componentWillReceiveProps',
+    value: function componentWillReceiveProps(newProps) {
+      var _this3 = this;
+
+      if (newProps.data) {
+        this.setState({
+          today: newProps.data.days.find(function (day) {
+            return day.time.isSame(_this3.state.now, 'day');
+          })
+        });
+      }
+    }
+  }, {
     key: 'componentWillUnmount',
     value: function componentWillUnmount() {
       clearInterval(this._interval);
+    }
+  }, {
+    key: 'componentDidMount',
+    value: function componentDidMount() {
+      this.props.fetch();
     }
   }, {
     key: 'render',
@@ -55324,69 +55432,23 @@ var Time = function (_React$Component) {
       return _react2.default.createElement(
         'div',
         { className: 'time' },
+        this._renderWeatherClock(),
         _react2.default.createElement(
-          'ul',
-          null,
-          _react2.default.createElement(
-            'li',
-            { style: getClockItemStylse(0) },
-            '12'
-          ),
-          _react2.default.createElement(
-            'li',
-            { style: getClockItemStylse(1) },
-            '1'
-          ),
-          _react2.default.createElement(
-            'li',
-            { style: getClockItemStylse(2) },
-            '2'
-          ),
-          _react2.default.createElement(
-            'li',
-            { style: getClockItemStylse(3) },
-            '3'
-          ),
-          _react2.default.createElement(
-            'li',
-            { style: getClockItemStylse(4) },
-            '4'
-          ),
-          _react2.default.createElement(
-            'li',
-            { style: getClockItemStylse(5) },
-            '5'
-          ),
-          _react2.default.createElement(
-            'li',
-            { style: getClockItemStylse(6) },
-            '6'
-          ),
-          _react2.default.createElement(
-            'li',
-            { style: getClockItemStylse(7) },
-            '7'
-          ),
-          _react2.default.createElement(
-            'li',
-            { style: getClockItemStylse(8) },
-            '8'
-          ),
-          _react2.default.createElement(
-            'li',
-            { style: getClockItemStylse(9) },
-            '9'
-          ),
-          _react2.default.createElement(
-            'li',
-            { style: getClockItemStylse(10) },
-            '10'
-          ),
-          _react2.default.createElement(
-            'li',
-            { style: getClockItemStylse(11) },
-            '11'
-          )
+          'span',
+          { className: 'big' },
+          this.state.now.format('HH:mm')
+        ),
+        _react2.default.createElement(
+          'span',
+          { className: 'medium' },
+          this.state.now.format('MMMM Do YYYY')
+        ),
+        _react2.default.createElement(
+          'span',
+          { className: 'small' },
+          'Happy ',
+          this.state.now.format('dddd'),
+          '!'
         )
       );
     }
@@ -55395,14 +55457,34 @@ var Time = function (_React$Component) {
   return Time;
 }(_react2.default.Component);
 
-exports.default = Time;
 ;
 
-{/* <span className='big'>{ this.state.moment.format('HH:mm') }</span>
-  <span className='medium'>{ this.state.moment.format('MMMM Do YYYY') }</span>
-  <span className='small'>Happy { this.state.moment.format('dddd') }!</span> */}
+Time.propTypes = {
+  state: _propTypes2.default.string,
+  fetch: _propTypes2.default.func,
+  openSidebar: _propTypes2.default.func,
+  error: _propTypes2.default.any,
+  data: _propTypes2.default.any,
+  lastUpdated: _propTypes2.default.any
+};
 
-},{"moment":399,"react":579}],606:[function(require,module,exports){
+exports.default = (0, _react3.connect)(Time).with('Weather', 'Sidebar').map(function (_ref, sidebar) {
+  var state = _ref.state,
+      fetch = _ref.fetch,
+      refreshData = _ref.refreshData;
+  return {
+    state: state.name,
+    data: state.data,
+    error: state.error,
+    lastUpdated: state.lastUpdated,
+    fetch: fetch,
+    openSidebar: function openSidebar(content) {
+      return sidebar.open(content);
+    }
+  };
+});
+
+},{"../constants":607,"moment":399,"prop-types":406,"react":579,"stent/lib/react":600}],606:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -55589,7 +55671,6 @@ var Weather = function (_React$Component) {
     value: function render() {
       var _this6 = this;
 
-      return null;
       var _props = this.props,
           state = _props.state,
           data = _props.data,

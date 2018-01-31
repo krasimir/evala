@@ -63,20 +63,44 @@ iframe{
 
 
 .time {
-  overflow: hidden;
-  border: solid 1px #F00;
+  position: absolute;
+  top: 30%;
+  left: 50%;
+  text-align: center;
   width: 300px;
   height: 300px;
+  margin-left: -150px;
+  margin-top: -150px;
+  /* border: solid 1px white; */
 }
-.time ul {
+.time .clock {
+  position: absolute;
+  top: 22%;
+  left: 50%;
   margin: 0;
   padding: 0;
   list-style: none;
-  position: relative;
 }
-.time ul li {
+.time .clock li {
   position: absolute;
-  border: solid 1px #00f;
+  width: 300px;
+  margin-left: -150px;
+}
+.time .clock .weatherItem {
+  display: none;
+}
+.time .clock .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 5px;
+  background: #000;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin-left: -5px;
+  margin-top: -5px;
+  opacity: 0.1;
+  cursor: pointer;
 }
 .time .big {
   font-size: 5.4em;
