@@ -46,6 +46,7 @@ iframe{
   height: 100%;
   grid-template-columns: 100%;
   grid-template-rows: 50% 50%;
+  align-content: center;
   height: 100%;
   width: 100%;
   transition: width 300ms ease-out;
@@ -62,108 +63,93 @@ iframe{
 }
 
 
-.time {
-  position: absolute;
-  top: 30%;
-  left: 50%;
+.clockForecast {
+  display: grid;
+  grid-template-columns: 50% 50%;
   text-align: center;
-  width: 300px;
-  height: 300px;
-  margin-left: -150px;
-  margin-top: -150px;
-  /* border: solid 1px white; */
+  align-self: center;
+  grid-gap: 2em;
 }
-.time .clock {
-  position: absolute;
-  top: 22%;
-  left: 50%;
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.clockForecast .weather {
+  text-align: left;
+  padding-right: 4em;
 }
-.time .clock li {
-  position: absolute;
-  width: 300px;
-  margin-left: -150px;
+.clockForecast .day {
+  text-align: right;
+  padding-left: 4em;
 }
-.time .clock .weatherItem {
-  display: none;
-}
-.time .clock .dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 5px;
-  background: #000;
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  margin-left: -5px;
-  margin-top: -5px;
-  opacity: 0.1;
-  cursor: pointer;
-}
-.time .big {
+.clockForecast .big {
   font-size: 5.4em;
   display: block;
   font-weight: 100;
+  grid-column: span 2;
 }
-.time .medium, .weather .medium {
+.clockForecast .weatherTimeline {
+  width: 60%;
+  margin: 3em auto 3em auto;
+  grid-column: span 2;
+  cursor: pointer;
+}
+.clockForecast .weatherTimeline .line {
+  width: 100%;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  transition: height 300ms ease;
+}
+.clockForecast .weatherTimeline:hover .line {
+  height: 20px;
+}
+.clockForecast .weatherTimeline .progress {
+  height: 4px;
+  transition: background 1000ms ease;
+  background: rgba(0, 0, 0, 0.4);
+  transition: height 300ms ease, width 300ms ease;
+}
+.clockForecast .weatherTimeline:hover .progress {
+  background: rgba(0, 0, 0, 1);
+  height: 20px;
+}
+.clockForecast .weatherTimeline ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  position: relative;
+  transform: translateY(-4px);
+}
+.clockForecast .weatherTimeline li {
+  position: absolute;
+  height: 20px;
+  transform: translateY(-20px);
+  transition: transform 300ms ease, height 300ms ease;
+  padding-top: 1em;
+}
+.clockForecast .weatherTimeline:hover li {
+  height: 37px;
+  transform: translateY(-30px);
+}
+.clockForecast .weatherTimeline li .weatherItem {
+  display: none;
+  transition: opacity 300ms ease;
+  width: 200px;
+  transform: translateY(35px);
+  border-left: solid 1px rgba(0, 0, 0, 0.4);
+  text-align: left;
+  padding-left: 1em;
+  line-height: 1.3em;
+}
+.clockForecast .weatherTimeline li:hover .weatherItem {
   display: block;
+  opacity: 1 !important;
 }
-.time .small, .weather .small {
+.clockForecast .small {
   display: block;
   margin-top: 0.6em;
   font-size: 0.7em;
   opacity: 0.6;
+  line-height: 1.2em;
 }
-@media all and (max-width: 1200px) {
-  .time {
-    justify-self: center;
-    align-self: end;
-    text-align: center;
-  }
-}
-
-
-.weather {
-  text-align: left;
-  padding: 2em;
-  justify-self: left;
-  align-self: end;
-  overflow: hidden;
-  min-width: 400px;
-}
-.weather .big {
-  font-size: 3em;
-  display: block;
-  font-weight: 300;
-}
-.weather hr {
-  border-top: 0;
-  border-bottom: solid 1px rgba(0, 0, 0, 0.2);
-}
-.weather a {
-  text-decoration: none;
-  cursor: pointer;
-  display: inline-block;
-  margin: 0 0.2em;
-}
-.weather a:hover {
-  color: #000;
-}
-.weatherIcon {
-  margin-right: 0.5em;
-}
-.weather .big .weatherIcon {
-  font-size: 0.7em;
-  transform: translateY(-9px);
-}
-@media all and (max-width: 1200px) {
-  .weather {
-    justify-self: center;
-    align-self: start;
-    text-align: center;
-  }
+.clockForecast .wi {
+  margin-right: 0.2em;
 }
 
 

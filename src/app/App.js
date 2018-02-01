@@ -4,8 +4,7 @@ import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import { Helmet } from 'react-helmet';
 import getGlobalStyles from './helpers/getGlobalStyles';
-import Time from './components/Time';
-import Weather from './components/Weather';
+import ClockForecast from './components/ClockForecast';
 import Editor from './components/Editor';
 import Search from './components/Search';
 import './helpers/debug';
@@ -72,10 +71,7 @@ class App extends React.Component {
           <style>{ getGlobalStyles(this.props.today) }</style>
           { newTitle && <title>{ newTitle }</title> }
         </Helmet>
-        <div>
-          <Time />
-          {/* <Weather /> */}
-        </div>
+        <ClockForecast />
         <div className='notes'>
           <nav>
             <a className='button' onClick={ () => this.props.newNote() }>
