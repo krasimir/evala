@@ -5,6 +5,7 @@ import normalizeDarkSkyData from '../helpers/normalizeDarkSkyData';
 import moment from 'moment';
 
 const USE_FAKE = false;
+const REFRESH_AFTER = 4; // hours
 
 function createGoogleMapsURL() {
   if (USE_FAKE) {
@@ -21,54 +22,58 @@ function createWeatherURL({ lat, lng }) {
 function getJSONData(fetchResponse) {
   return fetchResponse.json();
 }
-function * fetchLocal() {
+function * fetchLocal(refresh) {
   const fromLocalStorage = localStorage.getItem('GID_WEATHER');
 
   if (fromLocalStorage) {
     try {
       const { data, lastUpdated } = JSON.parse(fromLocalStorage);
-      const diffInHours = (moment().diff(moment(lastUpdated), 'hours', true));
 
-      if (diffInHours <= 4) {
-        return { data, lastUpdated };
-      }
+      return {
+        local: {
+          data,
+          lastUpdated
+        },
+        diff: refresh ? REFRESH_AFTER + 1 : (moment().diff(moment(lastUpdated), 'hours', true))
+      };
     } catch (error) {
       console.log('Error parsing weather data from local storage', error);
     }
   }
-  return false;
+  return {};
 }
 function * fetchRemote() {
+  const gmResponse = yield call(fetch, createGoogleMapsURL(), { method: 'POST' });
+  const { location } = yield call(getJSONData, gmResponse);
+  const weatherResponse = yield call(fetch, createWeatherURL(location), { method: 'GET', mode: 'cors' });
 
-  const { location } = yield call(getJSONData,
-    yield call(fetch, createGoogleMapsURL(), { method: 'POST' })
-  );
-  const data = yield call(getJSONData,
-    yield call(fetch, createWeatherURL(location), { method: 'GET', mode: 'cors' })
-  );
-
-  return data;
+  return yield call(getJSONData, weatherResponse);
 }
 
-function * fetchData(state) {
+function * fetchData(state, refresh = false) {
   var data = null, lastUpdated = null;
 
   yield 'fetching';
 
-  const local = yield call(fetchLocal);
+  const { local, diff } = yield call(fetchLocal, refresh);
 
   if (local) {
     data = normalizeDarkSkyData(local.data);
     lastUpdated = moment(local.lastUpdated);
-  } else {
+  }
+
+  if (!local || diff > REFRESH_AFTER) {
     try {
-      const apiData = yield call(fetchRemote);
+      const apiData = yield * fetchRemote();
 
       data = normalizeDarkSkyData(apiData);
       lastUpdated = moment();
       localStorage.setItem('GID_WEATHER', JSON.stringify({ data: apiData, lastUpdated }));
     } catch (error) {
-      return { name: 'error', data: null, error };
+      if (!local) {
+        return { name: 'error', data: null, error };
+      }
+      return { name: 'with-data', data, lastUpdated };
     }
   }
 
@@ -90,8 +95,7 @@ const Weather = Machine.create('Weather', {
     'with-data': {
       'fetch': fetchData,
       'refresh': function * (state) {
-        localStorage.removeItem('GID_WEATHER');
-        return yield call(fetchData);
+        return yield call(fetchData, true);
       }
     }
   },

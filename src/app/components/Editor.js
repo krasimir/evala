@@ -3,9 +3,18 @@ import PropTypes from 'prop-types';
 import { connect } from 'stent/lib/react';
 import ReactMde, { ReactMdeCommands } from 'react-mde';
 import Search from './Search';
+import extractTags from '../helpers/extractTags';
+import moment from 'moment';
 
 const ESCAPE = 27;
 const S = 83;
+
+const formatMediumDate = m => {
+  if (m.format('HH:mm') === '00:00') {
+    return m.format('MMMM DD YYYY');
+  }
+  return m.format('MMMM DD YYYY, HH:mm');
+};
 
 class Editor extends React.Component {
   constructor(props) {
@@ -64,6 +73,26 @@ class Editor extends React.Component {
     this._editorArea && this._editorArea.removeEventListener('keydown', this._onEditorAreaKeyDown);
   }
   render() {
+    const { text } = this.state;
+    const meta = { tags: '', dates: '' };
+
+    if (text && text.text && text.text !== '') {
+      const { tags, dates } = extractTags(text.text);
+
+      if (tags.length > 0) {
+        meta.tags = tags.join(', ');
+      }
+      if (dates.length > 0) {
+        meta.dates = dates
+          .map(d => {
+            if (typeof d === 'object') {
+              return `${ formatMediumDate(moment(d.from)) } - ${ formatMediumDate(moment(d.to)) }`;
+            }
+            return formatMediumDate(moment(d));
+          }).join(', ');
+      }
+    }
+
     return (
       <div className='editor'>
         <ReactMde
@@ -78,6 +107,10 @@ class Editor extends React.Component {
           onChange={ this._onChange }
           commands={ ReactMdeCommands.getDefaultCommands() }
         />
+        <div className='meta'>
+          { meta.tags !== '' && `Tags: ${ meta.tags }` }<br />
+          { meta.dates !== '' && `Dates: ${ meta.dates }` }
+        </div>
         <nav>
           <div>
             <a className='button close' onClick={ this._exit }><i className='fa fa-close'></i></a>

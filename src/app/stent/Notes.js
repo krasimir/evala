@@ -62,7 +62,20 @@ const Notes = Machine.create('Notes', {
         );
         const filtered = yield call(dbResult.toArray.bind(dbResult));
 
-        return { ...state, filtered };
+        return { ...state, filtered: this.sort(filtered) };
+      },
+      'search by date range': function * (state, from, to) {
+        const dbResult = yield call(() => db.notes
+          .filter(note => {
+            if (note.dates && note.dates.length > 0) {
+              return true;
+            }
+            return false;
+          })
+        );
+        const filtered = yield call(dbResult.toArray.bind(dbResult));
+
+        return { ...state, filtered: this.sort(filtered) };
       },
       'edit': function * (state, id, content) {
         const { tags, dates } = extractTags(content);
@@ -87,10 +100,11 @@ const Notes = Machine.create('Notes', {
       }
     }
   },
-  sort: function () {
-    if (this.state.notes && this.state.notes.length > 0) {
-      this.state.notes.sort((b, a) => ((new Date(a.edited)) - (new Date(b.edited))));
+  sort: function (notes) {
+    if (notes && notes.length > 0) {
+      notes.sort((b, a) => ((new Date(a.edited)) - (new Date(b.edited))));
     }
+    return notes;
   },
   searchCriteria: function (text = '') {
     return text.split(/ /gi).reduce((result, token) => {

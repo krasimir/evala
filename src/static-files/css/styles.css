@@ -152,12 +152,12 @@ iframe{
   text-align: center;
 }
 .notes .button {
-  font-size: 4em;
+  font-size: 2em;
   opacity: 0.2;
   text-align: center;
 }
 .notes .button small {
-  font-size: 0.15em;
+  font-size: 0.3em;
   display: block;
   opacity: 0;
   transition: opacity 300ms ease;
@@ -169,8 +169,7 @@ iframe{
   width: 200px;
   margin: 0 auto;
   display: grid;
-  /* grid-template-columns: repeat(2, 50%); */
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   align-content: center;
 }
 .notes .summary {
@@ -238,7 +237,7 @@ iframe{
   font-size: 1em;
   height: 100%;
   display: grid;
-  grid-template-rows: auto 2em;
+  grid-template-rows: auto 2em 2em;
   grid-row-gap: 1em;
 }
 .editor p {
@@ -255,6 +254,11 @@ iframe{
   font-size: 1em;
   height: 100%;
 }
+.editor .meta {
+  font-size: 0.7em;
+  opacity: 0.5;
+  line-height: 1.4em;
+}
 
 
 .search {
@@ -265,7 +269,7 @@ iframe{
   grid-row-gap: 1em;
 }
 .search .searchInput {
-  font-size: 2em;
+  font-size: 1em;
   font-family: inherit;
   width: 100%;
   outline: none;
@@ -363,3 +367,55 @@ iframe{
 .noteContent h1, .noteContent h2, .noteContent h3, .noteContent h4, .noteContent h5 {
   line-height: 1.1em;
 }
+
+
+.calendar {
+  padding-bottom: 1em;
+}
+.calendar .monthTitle a {
+  display: block;
+  cursor: pointer;
+}
+.calendar .monthTitle a:hover {
+  opacity: 0.8;
+}
+.calendar .monthTitle {
+  font-size: 0.7em;
+  padding-bottom: 0.5em;
+  padding-top: 0.5em;
+  border-bottom: solid 1px rgba(0, 0, 0, 0.4);
+}
+.calendar .monthTitle:last-child {
+  border-top: solid 1px rgba(0, 0, 0, 0.4);
+  border-bottom: none;
+}
+.react-calendar__month-view {
+  padding: 1em 0;
+}
+.react-calendar__month-view__weekdays {
+  font-size: 0.7em;
+  opacity: 0.8;
+  text-align: center;
+}
+.react-calendar__tile {
+  border: solid 1px rgba(0, 0, 0, 0);
+  padding: 1em;
+  border-radius: 2px;
+  font-size: 0.8em;
+}
+.react-calendar__tile.withNotes {
+  background: rgb(115, 165, 221);
+}
+.react-calendar__tile:hover {
+  border: solid 1px rgba(0, 0, 0, 0.4);
+}
+.react-calendar__month-view__days__day--weekend {
+  color: red;
+}
+.react-calendar__month-view__days__day--neighboringMonth {
+  opacity: 0.2;
+}
+
+/*
+react-calendar__tile react-calendar__month-view__days__day react-calendar__month-view__days__day--weekend react-calendar__month-view__days__day--neighboringMonth
+*/

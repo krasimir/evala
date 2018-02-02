@@ -7,6 +7,7 @@ import getGlobalStyles from './helpers/getGlobalStyles';
 import ClockForecast from './components/ClockForecast';
 import Editor from './components/Editor';
 import Search from './components/Search';
+import Calendar from './components/Calendar';
 import './helpers/debug';
 import './stent/Weather';
 import './stent/Sidebar';
@@ -76,12 +77,16 @@ class App extends React.Component {
           <nav>
             <a className='button' onClick={ () => this.props.newNote() }>
               <i className='fa fa-plus'></i>
-              <small>Enter</small>
+              <small>1</small>
             </a>
-            { /* <a className='button' onClick={ () => this.props.search() }>
-              <i className='fa fa-list-ul'></i>
-              <small>Shift + Enter</small>
-              </a> */ }
+            <a className='button' onClick={ () => this.props.search() }>
+              <i className='fa fa-search'></i>
+              <small>2</small>
+            </a>
+            <a className='button' onClick={ () => this.props.calendar() }>
+              <i className='fa fa-calendar-o'></i>
+              <small>3</small>
+            </a>
           </nav>
           { this._renderGroupedByTag() }
         </div>
@@ -97,6 +102,7 @@ App.propTypes = {
   closeSidebar: PropTypes.func,
   newNote: PropTypes.func,
   search: PropTypes.func,
+  calendar: PropTypes.func,
   isSidebarOpen: PropTypes.bool,
   notesByTag: PropTypes.object
 };
@@ -108,6 +114,7 @@ const AppConnected = connect(App)
     sidebarContent: sidebar.state.content,
     newNote: () => sidebar.open(<Editor />),
     search: what => sidebar.open(<Search what={ what } key={ getId() }/>),
+    calendar: () => sidebar.open(<Calendar />),
     notesByTag: notes.state.notesByTag
   }));
 
