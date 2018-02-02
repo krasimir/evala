@@ -9,7 +9,8 @@
     "build-app": "browserify ./src/app/App.js -o ./build/app.js -t babelify",
     "watch-app": "watchify ./src/app/App.js -o ./build/app.js -t babelify -v",
     "build": "rm -rf ./build/* && npm run build-app && npm run build-static",
-    "watch": "rm -rf ./build/* && concurrently \"npm run watch-app\" \"npm run watch-static\""
+    "watch": "rm -rf ./build/* && concurrently \"npm run watch-app\" \"npm run watch-static\"",
+    "test": "jest"
   },
   "repository": {
     "type": "git",
@@ -18,7 +19,10 @@
   "author": "Krasimir Tsonev",
   "license": "MIT",
   "dependencies": {
+    "@babel/core": "^7.0.0-beta.39",
+    "babel-core": "^7.0.0-0",
     "babel-eslint": "^8.0.3",
+    "babel-jest": "^22.1.0",
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-polyfill": "^6.26.0",
     "babel-preset-es2015": "^6.24.1",
@@ -32,6 +36,7 @@
     "dexie": "^2.0.1",
     "eslint": "^4.12.1",
     "eslint-plugin-react": "^7.5.1",
+    "jest": "^22.1.4",
     "kuker-emitters": "^6.7.2",
     "linkifyjs": "^2.1.5",
     "lodash.intersection": "^4.4.0",
@@ -44,6 +49,7 @@
     "react-helmet": "^5.2.0",
     "react-mde": "^2.3.2",
     "react-virtualized": "^9.18.0",
+    "regenerator-runtime": "^0.11.1",
     "showdown": "^1.8.6",
     "stent": "5.0.2",
     "watchify": "^3.9.0",

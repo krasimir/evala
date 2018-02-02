@@ -49,7 +49,7 @@ class ClockForecast extends React.Component {
 
     return (
       <div className='weatherItem'>
-        { firstRow === 'time' ? time.format('HH:mm') : time.format('MMMM Do YYYY') }<br />
+        { firstRow === 'time' ? time.format('HH:mm') : time.format('dddd, MMMM Do') }<br />
         { this._renderIcon(item) }
         { this._renderTemperature(item) }<br />
         <span className='small'>{ summary }</span>
@@ -126,7 +126,6 @@ class ClockForecast extends React.Component {
               <li
                 key={ i }
                 onClick={ this._changeTimelineMode }
-                // className={ currentHour === hour ? 'current' : '' }
                 style={{
                   left: `${ (i / data.days.length) * 100 }%`,
                   width: `${ Math.floor(100 / data.days.length) }%`

@@ -54,13 +54,6 @@ iframe{
 .container.withSidebar {
   width: 50%;
 }
-@media all and (max-width: 1200px) {
-  .container {
-    grid-template-columns: 100%;
-    grid-template-rows: 20% 20% 60%;
-    grid-template-areas: "time" "weather" "notes";
-  }
-}
 
 
 .clockForecast {

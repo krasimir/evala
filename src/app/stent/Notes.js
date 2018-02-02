@@ -11,12 +11,15 @@ const Notes = Machine.create('Notes', {
   transitions: {
     'idle': {
       'create': function (state, content) {
+        const { tags, dates } = extractTags(content);
+
         db.notes.add({
           content,
-          tags: extractTags(content) || [],
+          tags,
           created: moment().toString(),
           edited: moment().toString(),
-          done: false
+          done: false,
+          dates
         });
         this.fetch();
       },
@@ -62,10 +65,13 @@ const Notes = Machine.create('Notes', {
         return { ...state, filtered };
       },
       'edit': function * (state, id, content) {
+        const { tags, dates } = extractTags(content);
+
         yield call(db.notes.update.bind(db.notes), id, {
           content,
-          tags: extractTags(content) || [],
-          edited: moment().toString()
+          tags,
+          edited: moment().toString(),
+          dates
         });
         this.fetch();
       },
@@ -88,7 +94,7 @@ const Notes = Machine.create('Notes', {
   },
   searchCriteria: function (text = '') {
     return text.split(/ /gi).reduce((result, token) => {
-      const tags = extractTags(token);
+      const { tags } = extractTags(token);
 
       if (tags && tags.length > 0) {
         result.tags = result.tags.concat(tags);

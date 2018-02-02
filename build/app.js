@@ -54750,7 +54750,7 @@ var ClockForecast = function (_React$Component) {
       return _react2.default.createElement(
         'div',
         { className: 'weatherItem' },
-        firstRow === 'time' ? time.format('HH:mm') : time.format('MMMM Do YYYY'),
+        firstRow === 'time' ? time.format('HH:mm') : time.format('dddd, MMMM Do'),
         _react2.default.createElement('br', null),
         this._renderIcon(item),
         this._renderTemperature(item),
@@ -54876,9 +54876,8 @@ var ClockForecast = function (_React$Component) {
               'li',
               {
                 key: i,
-                onClick: _this3._changeTimelineMode
-                // className={ currentHour === hour ? 'current' : '' }
-                , style: {
+                onClick: _this3._changeTimelineMode,
+                style: {
                   left: i / data.days.length * 100 + '%',
                   width: Math.floor(100 / data.days.length) + '%'
                 } },
@@ -55647,6 +55646,14 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 var db = new _dexie2.default('DB__');
 
+db.version(2).stores({
+  notes: '++id, content, tags, created, edited, done, dates'
+}).upgrade(function (trans) {
+  trans.notes.each(function (n, cursor) {
+    n.dates = [];
+    cursor.update(n);
+  });
+});
 db.version(1).stores({
   notes: '++id, content, tags, created, edited, done'
 });
@@ -55675,18 +55682,34 @@ var _lodash = require('lodash.uniq');
 
 var _lodash2 = _interopRequireDefault(_lodash);
 
+var _moment = require('moment');
+
+var _moment2 = _interopRequireDefault(_moment);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+var REGEXP = /#[\wа-я\.\-_\!\?%$^&*\(\)@]+/gi;
+
 function extractTags(str) {
-  var tags = str.match(/#[\wа-я]+/gi);
+  var tags = str.match(REGEXP);
+  var result = { tags: [], dates: [] };
 
   if (tags && tags.length > 0) {
-    return (0, _lodash2.default)(tags);
+    result = (0, _lodash2.default)(tags).reduce(function (r, tag) {
+      var date = (0, _moment2.default)(tag.substr(1));
+
+      if (date.isValid()) {
+        r.dates.push(date);
+      } else {
+        r.tags.push(tag);
+      }
+      return r;
+    }, result);
   }
-  return tags;
+  return result;
 };
 
-},{"lodash.uniq":397}],610:[function(require,module,exports){
+},{"lodash.uniq":397,"moment":399}],610:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -55848,9 +55871,9 @@ var _moment2 = _interopRequireDefault(_moment);
 
 var _helpers = require('stent/lib/helpers');
 
-var _extractTags = require('../helpers/extractTags');
+var _extractTags4 = require('../helpers/extractTags');
 
-var _extractTags2 = _interopRequireDefault(_extractTags);
+var _extractTags5 = _interopRequireDefault(_extractTags4);
 
 var _lodash = require('lodash.intersection');
 
@@ -55869,12 +55892,17 @@ var Notes = _stent.Machine.create('Notes', {
   transitions: {
     'idle': {
       'create': function create(state, content) {
+        var _extractTags = (0, _extractTags5.default)(content),
+            tags = _extractTags.tags,
+            dates = _extractTags.dates;
+
         _db2.default.notes.add({
           content: content,
-          tags: (0, _extractTags2.default)(content) || [],
+          tags: tags,
           created: (0, _moment2.default)().toString(),
           edited: (0, _moment2.default)().toString(),
-          done: false
+          done: false,
+          dates: dates
         });
         this.fetch();
       },
@@ -55962,21 +55990,25 @@ var Notes = _stent.Machine.create('Notes', {
         }, search, this);
       }),
       'edit': /*#__PURE__*/regeneratorRuntime.mark(function edit(state, id, content) {
+        var _extractTags2, tags, dates;
+
         return regeneratorRuntime.wrap(function edit$(_context3) {
           while (1) {
             switch (_context3.prev = _context3.next) {
               case 0:
-                _context3.next = 2;
+                _extractTags2 = (0, _extractTags5.default)(content), tags = _extractTags2.tags, dates = _extractTags2.dates;
+                _context3.next = 3;
                 return (0, _helpers.call)(_db2.default.notes.update.bind(_db2.default.notes), id, {
                   content: content,
-                  tags: (0, _extractTags2.default)(content) || [],
-                  edited: (0, _moment2.default)().toString()
+                  tags: tags,
+                  edited: (0, _moment2.default)().toString(),
+                  dates: dates
                 });
 
-              case 2:
+              case 3:
                 this.fetch();
 
-              case 3:
+              case 4:
               case 'end':
                 return _context3.stop();
             }
@@ -56032,7 +56064,8 @@ var Notes = _stent.Machine.create('Notes', {
     var text = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
 
     return text.split(/ /gi).reduce(function (result, token) {
-      var tags = (0, _extractTags2.default)(token);
+      var _extractTags3 = (0, _extractTags5.default)(token),
+          tags = _extractTags3.tags;
 
       if (tags && tags.length > 0) {
         result.tags = result.tags.concat(tags);
