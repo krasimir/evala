@@ -62333,6 +62333,10 @@ var _Calendar = require('../components/Calendar');
 
 var _Calendar2 = _interopRequireDefault(_Calendar);
 
+var _db = require('../db');
+
+var _db2 = _interopRequireDefault(_db);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 Mousetrap.bind('ctrl+u', function (e) {
@@ -62350,8 +62354,13 @@ Mousetrap.bind('3', function (e) {
 Mousetrap.bind('escape', function (e) {
   _stent.Machine.get('Sidebar').close();
 });
+Mousetrap.bind('ctrl+shift+e', function (e) {
+  _db2.default.notes.toArray().then(function (data) {
+    console.log(JSON.stringify(data));
+  });
+});
 
-},{"../components/Calendar":634,"../components/Editor":636,"../components/Search":638,"react":612,"stent":630}],647:[function(require,module,exports){
+},{"../components/Calendar":634,"../components/Editor":636,"../components/Search":638,"../db":640,"react":612,"stent":630}],647:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {

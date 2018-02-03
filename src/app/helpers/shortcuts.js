@@ -3,6 +3,7 @@ import { Machine } from 'stent';
 import Editor from '../components/Editor';
 import Search from '../components/Search';
 import Calendar from '../components/Calendar';
+import db from '../db';
 
 Mousetrap.bind('ctrl+u', function (e) {
   Machine.get('Weather').refresh();
@@ -18,4 +19,9 @@ Mousetrap.bind('3', function (e) {
 });
 Mousetrap.bind('escape', function (e) {
   Machine.get('Sidebar').close();
+});
+Mousetrap.bind('ctrl+shift+e', function (e) {
+  db.notes.toArray().then(data => {
+    console.log(JSON.stringify(data));
+  });
 });
