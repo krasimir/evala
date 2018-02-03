@@ -25,7 +25,7 @@ class Search extends React.Component {
     };
   }
   componentDidMount() {
-    setTimeout(() => {
+    !this.props.listOnly && setTimeout(() => {
       this.input.focus();
       this.input.selectionStart = this.input.selectionEnd = 10000;
     }, 100);
@@ -89,8 +89,8 @@ class Search extends React.Component {
     const progressBarValue = notes.length > 0 ? Math.ceil(done / notes.length * 100) : 0;
 
     return (
-      <div className='search'>
-        <div>
+      <div className={ `search ${ this.props.listOnly ? 'listOnly' : ''}` }>
+        { !this.props.listOnly && <div>
           <input
             type='text'
             className='searchInput'
@@ -100,7 +100,7 @@ class Search extends React.Component {
           <div className='progress'>
             <div className='progressBar' style={{ width: `${ progressBarValue }%` }} />
           </div>
-        </div>
+        </div> }
         <div className='list'>
           { notes
             .slice(from, to)
@@ -122,6 +122,9 @@ class Search extends React.Component {
         </div>
         <nav>
           <div>
+            <a className='button close' onClick={ () => this.props.newNote() }><i className='fa fa-plus'></i></a>
+          </div>
+          <div>
             <a className='button close' onClick={ this._exit }><i className='fa fa-close'></i></a>
           </div>
         </nav>
@@ -130,13 +133,18 @@ class Search extends React.Component {
   }
 }
 
+Search.defaultProps = {
+  listOnly: false
+};
+
 Search.propTypes = {
   exit: PropTypes.func,
   newNote: PropTypes.func,
   what: PropTypes.string,
   notes: PropTypes.array,
   search: PropTypes.func.isRequired,
-  changeStatus: PropTypes.func.isRequired
+  changeStatus: PropTypes.func.isRequired,
+  listOnly: PropTypes.bool
 };
 
 export default connect(Search)

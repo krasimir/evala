@@ -7,7 +7,7 @@ import db from '../db';
 import { NO_TAG } from '../constants';
 
 const Notes = Machine.create('Notes', {
-  state: { name: 'idle', notesByTag: {}, filtered: [] },
+  state: { name: 'idle', notesByTag: {}, filtered: [], filteredByDate: [] },
   transitions: {
     'idle': {
       'create': function (state, content) {
@@ -73,9 +73,9 @@ const Notes = Machine.create('Notes', {
             return false;
           })
         );
-        const filtered = yield call(dbResult.toArray.bind(dbResult));
+        const filteredByDate = yield call(dbResult.toArray.bind(dbResult));
 
-        return { ...state, filtered: this.sort(filtered) };
+        return { ...state, filteredByDate: this.sort(filteredByDate) };
       },
       'edit': function * (state, id, content) {
         const { tags, dates } = extractTags(content);

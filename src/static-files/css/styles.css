@@ -52,7 +52,7 @@ iframe{
   transition: width 300ms ease-out;
 }
 .container.withSidebar {
-  width: 50%;
+  width: 100%;
 }
 
 
@@ -191,14 +191,14 @@ iframe{
 
 
 @keyframes sidebarSlideIn {
-  from { right: -50%; }
-  to { right: 0%; }
+  from { opacity: 0; }
+  to { right: 1; }
 }
 .sidebar {
   position: absolute;
   top: 0;
   right: 0;
-  width: 50%;
+  width: 100%;
   height: 100%;
   padding: 2em;
   background: #FFF;
@@ -267,6 +267,9 @@ iframe{
   display: grid;
   grid-template-rows: 70px 1fr 40px;
   grid-row-gap: 1em;
+}
+.search.listOnly {
+  grid-template-rows: 1fr 40px;
 }
 .search .searchInput {
   font-size: 1em;
@@ -371,6 +374,20 @@ iframe{
 
 .calendar {
   padding-bottom: 1em;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-gap: 2em;
+  height: 100%;
+}
+@media all and (max-width: 1200px) {
+  .calendar {
+    grid-template-columns: 1fr;
+    grid-template-rows: 50% 50%;
+  }
+}
+.calendarMonths {
+  overflow-y: scroll;
+  padding-right: 2em;
 }
 .calendar .monthTitle a {
   display: block;
@@ -400,17 +417,29 @@ iframe{
 .react-calendar__tile {
   border: solid 1px rgba(0, 0, 0, 0);
   padding: 1em;
-  border-radius: 2px;
+  border-radius: 4px;
   font-size: 0.8em;
+  cursor: pointer;
 }
 .react-calendar__tile.withNotes {
-  background: rgb(115, 165, 221);
+  background: rgb(235, 235, 235);
+  border: solid 1px rgb(170, 170, 170);
+}
+.react-calendar__tile.selected {
+  background: black;
+  color: white;
+}
+.react-calendar__tile.today {
+  border: solid 3px black;
 }
 .react-calendar__tile:hover {
   border: solid 1px rgba(0, 0, 0, 0.4);
 }
+.react-calendar__tile.today:hover {
+  border: solid 3px black;
+}
 .react-calendar__month-view__days__day--weekend {
-  color: red;
+  color: rgb(56, 210, 102);
 }
 .react-calendar__month-view__days__day--neighboringMonth {
   opacity: 0.2;
