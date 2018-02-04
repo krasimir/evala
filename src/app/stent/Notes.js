@@ -3,8 +3,9 @@ import moment from 'moment';
 import { call } from 'stent/lib/helpers';
 import extractTags from '../helpers/extractTags';
 import intersection from 'lodash.intersection';
-import db from '../db';
+import db from '../services/db';
 import { NO_TAG } from '../constants';
+import { IS_INDEXDB_SUPPORTED } from '../helpers/capabilities';
 
 const Notes = Machine.create('Notes', {
   state: { name: 'idle', notesByTag: {}, filtered: [], filteredByDate: [] },
@@ -24,6 +25,10 @@ const Notes = Machine.create('Notes', {
         this.fetch();
       },
       'fetch': function * (state) {
+        if (!IS_INDEXDB_SUPPORTED) {
+          return state;
+        }
+
         const notesByTag = {};
 
         yield call(db.notes.each.bind(db.notes), ({ tags }) => {
@@ -122,13 +127,5 @@ const Notes = Machine.create('Notes', {
 });
 
 Notes.fetch();
-
-// for (let i = 0; i < 100; i++) {
-//   if (i % 20 === 0) {
-//     Notes.create('TODO ' + i + ' Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry\'s standard dummy text ever since the 1500s,\n\nwhen an unknown printer took a galley of type and scrambled it to make a type specimen book.\n\nIt has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged.\n\nIt was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.');
-//   } else {
-//     Notes.create('TODO ' + i + ' one liner #todo');
-//   }
-// }
 
 export default Notes;

@@ -22,7 +22,9 @@
     "browser": true,
     "Mousetrap": true,
     "React": true,
-    "io": true
+    "io": true,
+    "auth0": true,
+    "Auth0Lock": true
   },
 
   "parser": "babel-eslint",

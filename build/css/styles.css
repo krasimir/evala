@@ -38,6 +38,17 @@ iframe{
 .button:active {
   transform: translateY(20px);
 }
+.buttonBordered {
+  border-left: solid 1px #999;
+  border-top: solid 1px #999;
+  border-right: solid 3px #999;
+  border-bottom: solid 3px #999;
+  padding: 0.4em 1em;
+  border-radius: 4px;
+}
+.buttonBordered:hover {
+  transform: scale(1.1);
+}
 
 
 .container {
@@ -45,7 +56,7 @@ iframe{
   width: 100%;
   height: 100%;
   grid-template-columns: 100%;
-  grid-template-rows: 65% 35%;
+  grid-template-rows: 60% 40%;
   align-content: center;
   height: 100%;
   width: 100%;
@@ -61,15 +72,22 @@ iframe{
   grid-template-columns: 50% 50%;
   text-align: center;
   align-self: center;
-  grid-gap: 2em;
+  grid-row-gap: 0.5em;
+  grid-column-gap: 1em;
 }
 .clockForecast .weather {
   text-align: left;
   padding-right: 4em;
+  max-width: 400px;
 }
 .clockForecast .day {
   text-align: right;
   padding-left: 4em;
+}
+.clockForecast.noWeatherData .day {
+  text-align: center;
+  grid-column: span 2;
+  padding-left: 0;
 }
 .clockForecast .big {
   font-size: 5.4em;
@@ -79,7 +97,7 @@ iframe{
 }
 .clockForecast .weatherTimeline {
   width: 60%;
-  margin: 3em auto 3em auto;
+  margin: 1em auto 0 auto;
   grid-column: span 2;
   cursor: pointer;
 }
@@ -147,7 +165,7 @@ iframe{
 
 
 .notes {
-  padding: 2em;
+  padding: 0.8em;
   width: 100%;
   text-align: center;
 }
@@ -200,15 +218,13 @@ iframe{
   right: 0;
   width: 100%;
   height: 100%;
-  padding: 2em;
+  padding: 0.8em;
   background: #FFF;
   line-height: 1.4em;
   overflow-y: scroll;
   animation: sidebarSlideIn 300ms ease-out;
 }
 .sidebar nav {
-  border-top: dotted 1px #999;
-  padding-top: 1em;
   display: grid;
   grid-template-columns: 50% 50%;
 }
@@ -238,7 +254,7 @@ iframe{
   height: 100%;
   display: grid;
   grid-template-rows: auto 2em 2em;
-  grid-row-gap: 1em;
+  grid-row-gap: 0.8em;
 }
 .editor p {
   margin-top: 0;
@@ -265,8 +281,8 @@ iframe{
   font-size: 1em;
   height: 100%;
   display: grid;
-  grid-template-rows: 70px 1fr 40px;
-  grid-row-gap: 1em;
+  grid-template-rows: 2em auto 2em;
+  grid-row-gap: 0.8em;
 }
 .search.listOnly {
   grid-template-rows: 1fr 40px;
@@ -309,17 +325,11 @@ iframe{
 
 .note {
   display: block;
-  border-top: solid 1px rgba(0, 0, 0, 0.2);
+  border: solid 1px rgba(0, 0, 0, 0.2);
   max-height: 12em;
   overflow: hidden;
   position: relative;
-  padding: 1em;
-  -webkit-box-shadow: 0px 0px 1px 1px rgba(222, 222, 222, 0.75);
-  -moz-box-shadow: 0px 0px 1px 1px rgba(222, 222, 222, 0.75);
-  box-shadow: 0px 0px 1px 1px rgba(222, 222, 222, 0.75);
-  margin-bottom: 0.4em;
-  margin-left: 0.2em;
-  margin-right: 0.5em;
+  padding: 0.8em;
 }
 .note .gradient {
   display: block;
@@ -352,17 +362,14 @@ iframe{
   float: right;
   text-align: right;
   font-size: 0.7em;
-  opacity: 0;
+  opacity: 1;
   line-height: 0;
   transition: opacity 300ms ease;
 }
 .noteMeta .button {
   font-size: 2em;
-  opacity: 0.2;
+  opacity: 0.3;
   margin-left: 0.4em;
-}
-.note:hover .noteMeta {
-  opacity: 1;
 }
 .noteContent p {
   margin: 0;
@@ -376,13 +383,13 @@ iframe{
   padding-bottom: 1em;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-gap: 2em;
+  grid-gap: 0.8em;
   height: 100%;
 }
 @media all and (max-width: 1024px) {
   .calendar {
-    grid-template-columns: 1fr;
-    grid-template-rows: 70% 30%;
+    display: block;
+    height: auto;
   }
 }
 .calendarMonths {
@@ -445,6 +452,65 @@ iframe{
   opacity: 0.2;
 }
 
-/*
-react-calendar__tile react-calendar__month-view__days__day react-calendar__month-view__days__day--weekend react-calendar__month-view__days__day--neighboringMonth
-*/
+
+.requiredAPIsError {
+  text-align: center;
+  padding: 0 2em;
+  color: #000;
+}
+.requiredAPIsError a {
+  color: #000;
+}
+
+
+.auth {
+  position: absolute;
+  bottom: 1.2em;
+  text-align: center;
+  width: 100%;
+  opacity: 0.5;
+  transition: opacity 300ms ease;
+}
+.auth p {
+  margin: 0;
+  padding: 0;
+}
+.auth:hover {
+  opacity: 1;
+}
+.auth p a {
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+
+.login {
+  display: grid;
+  height: 100%;
+  width: 100%;
+}
+.login form {
+  justify-self: center;
+  align-self: center;
+  width: 320px;
+  padding: 1em;
+}
+.login form input {
+  width: 100%;
+  padding: 1em;
+  display: block;
+  margin-bottom: 0.5em;
+  font-size: 1em;
+  font-family: inherit;
+  border-radius: 3px;
+  border: solid 1px #999;
+}
+.login form .button {
+  margin-top: 1em;
+}
+.login small a {
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: bold;
+}

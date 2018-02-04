@@ -6,7 +6,7 @@
   "scripts": {
     "build-static": "cpx \"src/static-files/**/*.*\" build",
     "watch-static": "cpx \"src/static-files/**/*.*\" build --watch",
-    "build-app": "browserify ./src/app/App.js -o ./build/app.js -t babelify",
+    "build-app": "browserify ./src/app/App.js -o ./build/app.js -t babelify && uglifyjs ./build/app.js -o ./build/app.js -c -m",
     "watch-app": "watchify ./src/app/App.js -o ./build/app.js -t babelify -v",
     "build": "rm -rf ./build/* && npm run build-app && npm run build-static",
     "watch": "rm -rf ./build/* && concurrently \"npm run watch-app\" \"npm run watch-static\"",
@@ -54,6 +54,7 @@
     "regenerator-runtime": "^0.11.1",
     "showdown": "^1.8.6",
     "stent": "5.0.2",
+    "uglify-js": "^3.3.9",
     "watchify": "^3.9.0",
     "zip-folder": "^1.0.0"
   }

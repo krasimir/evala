@@ -1,10 +1,10 @@
 {
   "manifest_version": 2,
-  "name": "GID",
+  "name": "Notara",
   "description": "Get It Done",
   "version": "0.1.0",
   "icons": { "16": "img/icon16.png", "48": "img/icon48.png", "128": "img/icon128.png" },
-  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self';",
   "permissions": [ "management", "tabs", "<all_urls>" ],
   "chrome_url_overrides" : {
     "newtab": "index.html"

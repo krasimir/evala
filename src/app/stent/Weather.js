@@ -3,6 +3,7 @@ import { call } from 'stent/lib/helpers';
 import { GOOGLE_MAPS_API_KEY } from '../constants';
 import normalizeDarkSkyData from '../helpers/normalizeDarkSkyData';
 import moment from 'moment';
+import { IS_LOCALSTORAGE_SUPPORTED } from '../helpers/capabilities';
 
 const USE_FAKE = false;
 const REFRESH_AFTER = 4; // hours
@@ -17,13 +18,13 @@ function createWeatherURL({ lat, lng }) {
   if (USE_FAKE) {
     return './mocks/darksky.json';
   }
-  return `http://gid.krasimirtsonev.com/weather/?lat=${ lat }&lng=${ lng }`;
+  return `http://notara.krasimirtsonev.com/_weather/?lat=${ lat }&lng=${ lng }`;
 }
 function getJSONData(fetchResponse) {
   return fetchResponse.json();
 }
 function * fetchLocal(refresh) {
-  const fromLocalStorage = localStorage.getItem('GID_WEATHER');
+  const fromLocalStorage = localStorage.getItem('NOTARA_WEATHER');
 
   if (fromLocalStorage) {
     try {
@@ -53,6 +54,10 @@ function * fetchRemote() {
 function * fetchData(state, refresh = false) {
   var data = null, lastUpdated = null;
 
+  if (!IS_LOCALSTORAGE_SUPPORTED) {
+    return state;
+  }
+
   yield 'fetching';
 
   const { local, diff } = yield call(fetchLocal, refresh);
@@ -68,7 +73,7 @@ function * fetchData(state, refresh = false) {
 
       data = normalizeDarkSkyData(apiData);
       lastUpdated = moment();
-      localStorage.setItem('GID_WEATHER', JSON.stringify({ data: apiData, lastUpdated }));
+      localStorage.setItem('NOTARA_WEATHER', JSON.stringify({ data: apiData, lastUpdated }));
     } catch (error) {
       if (!local) {
         return { name: 'error', data: null, error };

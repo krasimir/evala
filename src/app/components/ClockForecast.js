@@ -64,8 +64,11 @@ class ClockForecast extends React.Component {
       </div>
     );
   }
+  _isWeatherDataHere() {
+    return this.props.data && this.state.today;
+  }
   _renderTodayWeather() {
-    if (!this.props.data || !this.state.today) return null;
+    if (!this._isWeatherDataHere()) return null;
 
     const { data } = this.props;
     const { today } = this.state;
@@ -73,7 +76,7 @@ class ClockForecast extends React.Component {
     return (
       <div className='weather'>
         { this._renderIcon(today) }
-        { this._renderTemperature(today) } { today.summary }
+        { this._renderTemperature(today) } <small>{ today.summary }</small>
         <span className='small'>{ data.timezone }</span>
       </div>
     );
@@ -153,7 +156,7 @@ class ClockForecast extends React.Component {
   }
   render() {
     return (
-      <div className='clockForecast'>
+      <div className={ `clockForecast ${ !this._isWeatherDataHere() ? 'noWeatherData' : '' }` }>
         <span className='big'>{ this.state.now.format('HH:mm') }</span>
         { this._renderDay() }
         { this._renderTodayWeather() }

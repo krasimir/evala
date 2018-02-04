@@ -1,7 +1,7 @@
 <?php
 
   header('Content-Type: application/json');
-  header("Access-Control-Allow-Origin: http://home.localhost");
+  header("Access-Control-Allow-Origin: *");
 
   $darkSkyAPIKey = '2520982c98d411b85414d3b1ad542409';
   $url = 'https://api.darksky.net/forecast/'.$darkSkyAPIKey;
