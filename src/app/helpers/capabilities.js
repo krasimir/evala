@@ -1,4 +1,4 @@
-var ls = null, idb = null;
+var ls = null;
 
 (function () {
   var test = 'test';
@@ -12,10 +12,4 @@ var ls = null, idb = null;
   }
 })();
 
-idb = window.indexedDB ||
-      window.mozIndexedDB ||
-      window.webkitIndexedDB ||
-      window.msIndexedDB;
-
 export const IS_LOCALSTORAGE_SUPPORTED = !!ls;
-export const IS_INDEXDB_SUPPORTED = !!idb;

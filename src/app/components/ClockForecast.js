@@ -178,12 +178,11 @@ ClockForecast.propTypes = {
 };
 
 export default connect(ClockForecast)
-  .with('Weather', 'Sidebar')
-  .map(({ state, fetch, refreshData }, sidebar) => ({
+  .with('Weather')
+  .map(({ state, fetch, refreshData }) => ({
     state: state.name,
     data: state.data,
     error: state.error,
     lastUpdated: state.lastUpdated,
-    fetch,
-    openSidebar: content => sidebar.open(content)
+    fetch
   }));
