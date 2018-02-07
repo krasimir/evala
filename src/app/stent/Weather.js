@@ -65,6 +65,7 @@ function * fetchData(state, refresh = false) {
   if (local) {
     data = normalizeDarkSkyData(local.data);
     lastUpdated = moment(local.lastUpdated);
+    yield { name: 'with-data', data, lastUpdated: local.lastUpdated };
   }
 
   if (!local || diff > REFRESH_AFTER) {
@@ -81,7 +82,6 @@ function * fetchData(state, refresh = false) {
       return { name: 'with-data', data, lastUpdated };
     }
   }
-
   return { name: 'with-data', data, lastUpdated };
 }
 

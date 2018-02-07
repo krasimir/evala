@@ -11,6 +11,7 @@ import './stent/Weather';
 import './helpers/shortcuts';
 import { connect } from 'stent/lib/react';
 import moment from 'moment';
+import Terminal from './components/Terminal';
 
 function removeHash(tag) {
   if (tag.charAt(0) === '#') {
@@ -68,6 +69,7 @@ class App extends React.Component {
           { newTitle && <title>{ newTitle }</title> }
         </Helmet>
         <ClockForecast />
+        <Terminal />
       </div>
     );
   }
