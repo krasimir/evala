@@ -43344,7 +43344,6 @@ function attach(term, socket, bidirectional, buffered) {
         }
     };
     term._sendData = function (data) {
-        console.log(socket.readyState);
         if (socket.readyState !== 1) {
             return;
         }
@@ -43352,7 +43351,7 @@ function attach(term, socket, bidirectional, buffered) {
     };
     socket.addEventListener('message', term._getMessage);
     if (bidirectional) {
-        term.on('data', a => term._sendData(a));
+        term.on('data', term._sendData);
     }
     socket.addEventListener('close', term.detach.bind(term, socket));
     socket.addEventListener('error', term.detach.bind(term, socket));
@@ -45913,6 +45912,8 @@ var _winptyCompat = require('xterm/lib/addons/winptyCompat/winptyCompat');
 
 var winptyCompat = _interopRequireWildcard(_winptyCompat);
 
+var _config = require('../../config');
+
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -45929,6 +45930,9 @@ _xterm.Terminal.applyAddon(fullscreen);
 _xterm.Terminal.applyAddon(search);
 _xterm.Terminal.applyAddon(winptyCompat);
 
+var HOST = '127.0.0.1:' + _config.PORT;
+var SOCKET_URL = 'ws://' + HOST + '/terminals/';
+
 var ReactTerminal = function (_React$Component) {
   _inherits(ReactTerminal, _React$Component);
 
@@ -45944,36 +45948,55 @@ var ReactTerminal = function (_React$Component) {
   }
 
   _createClass(ReactTerminal, [{
+    key: '_connectToServer',
+    value: function _connectToServer() {
+      var _this2 = this;
+
+      fetch('http://' + HOST + '/terminals/?cols=' + this.term.cols + '&rows=' + this.term.rows, { method: 'POST' }).then(function (res) {
+        res.text().then(function (processId) {
+          _this2.pid = processId;
+          _this2.socket = new WebSocket(SOCKET_URL + processId);
+          _this2.socket.onopen = function () {
+            _this2.term.attach(_this2.socket);
+          };
+          _this2.socket.onclose = function () {
+            _this2.term.writeln('Server disconnected!');
+            _this2._connectToServer();
+          };
+          _this2.socket.onerror = function () {
+            _this2.term.writeln('Server disconnected!');
+            _this2._connectToServer();
+          };
+        });
+      }, function (error) {
+        console.error(error);
+        setTimeout(function () {
+          _this2._connectToServer();
+        }, 2000);
+      });
+    }
+  }, {
     key: 'componentDidMount',
     value: function componentDidMount() {
-      var term = void 0,
-          socket = void 0,
-          socketURL = 'ws://0.0.0.0:3000/terminals/';
+      var _this3 = this;
 
-      this.term = term = new _xterm.Terminal({
+      this.term = new _xterm.Terminal({
         cursorBlink: true
       });
 
-      term.open(document.querySelector('#terminal'));
-      term.winptyCompatInit();
-      term.fit();
-      term.focus();
+      this.term.open(document.querySelector('#terminal'));
+      this.term.winptyCompatInit();
+      this.term.fit();
+      this.term.focus();
+      this.term.on('resize', function (size) {
+        if (!_this3.pid) return;
+        var cols = size.cols;
+        var rows = size.rows;
+        var url = 'http://' + HOST + '/terminals/' + _this3.pid + '/size?cols=' + cols + '&rows=' + rows;
 
-      fetch('http://0.0.0.0:3000/terminals', { method: 'POST' }).then(function (res) {
-        res.text().then(function (processId) {
-          socketURL += processId;
-          socket = new WebSocket(socketURL);
-          socket.onopen = function () {
-            term.attach(socket);
-          };
-          socket.onclose = function () {
-            return console.log('onclose socket');
-          };
-          socket.onerror = function () {
-            return console.log('onerror socket');
-          };
-        });
+        fetch(url, { method: 'POST' });
       });
+      this._connectToServer();
     }
   }, {
     key: 'render',
@@ -45988,7 +46011,7 @@ var ReactTerminal = function (_React$Component) {
 exports.default = ReactTerminal;
 ;
 
-},{"react":543,"xterm":575,"xterm/lib/addons/attach/attach":578,"xterm/lib/addons/fit/fit":579,"xterm/lib/addons/fullscreen/fullscreen":580,"xterm/lib/addons/search/search":582,"xterm/lib/addons/winptyCompat/winptyCompat":583}],605:[function(require,module,exports){
+},{"../../config":612,"react":543,"xterm":575,"xterm/lib/addons/attach/attach":578,"xterm/lib/addons/fit/fit":579,"xterm/lib/addons/fullscreen/fullscreen":580,"xterm/lib/addons/search/search":582,"xterm/lib/addons/winptyCompat/winptyCompat":583}],605:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46441,4 +46464,11 @@ var Weather = _stent.Machine.create('Weather', {
 
 exports.default = Weather;
 
-},{"../constants":605,"../helpers/capabilities":606,"../helpers/normalizeDarkSkyData":609,"moment":378,"stent":560,"stent/lib/helpers":553}]},{},[602]);
+},{"../constants":605,"../helpers/capabilities":606,"../helpers/normalizeDarkSkyData":609,"moment":378,"stent":560,"stent/lib/helpers":553}],612:[function(require,module,exports){
+"use strict";
+
+module.exports = {
+  PORT: 9788
+};
+
+},{}]},{},[602]);

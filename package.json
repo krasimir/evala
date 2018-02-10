@@ -53,6 +53,7 @@
     "uglify-js": "^3.3.9",
     "watchify": "^3.9.0",
     "xterm": "^3.0.2",
+    "yargs": "^11.0.0",
     "zip-folder": "^1.0.0"
   }
 }

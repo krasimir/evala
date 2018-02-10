@@ -5,12 +5,16 @@ import * as fit from 'xterm/lib/addons/fit/fit';
 import * as fullscreen from 'xterm/lib/addons/fullscreen/fullscreen';
 import * as search from 'xterm/lib/addons/search/search';
 import * as winptyCompat from 'xterm/lib/addons/winptyCompat/winptyCompat';
+import { PORT } from '../../config';
 
 Terminal.applyAddon(attach);
 Terminal.applyAddon(fit);
 Terminal.applyAddon(fullscreen);
 Terminal.applyAddon(search);
 Terminal.applyAddon(winptyCompat);
+
+const HOST = `127.0.0.1:${ PORT }`;
+const SOCKET_URL = `ws://${ HOST }/terminals/`;
 
 export default class ReactTerminal extends React.Component {
   constructor(props) {
@@ -20,29 +24,54 @@ export default class ReactTerminal extends React.Component {
       command: ''
     };
   }
+  _connectToServer() {
+    fetch(
+      `http://${ HOST }/terminals/?cols=${ this.term.cols }&rows=${ this.term.rows }`,
+      { method: 'POST' }
+    ).then(
+      res => {
+        res.text().then(processId => {
+          this.pid = processId;
+          this.socket = new WebSocket(SOCKET_URL + processId);
+          this.socket.onopen = () => {
+            this.term.attach(this.socket);
+          };
+          this.socket.onclose = () => {
+            this.term.writeln('Server disconnected!');
+            this._connectToServer();
+          };
+          this.socket.onerror = () => {
+            this.term.writeln('Server disconnected!');
+            this._connectToServer();
+          };
+        });
+      },
+      error => {
+        console.error(error);
+        setTimeout(() => {
+          this._connectToServer();
+        }, 2000);
+      }
+    );
+  }
   componentDidMount() {
-    let term, socket, socketURL = 'ws://0.0.0.0:3000/terminals/';
-
-    this.term = term = new Terminal({
+    this.term = new Terminal({
       cursorBlink: true
     });
 
-    term.open(document.querySelector('#terminal'));
-    term.winptyCompatInit();
-    term.fit();
-    term.focus();
+    this.term.open(document.querySelector('#terminal'));
+    this.term.winptyCompatInit();
+    this.term.fit();
+    this.term.focus();
+    this.term.on('resize', size => {
+      if (!this.pid) return;
+      let cols = size.cols;
+      let rows = size.rows;
+      let url = `http://${ HOST }/terminals/${ this.pid }/size?cols=${ cols }&rows=${ rows }`;
 
-    fetch('http://0.0.0.0:3000/terminals', { method: 'POST' }).then(function (res) {
-      res.text().then(function (processId) {
-        socketURL += processId;
-        socket = new WebSocket(socketURL);
-        socket.onopen = () => {
-          term.attach(socket);
-        };
-        socket.onclose = () => console.log('onclose socket');
-        socket.onerror = () => console.log('onerror socket');
-      });
+      fetch(url, { method: 'POST' });
     });
+    this._connectToServer();
   }
   render() {
     return <div id='terminal'></div>;
