@@ -10,7 +10,8 @@
     "watch-app": "watchify ./src/app/App.js -o ./build/app.js -t babelify -v",
     "build": "rm -rf ./build/* && npm run build-app && npm run build-static",
     "watch": "rm -rf ./build/* && concurrently \"npm run watch-app\" \"npm run watch-static\"",
-    "test": "jest"
+    "test": "jest",
+    "start": "node ./src/server.js"
   },
   "repository": {
     "type": "git",
@@ -35,10 +36,14 @@
     "cpx": "^1.5.0",
     "eslint": "^4.12.1",
     "eslint-plugin-react": "^7.5.1",
+    "express": "^4.16.2",
+    "express-ws": "^3.0.0",
     "jest": "^22.1.4",
     "kuker-emitters": "6.7.3",
     "lodash.uniq": "^4.5.0",
     "moment": "^2.20.1",
+    "node-pty": "^0.7.4",
+    "os": "^0.1.1",
     "prop-types": "^15.6.0",
     "react": "^15.6.1",
     "react-dom": "^15.6.1",
