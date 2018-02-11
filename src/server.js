@@ -56,7 +56,7 @@ app.ws('/terminals/:pid', function (ws, req) {
   ws.send(logs[term.pid]);
 
   term.on('data', function (data) {
-    console.log('Incomming data = ' + data);
+    // console.log('Incomming data = ' + data);
     try {
       ws.send(data);
     } catch (ex) {

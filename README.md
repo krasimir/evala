@@ -21,3 +21,13 @@ The Evala server acts as a bridge between the browser and the actual terminal.
 ```
 
 Make sure that you pass the `--shell` argument or Evala will use the default `bash` (or `cmd.exe` under Windows) shell.
+
+You may register Evala server as a service so you get it running when you reboot your machine. What I did is registering an alias that allows me to run it quickly in a background.
+
+```
+# Go to the home directory
+# Run Evala server with the default shell
+# Save the output to a log file
+# Run `evala` in a background
+alias run-evala="cd ~/ && evala --shell=$SHELL > ~/log/evala &"
+```
