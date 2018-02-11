@@ -8,7 +8,7 @@
     "watch-static": "cpx \"src/static-files/**/*.*\" build --watch",
     "build-app": "browserify ./src/app/App.js -o ./build/app.js -t babelify && uglifyjs ./build/app.js -o ./build/app.js -c -m",
     "watch-app": "watchify ./src/app/App.js -o ./build/app.js -t babelify -v",
-    "build": "rm -rf ./build/* && npm run build-app && npm run build-static",
+    "build": "rm -rf ./build/* && npm run build-app && npm run build-static && rm ./packages/* && node ./scripts/zipExtension.js",
     "watch": "rm -rf ./build/* && concurrently \"npm run watch-app\" \"npm run watch-static\"",
     "test": "jest",
     "start": "node ./src/server.js --shell=$SHELL"
