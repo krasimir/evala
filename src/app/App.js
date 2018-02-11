@@ -5,7 +5,6 @@ import ReactDOM from 'react-dom';
 import PropTypes from 'prop-types';
 import { Helmet } from 'react-helmet';
 import getGlobalStyles from './helpers/getGlobalStyles';
-import ClockForecast from './components/ClockForecast';
 import TerminalWindow from './components/TerminalWindow';
 import './helpers/debug';
 import './stent/Weather';
@@ -23,7 +22,7 @@ class App extends React.Component {
     const { today } = this.props;
     const { now } = this.state;
 
-    return today ? `${ today.temperature }℃ | ${ now.format('HH:mm') }` : null;
+    return today ? `${ now.format('HH:mm') } / ${ today.temperature }°C` : null;
   }
   componentDidMount() {
     this.props.fetch();
@@ -44,7 +43,6 @@ class App extends React.Component {
           <style>{ '.terminalWindow{opacity:1;transform:translateY(0);}' }</style>
           { newTitle && <title>{ newTitle }</title> }
         </Helmet>
-        {/* <ClockForecast /> */}
         <TerminalWindow />
       </div>
     );
