@@ -1,4 +1,7 @@
-/* eslint-disable vars-on-top */
+#!/usr/bin/env node
+
+var terminals = {}, logs = {};
+
 const PORT = require('./config').PORT;
 const express = require('express');
 const app = express();
@@ -7,8 +10,6 @@ const pty = require('node-pty');
 const argv = require('yargs').argv;
 
 require('express-ws')(app);
-
-var terminals = {}, logs = {};
 
 app.post('/terminals', function (req, res) {
   res.header('Access-Control-Allow-Origin', '*');
