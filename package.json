@@ -2,7 +2,7 @@
   "name": "evala",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/server.js",
   "scripts": {
     "build-static": "cpx \"src/static-files/**/*.*\" build",
     "watch-static": "cpx \"src/static-files/**/*.*\" build --watch",
@@ -40,7 +40,6 @@
     "express-ws": "^3.0.0",
     "jest": "^22.1.4",
     "kuker-emitters": "6.7.3",
-    "lodash.uniq": "^4.5.0",
     "moment": "^2.20.1",
     "node-pty": "^0.7.4",
     "os": "^0.1.1",
