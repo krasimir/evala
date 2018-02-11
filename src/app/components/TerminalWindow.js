@@ -20,10 +20,11 @@ class TerminalWindow extends React.Component {
   }
   componentWillReceiveProps(newProps) {
     if (newProps.data) {
-      this.setState({
-        today: newProps.data.days.find(day => day.time.isSame(this.state.now, 'day'))
-      });
+      this._setToday(newProps.data);
     }
+  }
+  componentDidMount() {
+    this.props.data && this._setToday(this.props.data);
   }
   componentWillUnmount() {
     clearInterval(this._interval);
@@ -32,9 +33,9 @@ class TerminalWindow extends React.Component {
     return (
       <div className='terminalWindow'>
         <div className='fakeMenu'>
-          <div className='fakeButtons fakeClose'></div>
-          <div className='fakeButtons fakeMinimize'></div>
-          <div className='fakeButtons fakeZoom'></div>
+          <a className='fakeButtons fakeClose' onClick={ () => this.props.children() }></a>
+          {/* <div className='fakeButtons fakeMinimize'></div>
+          <div className='fakeButtons fakeZoom'></div> */}
           <span>{ this._renderWindowTitle() }</span>
         </div>
         <div className='fakeScreen'>
@@ -42,6 +43,11 @@ class TerminalWindow extends React.Component {
         </div>
       </div>
     );
+  }
+  _setToday(data) {
+    this.setState({
+      today: data.days.find(day => day.time.isSame(this.state.now, 'day'))
+    });
   }
   _renderWindowTitle() {
     return (
@@ -145,7 +151,8 @@ TerminalWindow.propTypes = {
   openSidebar: PropTypes.func,
   error: PropTypes.any,
   data: PropTypes.any,
-  lastUpdated: PropTypes.any
+  lastUpdated: PropTypes.any,
+  children: PropTypes.func
 };
 
 export default connect(TerminalWindow)

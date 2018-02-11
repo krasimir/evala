@@ -6,6 +6,7 @@ import PropTypes from 'prop-types';
 import { Helmet } from 'react-helmet';
 import getGlobalStyles from './helpers/getGlobalStyles';
 import TerminalWindow from './components/TerminalWindow';
+import ClockForcast from './components/ClockForecast';
 import './helpers/debug';
 import './stent/Weather';
 import './helpers/shortcuts';
@@ -16,7 +17,7 @@ class App extends React.Component {
   constructor(props) {
     super(props);
 
-    this.state = { now: moment() };
+    this.state = { now: moment(), mode: 'clock' };
   }
   _getNewTitle() {
     const { today } = this.props;
@@ -41,9 +42,14 @@ class App extends React.Component {
         <Helmet>
           <style>{ getGlobalStyles(this.props.today) }</style>
           <style>{ '.terminalWindow{opacity:1;transform:translateY(0);}' }</style>
+          <style>{ '.clockForecast{opacity:1;}' }</style>
           { newTitle && <title>{ newTitle }</title> }
         </Helmet>
-        <TerminalWindow />
+        {
+          this.state.mode === 'clock' ?
+            <ClockForcast>{ () => this.setState({ mode: 'terminal' }) }</ClockForcast> :
+            <TerminalWindow>{ () => this.setState({ mode: 'clock' }) }</TerminalWindow>
+        }
       </div>
     );
   }

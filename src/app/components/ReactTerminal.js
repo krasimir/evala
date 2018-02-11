@@ -21,6 +21,7 @@ export default class ReactTerminal extends React.Component {
   constructor(props) {
     super(props);
 
+    this.failures = 0;
     this.state = {
       command: ''
     };
@@ -48,6 +49,10 @@ export default class ReactTerminal extends React.Component {
         });
       },
       error => {
+        this.failures += 1;
+        if (this.failures === 2) {
+          this.term.writeln('It looks like there is no backend.');
+        }
         console.error(error);
         setTimeout(() => {
           this._connectToServer();
