@@ -49,6 +49,8 @@ app.post('/terminals/:pid/size', function (req, res) {
   res.end();
 });
 
+app.use('/', express.static(__dirname + '/../build'));
+
 app.ws('/terminals/:pid', function (ws, req) {
   var term = terminals[parseInt(req.params.pid, 10)];
 

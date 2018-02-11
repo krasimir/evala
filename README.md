@@ -1,15 +1,16 @@
 # Evala
 
-A new tab extension that shows the time, the weather and brings your terminal in the browser.
+A web app that shows the time, the weather and brings your terminal in the browser.
 
 ![Evala](./src/static-files/img/screenshot_1280x800.png)
 ![Evala](./src/static-files/img/screenshot_1280x800_2.png)
 
+It is available as:
+
+* [Chrome new tab extension](https://chrome.google.com/webstore/detail/evala/bmaojegjknddmkhfbkhfijcblmamgino)
+* Web page at http://0.0.0.0:9788 (or http://127.0.0.1:9788)
+
 ## How to use it
-
-### Install the browser extension
-
-* [Chrome](https://chrome.google.com/webstore/detail/evala/bmaojegjknddmkhfbkhfijcblmamgino)
 
 ### Install and run Evala server
 
@@ -31,3 +32,8 @@ You may register Evala server as a service so you get it running when you reboot
 # Run `evala` in a background
 alias run-evala="cd ~/ && evala --shell=$SHELL > ~/log/evala &"
 ```
+
+### To see the app do one of the following
+
+* Install this [Chrome new tab extension](https://chrome.google.com/webstore/detail/evala/bmaojegjknddmkhfbkhfijcblmamgino) and open a new tab
+* Open http://0.0.0.0:9788 (or http://127.0.0.1:9788)

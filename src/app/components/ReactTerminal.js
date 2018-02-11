@@ -51,7 +51,9 @@ export default class ReactTerminal extends React.Component {
       error => {
         this.failures += 1;
         if (this.failures === 2) {
-          this.term.writeln('It looks like there is no backend.');
+          this.term.writeln('It looks like there is no backend. You have to:');
+          this.term.writeln('> npm install evala -g');
+          this.term.writeln('> evala --shell=$SHELL');
         }
         console.error(error);
         setTimeout(() => {
