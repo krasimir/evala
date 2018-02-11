@@ -1,4 +1,5 @@
 import React from 'react';
+import PropTypes from 'prop-types';
 import { Terminal } from 'xterm';
 import * as attach from 'xterm/lib/addons/attach/attach';
 import * as fit from 'xterm/lib/addons/fit/fit';
@@ -63,17 +64,25 @@ export default class ReactTerminal extends React.Component {
     this.term.winptyCompatInit();
     this.term.fit();
     this.term.focus();
-    this.term.on('resize', size => {
+    this.term.on('resize', ({ cols, rows }) => {
       if (!this.pid) return;
-      let cols = size.cols;
-      let rows = size.rows;
-      let url = `http://${ HOST }/terminals/${ this.pid }/size?cols=${ cols }&rows=${ rows }`;
-
-      fetch(url, { method: 'POST' });
+      fetch(`http://${ HOST }/terminals/${ this.pid }/size?cols=${ cols }&rows=${ rows }`, { method: 'POST' });
     });
     this._connectToServer();
+
+    if (this.props.children && typeof this.props.children === 'function') {
+      this.props.children(this.term);
+    }
   }
   render() {
-    return <div id='terminal'></div>;
+    return (
+      <div className='terminal'>
+        <div id='terminal'></div>
+      </div>
+    );
   }
+};
+
+ReactTerminal.propTypes = {
+  children: PropTypes.func
 };

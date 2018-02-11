@@ -14,9 +14,9 @@ app.post('/terminals', function (req, res) {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'X-Requested-With');
 
-  console.log(argv.shell);
+  console.log('SHELL: "' + argv.shell + '"');
 
-  let shell = argv.shell ? argv.shell : process.platform === 'win32' ? 'cmd.exe' : 'bash';
+  let shell = argv.shell && argv.shell !== '' ? argv.shell : process.platform === 'win32' ? 'cmd.exe' : 'bash';
   let cols = parseInt(req.query.cols, 10);
   let rows = parseInt(req.query.rows, 10);
   let term = pty.spawn(shell, [], {

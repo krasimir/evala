@@ -151,9 +151,6 @@ class ClockForecast extends React.Component {
   componentWillUnmount() {
     clearInterval(this._interval);
   }
-  componentDidMount() {
-    this.props.fetch();
-  }
   render() {
     return (
       <div className={ `clockForecast ${ !this._isWeatherDataHere() ? 'noWeatherData' : '' }` }>
@@ -183,6 +180,5 @@ export default connect(ClockForecast)
     state: state.name,
     data: state.data,
     error: state.error,
-    lastUpdated: state.lastUpdated,
-    fetch
+    lastUpdated: state.lastUpdated
   }));

@@ -45358,8 +45358,6 @@ exports.BellSound = 'data:audio/wav;base64,UklGRigBAABXQVZFZm10IBAAAAABAAEARKwAA
 },{}],602:[function(require,module,exports){
 'use strict';
 
-var _slicedToArray = function () { function sliceIterator(arr, i) { var _arr = []; var _n = true; var _d = false; var _e = undefined; try { for (var _i = arr[Symbol.iterator](), _s; !(_n = (_s = _i.next()).done); _n = true) { _arr.push(_s.value); if (i && _arr.length === i) break; } } catch (err) { _d = true; _e = err; } finally { try { if (!_n && _i["return"]) _i["return"](); } finally { if (_d) throw _e; } } return _arr; } return function (arr, i) { if (Array.isArray(arr)) { return arr; } else if (Symbol.iterator in Object(arr)) { return sliceIterator(arr, i); } else { throw new TypeError("Invalid attempt to destructure non-iterable instance"); } }; }();
-
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 require('babel-polyfill');
@@ -45386,6 +45384,10 @@ var _ClockForecast = require('./components/ClockForecast');
 
 var _ClockForecast2 = _interopRequireDefault(_ClockForecast);
 
+var _TerminalWindow = require('./components/TerminalWindow');
+
+var _TerminalWindow2 = _interopRequireDefault(_TerminalWindow);
+
 require('./helpers/debug');
 
 require('./stent/Weather');
@@ -45398,10 +45400,6 @@ var _moment = require('moment');
 
 var _moment2 = _interopRequireDefault(_moment);
 
-var _ReactTerminal = require('./components/ReactTerminal');
-
-var _ReactTerminal2 = _interopRequireDefault(_ReactTerminal);
-
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -45410,13 +45408,6 @@ function _possibleConstructorReturn(self, call) { if (!self) { throw new Referen
 
 function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } /* eslint-disable max-len */
 
-
-function removeHash(tag) {
-  if (tag.charAt(0) === '#') {
-    return tag.substr(1, tag.length);
-  }
-  return tag;
-}
 
 var App = function (_React$Component) {
   _inherits(App, _React$Component);
@@ -45444,6 +45435,7 @@ var App = function (_React$Component) {
     value: function componentDidMount() {
       var _this2 = this;
 
+      this.props.fetch();
       this._interval = setInterval(function () {
         _this2.setState({ now: (0, _moment2.default)() });
       }, 10000);
@@ -45454,53 +45446,13 @@ var App = function (_React$Component) {
       clearInterval(this._interval);
     }
   }, {
-    key: '_renderGroupedByTag',
-    value: function _renderGroupedByTag() {
-      var _this3 = this;
-
-      var notesByTag = this.props.notesByTag;
-
-
-      var sortedByCount = Object.keys(notesByTag).map(function (tag) {
-        return [tag, notesByTag[tag]];
-      }).sort(function (a, b) {
-        return b[1] - a[1];
-      });
-
-      return _react2.default.createElement(
-        'div',
-        { className: 'summary' },
-        sortedByCount.map(function (_ref, i) {
-          var _ref2 = _slicedToArray(_ref, 2),
-              tag = _ref2[0],
-              count = _ref2[1];
-
-          return _react2.default.createElement(
-            'a',
-            { key: i, className: 'tagSummaryLink', onClick: function onClick() {
-                return _this3.props.search(tag);
-              } },
-            _react2.default.createElement('i', { className: 'fa fa-hashtag' }),
-            removeHash(tag),
-            count > 1 && _react2.default.createElement(
-              'sup',
-              null,
-              count
-            )
-          );
-        })
-      );
-    }
-  }, {
     key: 'render',
     value: function render() {
       var newTitle = this._getNewTitle();
-      var sidebarContent = this.props.sidebarContent;
-
 
       return _react2.default.createElement(
         'div',
-        { className: 'container ' + (sidebarContent ? 'withSidebar' : '') },
+        { className: 'container' },
         _react2.default.createElement(
           _reactHelmet.Helmet,
           null,
@@ -45509,14 +45461,18 @@ var App = function (_React$Component) {
             null,
             (0, _getGlobalStyles2.default)(this.props.today)
           ),
+          _react2.default.createElement(
+            'style',
+            null,
+            '.terminalWindow{opacity:1;transform:translateY(0);}'
+          ),
           newTitle && _react2.default.createElement(
             'title',
             null,
             newTitle
           )
         ),
-        _react2.default.createElement(_ClockForecast2.default, null),
-        _react2.default.createElement(_ReactTerminal2.default, null)
+        _react2.default.createElement(_TerminalWindow2.default, null)
       );
     }
   }]);
@@ -45526,24 +45482,19 @@ var App = function (_React$Component) {
 
 App.propTypes = {
   today: _propTypes2.default.any,
-  sidebarContent: _propTypes2.default.any,
-  closeSidebar: _propTypes2.default.func,
-  newNote: _propTypes2.default.func,
-  search: _propTypes2.default.func,
-  calendar: _propTypes2.default.func,
-  isSidebarOpen: _propTypes2.default.bool,
-  notesByTag: _propTypes2.default.object
+  fetch: _propTypes2.default.func
 };
 
 var AppConnected = (0, _react3.connect)(App).with('Weather').map(function (weather) {
   return {
-    today: weather.today()
+    today: weather.today(),
+    fetch: weather.fetch
   };
 });
 
 _reactDom2.default.render(_react2.default.createElement(AppConnected, null), document.querySelector('#container'));
 
-},{"./components/ClockForecast":603,"./components/ReactTerminal":604,"./helpers/debug":607,"./helpers/getGlobalStyles":608,"./helpers/shortcuts":610,"./stent/Weather":611,"babel-polyfill":1,"moment":378,"prop-types":385,"react":543,"react-dom":387,"react-helmet":514,"stent/lib/react":562}],603:[function(require,module,exports){
+},{"./components/ClockForecast":603,"./components/TerminalWindow":605,"./helpers/debug":608,"./helpers/getGlobalStyles":609,"./helpers/shortcuts":611,"./stent/Weather":612,"babel-polyfill":1,"moment":378,"prop-types":385,"react":543,"react-dom":387,"react-helmet":514,"stent/lib/react":562}],603:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -45828,11 +45779,6 @@ var ClockForecast = function (_React$Component) {
       clearInterval(this._interval);
     }
   }, {
-    key: 'componentDidMount',
-    value: function componentDidMount() {
-      this.props.fetch();
-    }
-  }, {
     key: 'render',
     value: function render() {
       return _react2.default.createElement(
@@ -45872,12 +45818,11 @@ exports.default = (0, _react3.connect)(ClockForecast).with('Weather').map(functi
     state: state.name,
     data: state.data,
     error: state.error,
-    lastUpdated: state.lastUpdated,
-    fetch: fetch
+    lastUpdated: state.lastUpdated
   };
 });
 
-},{"../constants":605,"moment":378,"prop-types":385,"react":543,"stent/lib/react":562}],604:[function(require,module,exports){
+},{"../constants":606,"moment":378,"prop-types":385,"react":543,"stent/lib/react":562}],604:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -45889,6 +45834,10 @@ var _createClass = function () { function defineProperties(target, props) { for 
 var _react = require('react');
 
 var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
 
 var _xterm = require('xterm');
 
@@ -45988,20 +45937,27 @@ var ReactTerminal = function (_React$Component) {
       this.term.winptyCompatInit();
       this.term.fit();
       this.term.focus();
-      this.term.on('resize', function (size) {
-        if (!_this3.pid) return;
-        var cols = size.cols;
-        var rows = size.rows;
-        var url = 'http://' + HOST + '/terminals/' + _this3.pid + '/size?cols=' + cols + '&rows=' + rows;
+      this.term.on('resize', function (_ref) {
+        var cols = _ref.cols,
+            rows = _ref.rows;
 
-        fetch(url, { method: 'POST' });
+        if (!_this3.pid) return;
+        fetch('http://' + HOST + '/terminals/' + _this3.pid + '/size?cols=' + cols + '&rows=' + rows, { method: 'POST' });
       });
       this._connectToServer();
+
+      if (this.props.children && typeof this.props.children === 'function') {
+        this.props.children(this.term);
+      }
     }
   }, {
     key: 'render',
     value: function render() {
-      return _react2.default.createElement('div', { id: 'terminal' });
+      return _react2.default.createElement(
+        'div',
+        { className: 'terminal' },
+        _react2.default.createElement('div', { id: 'terminal' })
+      );
     }
   }]);
 
@@ -46011,7 +45967,317 @@ var ReactTerminal = function (_React$Component) {
 exports.default = ReactTerminal;
 ;
 
-},{"../../config":612,"react":543,"xterm":575,"xterm/lib/addons/attach/attach":578,"xterm/lib/addons/fit/fit":579,"xterm/lib/addons/fullscreen/fullscreen":580,"xterm/lib/addons/search/search":582,"xterm/lib/addons/winptyCompat/winptyCompat":583}],605:[function(require,module,exports){
+ReactTerminal.propTypes = {
+  children: _propTypes2.default.func
+};
+
+},{"../../config":613,"prop-types":385,"react":543,"xterm":575,"xterm/lib/addons/attach/attach":578,"xterm/lib/addons/fit/fit":579,"xterm/lib/addons/fullscreen/fullscreen":580,"xterm/lib/addons/search/search":582,"xterm/lib/addons/winptyCompat/winptyCompat":583}],605:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('stent/lib/react');
+
+var _react2 = require('react');
+
+var _react3 = _interopRequireDefault(_react2);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+var _constants = require('../constants');
+
+var _moment = require('moment');
+
+var _moment2 = _interopRequireDefault(_moment);
+
+var _ReactTerminal = require('./ReactTerminal');
+
+var _ReactTerminal2 = _interopRequireDefault(_ReactTerminal);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } // https://codepen.io/addyosmani/pen/avxmvN
+
+
+var TerminalWindow = function (_React$Component) {
+  _inherits(TerminalWindow, _React$Component);
+
+  function TerminalWindow(props) {
+    _classCallCheck(this, TerminalWindow);
+
+    var _this = _possibleConstructorReturn(this, (TerminalWindow.__proto__ || Object.getPrototypeOf(TerminalWindow)).call(this, props));
+
+    _this.state = {
+      now: (0, _moment2.default)(),
+      today: null
+    };
+    _this._interval = setInterval(function () {
+      _this.setState({ now: (0, _moment2.default)() });
+    }, 60000);
+    return _this;
+  }
+
+  _createClass(TerminalWindow, [{
+    key: 'componentWillReceiveProps',
+    value: function componentWillReceiveProps(newProps) {
+      var _this2 = this;
+
+      if (newProps.data) {
+        this.setState({
+          today: newProps.data.days.find(function (day) {
+            return day.time.isSame(_this2.state.now, 'day');
+          })
+        });
+      }
+    }
+  }, {
+    key: 'componentWillUnmount',
+    value: function componentWillUnmount() {
+      clearInterval(this._interval);
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var _this3 = this;
+
+      return _react3.default.createElement(
+        'div',
+        { className: 'terminalWindow' },
+        _react3.default.createElement(
+          'div',
+          { className: 'fakeMenu' },
+          _react3.default.createElement('div', { className: 'fakeButtons fakeClose' }),
+          _react3.default.createElement('div', { className: 'fakeButtons fakeMinimize' }),
+          _react3.default.createElement('div', { className: 'fakeButtons fakeZoom' }),
+          _react3.default.createElement(
+            'span',
+            null,
+            this._renderWindowTitle()
+          )
+        ),
+        _react3.default.createElement(
+          'div',
+          { className: 'fakeScreen' },
+          _react3.default.createElement(
+            _ReactTerminal2.default,
+            null,
+            function (term) {
+              return _this3.term = term;
+            }
+          )
+        )
+      );
+    }
+  }, {
+    key: '_renderWindowTitle',
+    value: function _renderWindowTitle() {
+      var _this4 = this;
+
+      return _react3.default.createElement(
+        'span',
+        null,
+        this.state.now.format('HH:mm'),
+        _react3.default.createElement('span', { className: 'separator' }),
+        _react3.default.createElement(
+          'small',
+          null,
+          this.state.now.format('dddd, MMMM Do')
+        ),
+        _react3.default.createElement('span', { className: 'separator' }),
+        this._renderWeatherNow(),
+        _react3.default.createElement('span', { className: 'separator' }),
+        _react3.default.createElement(
+          'small',
+          null,
+          _react3.default.createElement(
+            'a',
+            { onClick: function onClick() {
+                return _this4._renderWeatherDay();
+              } },
+            'day'
+          ),
+          _react3.default.createElement('span', { className: 'separator' }),
+          _react3.default.createElement(
+            'a',
+            { onClick: function onClick() {
+                return _this4._renderWeatherWeek();
+              } },
+            'week'
+          )
+        )
+      );
+    }
+  }, {
+    key: '_isWeatherDataHere',
+    value: function _isWeatherDataHere() {
+      return this.props.data && this.state.today;
+    }
+  }, {
+    key: '_renderWeatherNow',
+    value: function _renderWeatherNow() {
+      if (!this._isWeatherDataHere()) return null;
+
+      var data = this.props.data;
+      var today = this.state.today;
+
+
+      return _react3.default.createElement(
+        'span',
+        null,
+        this._renderIcon(today),
+        _react3.default.createElement('span', { className: 'separator' }),
+        this._renderTemperature(today),
+        _react3.default.createElement('span', { className: 'separator' }),
+        today.summary,
+        _react3.default.createElement('span', { className: 'separator' }),
+        _react3.default.createElement(
+          'small',
+          null,
+          '(',
+          data.timezone,
+          ')'
+        )
+      );
+    }
+  }, {
+    key: '_renderWeatherDay',
+    value: function _renderWeatherDay() {
+      var _this5 = this;
+
+      if (!this.props.data) return;
+      if (!this.term) return;
+
+      var data = this.props.data;
+
+
+      this.term.writeln(data.hours.reduce(function (result, _ref) {
+        var time = _ref.time,
+            temperature = _ref.temperature,
+            apparentTemperature = _ref.apparentTemperature;
+
+        result += '\n\r';
+        result += time.format('HH:mm') + ' ';
+        result += temperature + '°C/' + apparentTemperature + '°C ';
+        result += time.format('Do dddd');
+        if (time.isSame(_this5.state.now, 'hour')) {
+          result += ' <---';
+        }
+        return result;
+      }, ''));
+      this.term.focus();
+    }
+  }, {
+    key: '_renderWeatherWeek',
+    value: function _renderWeatherWeek() {
+      var _this6 = this;
+
+      if (!this.props.data) return;
+      if (!this.term) return;
+
+      var data = this.props.data;
+
+
+      this.term.writeln(data.days.reduce(function (result, _ref2) {
+        var time = _ref2.time,
+            temperature = _ref2.temperature,
+            apparentTemperature = _ref2.apparentTemperature;
+
+        result += '\n\r';
+        result += time.format('HH:mm') + ' ';
+        result += temperature + '°C/' + apparentTemperature + '°C ';
+        result += time.format('Do dddd');
+        if (time.isSame(_this6.state.now, 'day')) {
+          result += ' <---';
+        }
+        return result;
+      }, ''));
+      this.term.focus();
+    }
+  }, {
+    key: '_renderIcon',
+    value: function _renderIcon(_ref3) {
+      var icon = _ref3.icon;
+
+      var isItDay = true;
+      var _state$today = this.state.today,
+          sunrise = _state$today.sunrise,
+          sunset = _state$today.sunset;
+      var now = this.state.now;
+
+
+      if (sunset && sunrise) {
+        isItDay = now.isAfter(sunrise) && now.isBefore(sunset);
+      }
+
+      var iconClass = _constants.ICONS_MAPPING[icon][isItDay ? 0 : 1];
+
+      return iconClass ? _react3.default.createElement('i', { className: 'wi ' + iconClass }) : null;
+    }
+  }, {
+    key: '_renderTemperature',
+    value: function _renderTemperature(_ref4) {
+      var temperature = _ref4.temperature,
+          apparentTemperature = _ref4.apparentTemperature;
+
+      return _react3.default.createElement(
+        'span',
+        null,
+        temperature,
+        _react3.default.createElement(
+          'sup',
+          { style: { fontSize: '0.5em' } },
+          '\u2103'
+        ),
+        _react3.default.createElement(
+          'span',
+          { style: { opacity: 0.4 } },
+          '/',
+          apparentTemperature,
+          _react3.default.createElement(
+            'sup',
+            { style: { fontSize: '0.5em' } },
+            '\u2103'
+          )
+        )
+      );
+    }
+  }]);
+
+  return TerminalWindow;
+}(_react3.default.Component);
+
+TerminalWindow.propTypes = {
+  state: _propTypes2.default.string,
+  fetch: _propTypes2.default.func,
+  openSidebar: _propTypes2.default.func,
+  error: _propTypes2.default.any,
+  data: _propTypes2.default.any,
+  lastUpdated: _propTypes2.default.any
+};
+
+exports.default = (0, _react.connect)(TerminalWindow).with('Weather').map(function (_ref5) {
+  var state = _ref5.state,
+      fetch = _ref5.fetch,
+      refreshData = _ref5.refreshData;
+  return {
+    state: state.name,
+    data: state.data,
+    error: state.error,
+    lastUpdated: state.lastUpdated
+  };
+});
+
+},{"../constants":606,"./ReactTerminal":604,"moment":378,"prop-types":385,"react":543,"stent/lib/react":562}],606:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46061,7 +46327,7 @@ var ICONS_MAPPING = exports.ICONS_MAPPING = {
   'fog': ['wi-fog', 'wi-night-fog']
 };
 
-},{"chromath":3}],606:[function(require,module,exports){
+},{"chromath":3}],607:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46083,7 +46349,7 @@ var ls = null;
 
 var IS_LOCALSTORAGE_SUPPORTED = exports.IS_LOCALSTORAGE_SUPPORTED = !!ls;
 
-},{}],607:[function(require,module,exports){
+},{}],608:[function(require,module,exports){
 'use strict';
 
 var _stent = require('stent');
@@ -46093,7 +46359,7 @@ var _kukerEmitters = require('kuker-emitters');
 _stent.Machine.addMiddleware((0, _kukerEmitters.StentEmitter)());
 (0, _kukerEmitters.ReactEmitter)();
 
-},{"kuker-emitters":377,"stent":560}],608:[function(require,module,exports){
+},{"kuker-emitters":377,"stent":560}],609:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46132,7 +46398,7 @@ function getGlobalStyles(today) {
   return '\n    body {\n      background: linear-gradient(\n        174deg,\n        ' + _chromath2.default.tint(bgColor, 0.4).toRGBString() + ' 0%,\n        ' + getTimeBGColor(bgColor) + ' 100%\n      );\n    }\n  ';
 };
 
-},{"../constants":605,"chromath":3,"moment":378}],609:[function(require,module,exports){
+},{"../constants":606,"chromath":3,"moment":378}],610:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46193,7 +46459,7 @@ function normalizeDarkSkyData(data) {
   return { days: days, hours: hours, timezone: data.timezone };
 };
 
-},{"moment":378}],610:[function(require,module,exports){
+},{"moment":378}],611:[function(require,module,exports){
 'use strict';
 
 var _stent = require('stent');
@@ -46206,7 +46472,7 @@ if (_capabilities.IS_LOCALSTORAGE_SUPPORTED) {
   });
 }
 
-},{"./capabilities":606,"stent":560}],611:[function(require,module,exports){
+},{"./capabilities":607,"stent":560}],612:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46464,7 +46730,7 @@ var Weather = _stent.Machine.create('Weather', {
 
 exports.default = Weather;
 
-},{"../constants":605,"../helpers/capabilities":606,"../helpers/normalizeDarkSkyData":609,"moment":378,"stent":560,"stent/lib/helpers":553}],612:[function(require,module,exports){
+},{"../constants":606,"../helpers/capabilities":607,"../helpers/normalizeDarkSkyData":610,"moment":378,"stent":560,"stent/lib/helpers":553}],613:[function(require,module,exports){
 "use strict";
 
 module.exports = {

@@ -6,19 +6,12 @@ import PropTypes from 'prop-types';
 import { Helmet } from 'react-helmet';
 import getGlobalStyles from './helpers/getGlobalStyles';
 import ClockForecast from './components/ClockForecast';
+import TerminalWindow from './components/TerminalWindow';
 import './helpers/debug';
 import './stent/Weather';
 import './helpers/shortcuts';
 import { connect } from 'stent/lib/react';
 import moment from 'moment';
-import ReactTerminal from './components/ReactTerminal';
-
-function removeHash(tag) {
-  if (tag.charAt(0) === '#') {
-    return tag.substr(1, tag.length);
-  }
-  return tag;
-}
 
 class App extends React.Component {
   constructor(props) {
@@ -33,6 +26,7 @@ class App extends React.Component {
     return today ? `${ today.temperature }℃ | ${ now.format('HH:mm') }` : null;
   }
   componentDidMount() {
+    this.props.fetch();
     this._interval = setInterval(() => {
       this.setState({ now: moment() });
     }, 10000);
@@ -40,36 +34,18 @@ class App extends React.Component {
   componentWillUnmount() {
     clearInterval(this._interval);
   }
-  _renderGroupedByTag() {
-    const { notesByTag } = this.props;
-
-    const sortedByCount = Object.keys(notesByTag)
-      .map(tag => ([ tag, notesByTag[tag]]))
-      .sort((a, b) => (b[1] - a[1]));
-
-    return (
-      <div className='summary'>
-        { sortedByCount.map(([tag, count], i) =>
-          <a key={ i } className='tagSummaryLink' onClick={ () => this.props.search(tag) }>
-            <i className='fa fa-hashtag'></i>{ removeHash(tag) }
-            { count > 1 && <sup>{ count }</sup> }
-          </a>
-        )}
-      </div>
-    );
-  }
   render() {
     const newTitle = this._getNewTitle();
-    const { sidebarContent } = this.props;
 
     return (
-      <div className={ `container ${ sidebarContent ? 'withSidebar' : '' }` }>
+      <div className='container'>
         <Helmet>
           <style>{ getGlobalStyles(this.props.today) }</style>
+          <style>{ '.terminalWindow{opacity:1;transform:translateY(0);}' }</style>
           { newTitle && <title>{ newTitle }</title> }
         </Helmet>
-        <ClockForecast />
-        <ReactTerminal />
+        {/* <ClockForecast /> */}
+        <TerminalWindow />
       </div>
     );
   }
@@ -77,19 +53,14 @@ class App extends React.Component {
 
 App.propTypes = {
   today: PropTypes.any,
-  sidebarContent: PropTypes.any,
-  closeSidebar: PropTypes.func,
-  newNote: PropTypes.func,
-  search: PropTypes.func,
-  calendar: PropTypes.func,
-  isSidebarOpen: PropTypes.bool,
-  notesByTag: PropTypes.object
+  fetch: PropTypes.func
 };
 
 const AppConnected = connect(App)
   .with('Weather')
   .map((weather) => ({
-    today: weather.today()
+    today: weather.today(),
+    fetch: weather.fetch
   }));
 
 ReactDOM.render(<AppConnected />, document.querySelector('#container'));
