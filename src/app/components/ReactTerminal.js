@@ -22,6 +22,7 @@ export default class ReactTerminal extends React.Component {
     super(props);
 
     this.failures = 0;
+    this.interval = null;
     this.state = {
       command: ''
     };
@@ -32,6 +33,14 @@ export default class ReactTerminal extends React.Component {
       { method: 'POST' }
     ).then(
       res => {
+        if (!res.ok) {
+          this.failures += 1;
+          if (this.failures === 2) {
+            this.term.writeln('There is back-end server found but it returns "' + res.status + ' ' + res.statusText + '".');
+          }
+          this._tryAgain();
+          return;
+        }
         res.text().then(processId => {
           this.pid = processId;
           this.socket = new WebSocket(SOCKET_URL + processId);
@@ -56,11 +65,15 @@ export default class ReactTerminal extends React.Component {
           this.term.writeln('> evala --shell=$SHELL');
         }
         console.error(error);
-        setTimeout(() => {
-          this._connectToServer();
-        }, 2000);
+        this._tryAgain();
       }
     );
+  }
+  _tryAgain() {
+    clearTimeout(this.interval);
+    this.interval = setTimeout(() => {
+      this._connectToServer();
+    }, 2000);
   }
   componentDidMount() {
     this.term = new Terminal({
@@ -80,6 +93,9 @@ export default class ReactTerminal extends React.Component {
     if (this.props.children && typeof this.props.children === 'function') {
       this.props.children(this.term);
     }
+  }
+  componentWillUnmount() {
+    clearTimeout(this.interval);
   }
   render() {
     return (

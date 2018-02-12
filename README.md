@@ -30,7 +30,7 @@ You may register Evala server as a service so you get it running when you reboot
 # Run Evala server with the default shell
 # Save the output to a log file
 # Run `evala` in a background
-alias run-evala="cd ~/ && evala --shell=$SHELL > ~/log/evala &"
+alias run-evala="evala --shell=$SHELL > ~/log/evala &"
 ```
 
 ### To see the app do one of the following

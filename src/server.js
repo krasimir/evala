@@ -9,14 +9,37 @@ const os = require('os');
 const pty = require('node-pty');
 const argv = require('yargs').argv;
 
-require('express-ws')(app);
+const port = argv.port || PORT;
+const host = os.platform() === 'win32' ? '127.0.0.1' : '0.0.0.0';
+const ALLOWED_ORIGINS = [
+  '0.0.0.0',
+  '127.0.0.1',
+  'home.localhost',
+  'chrome-extension://'
+];
 
-app.post('/terminals', function (req, res) {
+app.use(function (req, res, next) {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Headers', 'X-Requested-With');
 
-  console.log('SHELL: "' + argv.shell + '"');
+  let origin = req.get('origin');
+  let host = req.get('host');
+  let foundOrigin = ALLOWED_ORIGINS.find(o => (origin && origin.indexOf(o) >= 0));
+  let foundHost = ALLOWED_ORIGINS.find(h => (host && host.indexOf(h) >= 0));
 
+  if (!foundOrigin && !foundHost) {
+    res.status(403);
+    res.send('Go away!');
+    res.end();
+    return;
+  }
+  next();
+});
+app.use('/', express.static(__dirname + '/../build'));
+
+require('express-ws')(app);
+
+app.post('/terminals', function (req, res) {
   let shell = argv.shell && argv.shell !== '' ? argv.shell : process.platform === 'win32' ? 'cmd.exe' : 'bash';
   let cols = parseInt(req.query.cols, 10);
   let rows = parseInt(req.query.rows, 10);
@@ -49,16 +72,19 @@ app.post('/terminals/:pid/size', function (req, res) {
   res.end();
 });
 
-app.use('/', express.static(__dirname + '/../build'));
-
 app.ws('/terminals/:pid', function (ws, req) {
   var term = terminals[parseInt(req.params.pid, 10)];
+
+  if (!term) {
+    ws.send('No such terminal created.');
+    return;
+  }
 
   console.log('Connected to terminal ' + term.pid);
   ws.send(logs[term.pid]);
 
   term.on('data', function (data) {
-    // console.log('Incomming data = ' + data);
+    // console.log('Incoming data = ' + data);
     try {
       ws.send(data);
     } catch (ex) {
@@ -77,13 +103,10 @@ app.ws('/terminals/:pid', function (ws, req) {
   });
 });
 
-let port = argv.port || PORT;
-let host = os.platform() === 'win32' ? '127.0.0.1' : '0.0.0.0';
-
 if (!port) {
   console.error('Please provide a port: node ./src/server.js --port=XXXX');
   process.exit(1);
 } else {
   app.listen(port, host);
-  console.log('Server listening at http://' + host + ':' + port);
+  console.log('Evala server listening at http://' + host + ':' + port);
 }
