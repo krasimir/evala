@@ -1,6 +1,6 @@
 # Evala
 
-A web app that shows the time, the weather and brings your terminal in the browser.
+A web app that shows the time, the weather and brings your terminal in the browser. Ah ... and also changes its background color based on the temperature.
 
 ![Evala](./src/static-files/img/screenshot_1280x800.png)
 ![Evala](./src/static-files/img/screenshot_1280x800_2.png)
@@ -35,5 +35,9 @@ alias run-evala="evala --shell=$SHELL > ~/log/evala &"
 
 ### To see the app:
 
-* Install this [Chrome](https://chrome.google.com/webstore/detail/evala/bmaojegjknddmkhfbkhfijcblmamgino) or [Firefox](https://addons.mozilla.org/en-US/firefox/addon/evala/) browser extension and open a new tab.
+* Install this [Chrome](https://chrome.google.com/webstore/detail/evala/bmaojegjknddmkhfbkhfijcblmamgino) or [Firefox](https://addons.mozilla.org/en-US/firefox/addon/evala/) browser extension and open a new tab or 
 * Open [http://0.0.0.0:9788](http://0.0.0.0:9788) (or [http://127.0.0.1:9788](http://127.0.0.1:9788)).
+
+## Misc
+
+* [Introductory blog post](http://krasimirtsonev.com/blog/article/meet-evala-your-terminal-in-the-browser-extension)
