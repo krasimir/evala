@@ -1,4 +1,6 @@
+* Use openweathermap.org
+* Settings panel to modify (geo coordinates + weather endpoint)
 * maximize
 * split screen
-* show directory as a tab title
 * make it work in safari
+* show directory as a tab title

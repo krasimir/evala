@@ -12,7 +12,8 @@ class TerminalWindow extends React.Component {
 
     this.state = {
       now: moment(),
-      today: null
+      today: null,
+      maximized: false
     };
     this._interval = setInterval(() => {
       this.setState({ now: moment() });
@@ -31,11 +32,11 @@ class TerminalWindow extends React.Component {
   }
   render() {
     return (
-      <div className='terminalWindow'>
+      <div className={ `terminalWindow ${ this.state.maximized ? ' maximized' : '' }` }>
         <div className='fakeMenu'>
-          <a className='fakeButtons fakeClose' onClick={ () => this.props.children() }></a>
-          {/* <div className='fakeButtons fakeMinimize'></div>
-          <div className='fakeButtons fakeZoom'></div> */}
+          <a className='fakeButtons fakeClose' onClick={ () => this.props.children('close') }></a>
+          <a className='fakeButtons fakeZoom' onClick={ () => this._maximize() }></a>
+          {/* <div className='fakeButtons fakeMinimize'></div> */}
           <span>{ this._renderWindowTitle() }</span>
         </div>
         <div className='fakeScreen'>
@@ -43,6 +44,13 @@ class TerminalWindow extends React.Component {
         </div>
       </div>
     );
+  }
+  _maximize() {
+    this.setState({ maximized: true });
+    setTimeout(() => {
+      this.term.fit();
+      this.term.focus();
+    }, 200);
   }
   _setToday(data) {
     this.setState({
@@ -59,9 +67,9 @@ class TerminalWindow extends React.Component {
         { this._renderWeatherNow() }
         <span className='separator'></span>
         <small>
-          <a onClick={ () => this._renderWeatherDay() }>day</a>
-          <span className='separator'></span>
-          <a onClick={ () => this._renderWeatherWeek() }>week</a>
+          <a onClick={ () => this._renderWeather() }>
+            <i className='fa fa-thermometer-half'></i>
+          </a>
         </small>
       </span>
     );
@@ -87,17 +95,22 @@ class TerminalWindow extends React.Component {
       </span>
     );
   }
+  _renderWeather() {
+    this._renderWeatherDay();
+    this._renderWeatherWeek();
+  }
   _renderWeatherDay() {
     if (!this.props.data) return;
     if (!this.term) return;
 
     const { data } = this.props;
 
-    this.term.writeln(data.hours.reduce((result, { time, temperature, apparentTemperature }) => {
+    this.term.writeln(data.hours.reduce((result, { time, temperature, apparentTemperature, summary }) => {
       result += '\n\r';
       result += time.format('HH:mm') + ' ';
       result += temperature + '°C/' + apparentTemperature + '°C ';
-      result += time.format('Do dddd');
+      result += time.format('Do dddd') + ' / ';
+      result += summary;
       if (time.isSame(this.state.now, 'hour')) {
         result += ' <---';
       }
@@ -111,11 +124,12 @@ class TerminalWindow extends React.Component {
 
     const { data } = this.props;
 
-    this.term.writeln(data.days.reduce((result, { time, temperature, apparentTemperature }) => {
+    this.term.writeln(data.days.reduce((result, { time, temperature, apparentTemperature, summary }) => {
       result += '\n\r';
       result += time.format('HH:mm') + ' ';
       result += temperature + '°C/' + apparentTemperature + '°C ';
-      result += time.format('Do dddd');
+      result += time.format('Do dddd') + ' / ';
+      result += summary + ' ';
       if (time.isSame(this.state.now, 'day')) {
         result += ' <---';
       }

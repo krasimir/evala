@@ -54,8 +54,7 @@
     "express": "^4.16.2",
     "express-ws": "^3.0.0",
     "yargs": "^11.0.0",
-    "node-pty": "^0.7.4",
-    "os": "^0.1.1"
+    "node-pty": "^0.7.4"
   },
   "bin": {
     "evala": "./src/server.js"

@@ -5,12 +5,11 @@ var terminals = {}, logs = {};
 const PORT = require('./config').PORT;
 const express = require('express');
 const app = express();
-const os = require('os');
 const pty = require('node-pty');
 const argv = require('yargs').argv;
 
 const port = argv.port || PORT;
-const host = os.platform() === 'win32' ? '127.0.0.1' : '0.0.0.0';
+const host = '127.0.0.1';
 const ALLOWED_ORIGINS = [
   '0.0.0.0',
   '127.0.0.1',

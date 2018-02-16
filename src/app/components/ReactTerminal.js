@@ -1,7 +1,9 @@
+/* eslint-disable no-use-before-define */
 import React from 'react';
 import PropTypes from 'prop-types';
 import { Terminal } from 'xterm';
-import * as attach from 'xterm/lib/addons/attach/attach';
+// import * as attach from 'xterm/lib/addons/attach/attach';
+import * as attach from '../addons/attach';
 import * as fit from 'xterm/lib/addons/fit/fit';
 import * as fullscreen from 'xterm/lib/addons/fullscreen/fullscreen';
 import * as search from 'xterm/lib/addons/search/search';
@@ -93,6 +95,7 @@ export default class ReactTerminal extends React.Component {
     if (this.props.children && typeof this.props.children === 'function') {
       this.props.children(this.term);
     }
+    listenToWindowResize(() => this.term.fit());
   }
   componentWillUnmount() {
     clearTimeout(this.interval);
@@ -109,3 +112,19 @@ export default class ReactTerminal extends React.Component {
 ReactTerminal.propTypes = {
   children: PropTypes.func
 };
+
+function listenToWindowResize(callback) {
+  var resizeTimeout;
+
+  function resizeThrottler() {
+    // ignore resize events as long as an actualResizeHandler execution is in the queue
+    if (!resizeTimeout) {
+      resizeTimeout = setTimeout(function () {
+        resizeTimeout = null;
+        callback();
+      }, 66);
+    }
+  }
+
+  window.addEventListener('resize', resizeThrottler, false);
+}
