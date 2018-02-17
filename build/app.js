@@ -45436,7 +45436,7 @@ var AppConnected = (0, _react3.connect)(App).with('Weather').map(function (weath
 
 _reactDom2.default.render(_react2.default.createElement(AppConnected, null), document.querySelector('#container'));
 
-},{"./components/ClockForecast":603,"./components/TerminalWindow":605,"./helpers/debug":608,"./helpers/getGlobalStyles":609,"./helpers/shortcuts":611,"./stent/Weather":612,"babel-polyfill":1,"moment":378,"prop-types":385,"react":543,"react-dom":387,"react-helmet":514,"stent/lib/react":562}],602:[function(require,module,exports){
+},{"./components/ClockForecast":603,"./components/TerminalWindow":606,"./helpers/debug":609,"./helpers/getGlobalStyles":610,"./helpers/shortcuts":613,"./stent/Weather":614,"babel-polyfill":1,"moment":378,"prop-types":385,"react":543,"react-dom":387,"react-helmet":514,"stent/lib/react":562}],602:[function(require,module,exports){
 'use strict';
 
 var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; };
@@ -45751,7 +45751,7 @@ exports.default = (0, _react3.connect)(ClockForecast).with('Weather').map(functi
   };
 });
 
-},{"../constants":606,"moment":378,"prop-types":385,"react":543,"stent/lib/react":562}],604:[function(require,module,exports){
+},{"../constants":607,"moment":378,"prop-types":385,"react":543,"stent/lib/react":562}],604:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -45951,7 +45951,140 @@ function listenToWindowResize(callback) {
   window.addEventListener('resize', resizeThrottler, false);
 }
 
-},{"../../config":613,"../addons/attach":602,"prop-types":385,"react":543,"xterm":575,"xterm/lib/addons/fit/fit":578,"xterm/lib/addons/fullscreen/fullscreen":579,"xterm/lib/addons/search/search":581,"xterm/lib/addons/winptyCompat/winptyCompat":582}],605:[function(require,module,exports){
+},{"../../config":615,"../addons/attach":602,"prop-types":385,"react":543,"xterm":575,"xterm/lib/addons/fit/fit":578,"xterm/lib/addons/fullscreen/fullscreen":579,"xterm/lib/addons/search/search":581,"xterm/lib/addons/winptyCompat/winptyCompat":582}],605:[function(require,module,exports){
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _propTypes = require('prop-types');
+
+var _propTypes2 = _interopRequireDefault(_propTypes);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var ID = 1;
+var getId = function getId() {
+  return 'item' + ID++;
+};
+
+var STYLES = {
+  container: {
+    width: '100%',
+    height: '100%',
+    display: 'grid',
+    color: '#fff'
+  },
+  item: {
+    border: 'solid 1px #999'
+  }
+};
+
+function Item(_ref) {
+  var splitVertical = _ref.splitVertical,
+      splitHorizontal = _ref.splitHorizontal,
+      id = _ref.id;
+
+  return _react2.default.createElement(
+    'div',
+    { key: id, style: STYLES.item },
+    _react2.default.createElement(
+      'a',
+      { onClick: splitVertical },
+      'split vertical'
+    ),
+    _react2.default.createElement('br', null),
+    _react2.default.createElement(
+      'a',
+      { onClick: splitHorizontal },
+      'split horizontal'
+    )
+  );
+}
+
+var SplitGrid = function (_React$Component) {
+  _inherits(SplitGrid, _React$Component);
+
+  function SplitGrid(props) {
+    _classCallCheck(this, SplitGrid);
+
+    var _this = _possibleConstructorReturn(this, (SplitGrid.__proto__ || Object.getPrototypeOf(SplitGrid)).call(this, props));
+
+    _this.state = {
+      items: [getId()]
+    };
+    return _this;
+  }
+
+  _createClass(SplitGrid, [{
+    key: 'render',
+    value: function render() {
+      return this._renderItems(this.state.items);
+    }
+  }, {
+    key: '_renderItems',
+    value: function _renderItems(items) {
+      var _this2 = this;
+
+      var columnStyles = _defineProperty({}, items.type === 'horizontal' ? 'gridTemplateRows' : 'gridTemplateColumns', items.map(function (i) {
+        return '1fr';
+      }).join(' '));
+
+      return _react2.default.createElement(
+        'div',
+        { style: Object.assign({}, STYLES.container, columnStyles), key: items.toString() },
+        items.map(function (id) {
+          if (Array.isArray(id)) {
+            return _this2._renderItems(id);
+          }
+          return _react2.default.createElement(Item, {
+            key: id,
+            id: id,
+            splitVertical: function splitVertical() {
+              return _this2._split(id, items, 'vertical');
+            },
+            splitHorizontal: function splitHorizontal() {
+              return _this2._split(id, items, 'horizontal');
+            } });
+        })
+      );
+    }
+  }, {
+    key: '_split',
+    value: function _split(itemId, items, type) {
+      items.forEach(function (id, i) {
+        if (id === itemId) {
+          items[i] = [id, getId()];
+          items[i].type = type;
+        }
+      });
+      console.log(JSON.stringify(this.state.items, null, 2));
+      this.setState({ items: this.state.items });
+    }
+  }]);
+
+  return SplitGrid;
+}(_react2.default.Component);
+
+exports.default = SplitGrid;
+;
+
+},{"prop-types":385,"react":543}],606:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -45979,6 +46112,14 @@ var _moment2 = _interopRequireDefault(_moment);
 var _ReactTerminal = require('./ReactTerminal');
 
 var _ReactTerminal2 = _interopRequireDefault(_ReactTerminal);
+
+var _getId = require('../helpers/getId');
+
+var _getId2 = _interopRequireDefault(_getId);
+
+var _SplitGrid = require('./SplitGrid');
+
+var _SplitGrid2 = _interopRequireDefault(_SplitGrid);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -46046,47 +46187,46 @@ var TerminalWindow = function (_React$Component) {
             'span',
             null,
             this._renderWindowTitle()
+          ),
+          _react3.default.createElement(
+            'a',
+            { onClick: function onClick() {
+                return _this2._splitVertical();
+              } },
+            _react3.default.createElement('i', { className: 'fa fa fa-columns' })
           )
         ),
         _react3.default.createElement(
           'div',
           { className: 'fakeScreen' },
-          _react3.default.createElement(
-            _ReactTerminal2.default,
-            null,
-            function (term) {
-              return _this2.term = term;
-            }
-          )
+          _react3.default.createElement(_SplitGrid2.default, null)
         )
       );
     }
   }, {
     key: '_maximize',
     value: function _maximize() {
-      var _this3 = this;
-
       this.setState({ maximized: true });
-      setTimeout(function () {
-        _this3.term.fit();
-        _this3.term.focus();
-      }, 200);
+      // setTimeout(() => {
+      //   this.term.fit();
+      //   this.term.focus();
+      // }, 200);
     }
   }, {
     key: '_setToday',
     value: function _setToday(data) {
-      var _this4 = this;
+      var _this3 = this;
 
       this.setState({
         today: data.days.find(function (day) {
-          return day.time.isSame(_this4.state.now, 'day');
+          return day.time.isSame(_this3.state.now, 'day');
         })
       });
     }
   }, {
     key: '_renderWindowTitle',
     value: function _renderWindowTitle() {
-      var _this5 = this;
+      var _this4 = this;
 
       return _react3.default.createElement(
         'span',
@@ -46107,7 +46247,7 @@ var TerminalWindow = function (_React$Component) {
           _react3.default.createElement(
             'a',
             { onClick: function onClick() {
-                return _this5._renderWeather();
+                return _this4._renderWeather();
               } },
             _react3.default.createElement('i', { className: 'fa fa-thermometer-half' })
           )
@@ -46146,74 +46286,53 @@ var TerminalWindow = function (_React$Component) {
         )
       );
     }
-  }, {
-    key: '_renderWeather',
-    value: function _renderWeather() {
-      this._renderWeatherDay();
-      this._renderWeatherWeek();
-    }
-  }, {
-    key: '_renderWeatherDay',
-    value: function _renderWeatherDay() {
-      var _this6 = this;
+    // _renderWeather() {
+    //   this._renderWeatherDay();
+    //   this._renderWeatherWeek();
+    // }
+    // _renderWeatherDay() {
+    //   if (!this.props.data) return;
+    //   if (!this.term) return;
 
-      if (!this.props.data) return;
-      if (!this.term) return;
+    //   const { data } = this.props;
 
-      var data = this.props.data;
+    //   this.term.writeln(data.hours.reduce((result, { time, temperature, apparentTemperature, summary }) => {
+    //     result += '\n\r';
+    //     result += time.format('HH:mm') + ' ';
+    //     result += temperature + '°C/' + apparentTemperature + '°C ';
+    //     result += time.format('Do dddd') + ' / ';
+    //     result += summary;
+    //     if (time.isSame(this.state.now, 'hour')) {
+    //       result += ' <---';
+    //     }
+    //     return result;
+    //   }, ''));
+    //   this.term.focus();
+    // }
+    // _renderWeatherWeek() {
+    //   if (!this.props.data) return;
+    //   if (!this.term) return;
 
+    //   const { data } = this.props;
 
-      this.term.writeln(data.hours.reduce(function (result, _ref) {
-        var time = _ref.time,
-            temperature = _ref.temperature,
-            apparentTemperature = _ref.apparentTemperature,
-            summary = _ref.summary;
+    //   this.term.writeln(data.days.reduce((result, { time, temperature, apparentTemperature, summary }) => {
+    //     result += '\n\r';
+    //     result += time.format('HH:mm') + ' ';
+    //     result += temperature + '°C/' + apparentTemperature + '°C ';
+    //     result += time.format('Do dddd') + ' / ';
+    //     result += summary + ' ';
+    //     if (time.isSame(this.state.now, 'day')) {
+    //       result += ' <---';
+    //     }
+    //     return result;
+    //   }, ''));
+    //   this.term.focus();
+    // }
 
-        result += '\n\r';
-        result += time.format('HH:mm') + ' ';
-        result += temperature + '°C/' + apparentTemperature + '°C ';
-        result += time.format('Do dddd') + ' / ';
-        result += summary;
-        if (time.isSame(_this6.state.now, 'hour')) {
-          result += ' <---';
-        }
-        return result;
-      }, ''));
-      this.term.focus();
-    }
-  }, {
-    key: '_renderWeatherWeek',
-    value: function _renderWeatherWeek() {
-      var _this7 = this;
-
-      if (!this.props.data) return;
-      if (!this.term) return;
-
-      var data = this.props.data;
-
-
-      this.term.writeln(data.days.reduce(function (result, _ref2) {
-        var time = _ref2.time,
-            temperature = _ref2.temperature,
-            apparentTemperature = _ref2.apparentTemperature,
-            summary = _ref2.summary;
-
-        result += '\n\r';
-        result += time.format('HH:mm') + ' ';
-        result += temperature + '°C/' + apparentTemperature + '°C ';
-        result += time.format('Do dddd') + ' / ';
-        result += summary + ' ';
-        if (time.isSame(_this7.state.now, 'day')) {
-          result += ' <---';
-        }
-        return result;
-      }, ''));
-      this.term.focus();
-    }
   }, {
     key: '_renderIcon',
-    value: function _renderIcon(_ref3) {
-      var icon = _ref3.icon;
+    value: function _renderIcon(_ref) {
+      var icon = _ref.icon;
 
       var isItDay = true;
       var _state$today = this.state.today,
@@ -46232,9 +46351,9 @@ var TerminalWindow = function (_React$Component) {
     }
   }, {
     key: '_renderTemperature',
-    value: function _renderTemperature(_ref4) {
-      var temperature = _ref4.temperature,
-          apparentTemperature = _ref4.apparentTemperature;
+    value: function _renderTemperature(_ref2) {
+      var temperature = _ref2.temperature,
+          apparentTemperature = _ref2.apparentTemperature;
 
       return _react3.default.createElement(
         'span',
@@ -46273,10 +46392,10 @@ TerminalWindow.propTypes = {
   children: _propTypes2.default.func
 };
 
-exports.default = (0, _react.connect)(TerminalWindow).with('Weather').map(function (_ref5) {
-  var state = _ref5.state,
-      fetch = _ref5.fetch,
-      refreshData = _ref5.refreshData;
+exports.default = (0, _react.connect)(TerminalWindow).with('Weather').map(function (_ref3) {
+  var state = _ref3.state,
+      fetch = _ref3.fetch,
+      refreshData = _ref3.refreshData;
   return {
     state: state.name,
     data: state.data,
@@ -46285,7 +46404,7 @@ exports.default = (0, _react.connect)(TerminalWindow).with('Weather').map(functi
   };
 });
 
-},{"../constants":606,"./ReactTerminal":604,"moment":378,"prop-types":385,"react":543,"stent/lib/react":562}],606:[function(require,module,exports){
+},{"../constants":607,"../helpers/getId":611,"./ReactTerminal":604,"./SplitGrid":605,"moment":378,"prop-types":385,"react":543,"stent/lib/react":562}],607:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46335,7 +46454,7 @@ var ICONS_MAPPING = exports.ICONS_MAPPING = {
   'fog': ['wi-fog', 'wi-night-fog']
 };
 
-},{"chromath":3}],607:[function(require,module,exports){
+},{"chromath":3}],608:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46357,7 +46476,7 @@ var ls = null;
 
 var IS_LOCALSTORAGE_SUPPORTED = exports.IS_LOCALSTORAGE_SUPPORTED = !!ls;
 
-},{}],608:[function(require,module,exports){
+},{}],609:[function(require,module,exports){
 'use strict';
 
 var _stent = require('stent');
@@ -46367,7 +46486,7 @@ var _kukerEmitters = require('kuker-emitters');
 _stent.Machine.addMiddleware((0, _kukerEmitters.StentEmitter)());
 (0, _kukerEmitters.ReactEmitter)();
 
-},{"kuker-emitters":377,"stent":560}],609:[function(require,module,exports){
+},{"kuker-emitters":377,"stent":560}],610:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46397,7 +46516,20 @@ function getGlobalStyles(today) {
 // http://home.localhost/Krasimir/gid/node_modules/chromath/docs/files/chromath-js.html
 ;
 
-},{"../constants":606,"chromath":3}],610:[function(require,module,exports){
+},{"../constants":607,"chromath":3}],611:[function(require,module,exports){
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+var id = 0;
+var getId = function getId() {
+  return ++id;
+};
+
+exports.default = getId;
+
+},{}],612:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46458,7 +46590,7 @@ function normalizeDarkSkyData(data) {
   return { days: days, hours: hours, timezone: data.timezone };
 };
 
-},{"moment":378}],611:[function(require,module,exports){
+},{"moment":378}],613:[function(require,module,exports){
 'use strict';
 
 var _stent = require('stent');
@@ -46471,7 +46603,7 @@ if (_capabilities.IS_LOCALSTORAGE_SUPPORTED) {
   });
 }
 
-},{"./capabilities":607,"stent":560}],612:[function(require,module,exports){
+},{"./capabilities":608,"stent":560}],614:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -46729,7 +46861,7 @@ var Weather = _stent.Machine.create('Weather', {
 
 exports.default = Weather;
 
-},{"../constants":606,"../helpers/capabilities":607,"../helpers/normalizeDarkSkyData":610,"moment":378,"stent":560,"stent/lib/helpers":553}],613:[function(require,module,exports){
+},{"../constants":607,"../helpers/capabilities":608,"../helpers/normalizeDarkSkyData":612,"moment":378,"stent":560,"stent/lib/helpers":553}],615:[function(require,module,exports){
 "use strict";
 
 module.exports = {

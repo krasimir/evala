@@ -5,6 +5,8 @@ import PropTypes from 'prop-types';
 import { ICONS_MAPPING } from '../constants';
 import moment from 'moment';
 import ReactTerminal from './ReactTerminal';
+import getId from '../helpers/getId';
+import SplitGrid from './SplitGrid';
 
 class TerminalWindow extends React.Component {
   constructor(props) {
@@ -38,19 +40,22 @@ class TerminalWindow extends React.Component {
           <a className='fakeButtons fakeZoom' onClick={ () => this._maximize() }></a>
           {/* <div className='fakeButtons fakeMinimize'></div> */}
           <span>{ this._renderWindowTitle() }</span>
+          <a onClick={ () => this._splitVertical() }>
+            <i className='fa fa fa-columns'></i>
+          </a>
         </div>
         <div className='fakeScreen'>
-          <ReactTerminal>{ term => (this.term = term) }</ReactTerminal>
+          <SplitGrid />
         </div>
       </div>
     );
   }
   _maximize() {
     this.setState({ maximized: true });
-    setTimeout(() => {
-      this.term.fit();
-      this.term.focus();
-    }, 200);
+    // setTimeout(() => {
+    //   this.term.fit();
+    //   this.term.focus();
+    // }, 200);
   }
   _setToday(data) {
     this.setState({
@@ -95,48 +100,48 @@ class TerminalWindow extends React.Component {
       </span>
     );
   }
-  _renderWeather() {
-    this._renderWeatherDay();
-    this._renderWeatherWeek();
-  }
-  _renderWeatherDay() {
-    if (!this.props.data) return;
-    if (!this.term) return;
+  // _renderWeather() {
+  //   this._renderWeatherDay();
+  //   this._renderWeatherWeek();
+  // }
+  // _renderWeatherDay() {
+  //   if (!this.props.data) return;
+  //   if (!this.term) return;
 
-    const { data } = this.props;
+  //   const { data } = this.props;
 
-    this.term.writeln(data.hours.reduce((result, { time, temperature, apparentTemperature, summary }) => {
-      result += '\n\r';
-      result += time.format('HH:mm') + ' ';
-      result += temperature + '°C/' + apparentTemperature + '°C ';
-      result += time.format('Do dddd') + ' / ';
-      result += summary;
-      if (time.isSame(this.state.now, 'hour')) {
-        result += ' <---';
-      }
-      return result;
-    }, ''));
-    this.term.focus();
-  }
-  _renderWeatherWeek() {
-    if (!this.props.data) return;
-    if (!this.term) return;
+  //   this.term.writeln(data.hours.reduce((result, { time, temperature, apparentTemperature, summary }) => {
+  //     result += '\n\r';
+  //     result += time.format('HH:mm') + ' ';
+  //     result += temperature + '°C/' + apparentTemperature + '°C ';
+  //     result += time.format('Do dddd') + ' / ';
+  //     result += summary;
+  //     if (time.isSame(this.state.now, 'hour')) {
+  //       result += ' <---';
+  //     }
+  //     return result;
+  //   }, ''));
+  //   this.term.focus();
+  // }
+  // _renderWeatherWeek() {
+  //   if (!this.props.data) return;
+  //   if (!this.term) return;
 
-    const { data } = this.props;
+  //   const { data } = this.props;
 
-    this.term.writeln(data.days.reduce((result, { time, temperature, apparentTemperature, summary }) => {
-      result += '\n\r';
-      result += time.format('HH:mm') + ' ';
-      result += temperature + '°C/' + apparentTemperature + '°C ';
-      result += time.format('Do dddd') + ' / ';
-      result += summary + ' ';
-      if (time.isSame(this.state.now, 'day')) {
-        result += ' <---';
-      }
-      return result;
-    }, ''));
-    this.term.focus();
-  }
+  //   this.term.writeln(data.days.reduce((result, { time, temperature, apparentTemperature, summary }) => {
+  //     result += '\n\r';
+  //     result += time.format('HH:mm') + ' ';
+  //     result += temperature + '°C/' + apparentTemperature + '°C ';
+  //     result += time.format('Do dddd') + ' / ';
+  //     result += summary + ' ';
+  //     if (time.isSame(this.state.now, 'day')) {
+  //       result += ' <---';
+  //     }
+  //     return result;
+  //   }, ''));
+  //   this.term.focus();
+  // }
   _renderIcon({ icon }) {
     var isItDay = true;
     const { sunrise, sunset } = this.state.today;
