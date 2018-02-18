@@ -9,6 +9,7 @@ import * as fullscreen from 'xterm/lib/addons/fullscreen/fullscreen';
 import * as search from 'xterm/lib/addons/search/search';
 import * as winptyCompat from 'xterm/lib/addons/winptyCompat/winptyCompat';
 import { PORT } from '../../config';
+import getId from '../helpers/getId';
 
 Terminal.applyAddon(attach);
 Terminal.applyAddon(fit);
@@ -23,6 +24,7 @@ export default class ReactTerminal extends React.Component {
   constructor(props) {
     super(props);
 
+    this.elementId = `terminal_${ getId() }`;
     this.failures = 0;
     this.interval = null;
     this.state = {
@@ -82,7 +84,7 @@ export default class ReactTerminal extends React.Component {
       cursorBlink: true
     });
 
-    this.term.open(document.querySelector('#terminal'));
+    this.term.open(document.querySelector(`#${ this.elementId }`));
     this.term.winptyCompatInit();
     this.term.fit();
     this.term.focus();
@@ -103,7 +105,7 @@ export default class ReactTerminal extends React.Component {
   render() {
     return (
       <div className='terminal'>
-        <div id='terminal'></div>
+        <div id={ this.elementId }></div>
       </div>
     );
   }

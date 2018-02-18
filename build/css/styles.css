@@ -125,6 +125,7 @@ body, html {
   position: absolute;
   top: 0;
   right: 0;
+  z-index: 2;
 }
 .splitGridItem {
   display: inline-block;

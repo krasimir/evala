@@ -45792,6 +45792,10 @@ var winptyCompat = _interopRequireWildcard(_winptyCompat);
 
 var _config = require('../../config');
 
+var _getId = require('../helpers/getId');
+
+var _getId2 = _interopRequireDefault(_getId);
+
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
@@ -45822,6 +45826,7 @@ var ReactTerminal = function (_React$Component) {
 
     var _this = _possibleConstructorReturn(this, (ReactTerminal.__proto__ || Object.getPrototypeOf(ReactTerminal)).call(this, props));
 
+    _this.elementId = 'terminal_' + (0, _getId2.default)();
     _this.failures = 0;
     _this.interval = null;
     _this.state = {
@@ -45889,7 +45894,7 @@ var ReactTerminal = function (_React$Component) {
         cursorBlink: true
       });
 
-      this.term.open(document.querySelector('#terminal'));
+      this.term.open(document.querySelector('#' + this.elementId));
       this.term.winptyCompatInit();
       this.term.fit();
       this.term.focus();
@@ -45920,7 +45925,7 @@ var ReactTerminal = function (_React$Component) {
       return _react2.default.createElement(
         'div',
         { className: 'terminal' },
-        _react2.default.createElement('div', { id: 'terminal' })
+        _react2.default.createElement('div', { id: this.elementId })
       );
     }
   }]);
@@ -45951,7 +45956,7 @@ function listenToWindowResize(callback) {
   window.addEventListener('resize', resizeThrottler, false);
 }
 
-},{"../../config":615,"../addons/attach":602,"prop-types":385,"react":543,"xterm":575,"xterm/lib/addons/fit/fit":578,"xterm/lib/addons/fullscreen/fullscreen":579,"xterm/lib/addons/search/search":581,"xterm/lib/addons/winptyCompat/winptyCompat":582}],605:[function(require,module,exports){
+},{"../../config":615,"../addons/attach":602,"../helpers/getId":611,"prop-types":385,"react":543,"xterm":575,"xterm/lib/addons/fit/fit":578,"xterm/lib/addons/fullscreen/fullscreen":579,"xterm/lib/addons/search/search":581,"xterm/lib/addons/winptyCompat/winptyCompat":582}],605:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -45996,11 +46001,17 @@ function Item(_ref) {
   var splitVertical = _ref.splitVertical,
       splitHorizontal = _ref.splitHorizontal,
       close = _ref.close,
-      id = _ref.id;
+      id = _ref.id,
+      content = _ref.content;
 
   return _react2.default.createElement(
     'div',
     { key: id, style: STYLES.item, className: 'splitGridScreen' },
+    _react2.default.createElement(
+      'div',
+      { style: { zIndex: 1 } },
+      content()
+    ),
     _react2.default.createElement(
       'nav',
       null,
@@ -46027,6 +46038,7 @@ Item.propTypes = {
   splitVertical: _propTypes2.default.func.isRequired,
   splitHorizontal: _propTypes2.default.func.isRequired,
   close: _propTypes2.default.func,
+  content: _propTypes2.default.func,
   id: _propTypes2.default.string
 };
 
@@ -46079,7 +46091,8 @@ var SplitGrid = function (_React$Component) {
             },
             close: itemsToRender.length > 1 ? function () {
               return _this2._close(id);
-            } : null });
+            } : null,
+            content: _this2.props.content });
         })
       );
     }
@@ -46092,7 +46105,6 @@ var SplitGrid = function (_React$Component) {
           items[i].type = type;
         }
       });
-      console.log(JSON.stringify(this.state.items, null, 2));
       this.setState({ items: this.state.items });
     }
   }, {
@@ -46115,7 +46127,6 @@ var SplitGrid = function (_React$Component) {
 
       var newItems = traverse(this.state.items);
 
-      console.log(JSON.stringify(newItems, null, 2));
       this.setState({ items: newItems });
     }
   }]);
@@ -46125,6 +46136,10 @@ var SplitGrid = function (_React$Component) {
 
 exports.default = SplitGrid;
 ;
+
+SplitGrid.propTypes = {
+  content: _propTypes2.default.func
+};
 
 },{"prop-types":385,"react":543}],606:[function(require,module,exports){
 'use strict';
@@ -46241,7 +46256,9 @@ var TerminalWindow = function (_React$Component) {
         _react3.default.createElement(
           'div',
           { className: 'fakeScreen' },
-          _react3.default.createElement(_SplitGrid2.default, null)
+          _react3.default.createElement(_SplitGrid2.default, { content: function content() {
+              return _react3.default.createElement(_ReactTerminal2.default, null);
+            } })
         )
       );
     }

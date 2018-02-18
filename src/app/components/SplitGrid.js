@@ -13,9 +13,12 @@ const STYLES = {
   }
 };
 
-function Item({ splitVertical, splitHorizontal, close, id }) {
+function Item({ splitVertical, splitHorizontal, close, id, content }) {
   return (
     <div key={ id } style={ STYLES.item } className='splitGridScreen'>
+      <div style={{ zIndex: 1 }}>
+        { content() }
+      </div>
       <nav>
         <a onClick={ splitVertical } className='splitGridItem' style={{ transform: 'rotateZ(90deg)' }}>
           <i className='fa fa-minus-square-o'></i>
@@ -35,6 +38,7 @@ Item.propTypes = {
   splitVertical: PropTypes.func.isRequired,
   splitHorizontal: PropTypes.func.isRequired,
   close: PropTypes.func,
+  content: PropTypes.func,
   id: PropTypes.string
 };
 
@@ -68,7 +72,8 @@ export default class SplitGrid extends React.Component {
               id={ id }
               splitVertical={ () => this._split(id, items, 'vertical') }
               splitHorizontal={ () => this._split(id, items, 'horizontal') }
-              close={ itemsToRender.length > 1 ? () => this._close(id) : null }/>;
+              close={ itemsToRender.length > 1 ? () => this._close(id) : null }
+              content={ this.props.content }/>;
           })
         }
       </div>
@@ -81,7 +86,6 @@ export default class SplitGrid extends React.Component {
         items[i].type = type;
       }
     });
-    console.log(JSON.stringify(this.state.items, null, 2));
     this.setState({ items: this.state.items });
   }
   _close(itemId) {
@@ -100,7 +104,10 @@ export default class SplitGrid extends React.Component {
 
     let newItems = traverse(this.state.items);
 
-    console.log(JSON.stringify(newItems, null, 2));
     this.setState({ items: newItems });
   }
+};
+
+SplitGrid.propTypes = {
+  content: PropTypes.func
 };
