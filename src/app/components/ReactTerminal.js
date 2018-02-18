@@ -31,6 +31,37 @@ export default class ReactTerminal extends React.Component {
       command: ''
     };
   }
+  componentDidMount() {
+    this.term = new Terminal({
+      cursorBlink: true,
+      rows: 3
+    });
+
+    this.term.open(document.querySelector(`#${ this.elementId }`));
+    this.term.winptyCompatInit();
+    this.term.fit();
+    this.term.focus();
+    this.term.on('resize', ({ cols, rows }) => {
+      if (!this.pid) return;
+      fetch(`http://${ HOST }/terminals/${ this.pid }/size?cols=${ cols }&rows=${ rows }`, { method: 'POST' });
+    });
+    this._connectToServer();
+
+    if (this.props.children && typeof this.props.children === 'function') {
+      this.props.children(this.term);
+    }
+    listenToWindowResize(() => {
+      this.term.fit();
+    });
+    this.term.fit();
+  }
+  componentWillUnmount() {
+    clearTimeout(this.interval);
+  }
+  render() {
+    return <div id={ this.elementId } style={{
+      position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}></div>;
+  }
   _connectToServer() {
     fetch(
       `http://${ HOST }/terminals/?cols=${ this.term.cols }&rows=${ this.term.rows }`,
@@ -78,36 +109,6 @@ export default class ReactTerminal extends React.Component {
     this.interval = setTimeout(() => {
       this._connectToServer();
     }, 2000);
-  }
-  componentDidMount() {
-    this.term = new Terminal({
-      cursorBlink: true
-    });
-
-    this.term.open(document.querySelector(`#${ this.elementId }`));
-    this.term.winptyCompatInit();
-    this.term.fit();
-    this.term.focus();
-    this.term.on('resize', ({ cols, rows }) => {
-      if (!this.pid) return;
-      fetch(`http://${ HOST }/terminals/${ this.pid }/size?cols=${ cols }&rows=${ rows }`, { method: 'POST' });
-    });
-    this._connectToServer();
-
-    if (this.props.children && typeof this.props.children === 'function') {
-      this.props.children(this.term);
-    }
-    listenToWindowResize(() => this.term.fit());
-  }
-  componentWillUnmount() {
-    clearTimeout(this.interval);
-  }
-  render() {
-    return (
-      <div className='terminal'>
-        <div id={ this.elementId } style={{ height: '100%' }}></div>
-      </div>
-    );
   }
 };
 

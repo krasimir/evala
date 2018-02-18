@@ -21,11 +21,6 @@ body, html {
   display: grid;
 }
 
-
-.terminal {
-  height: 100%;
-  background: black;
-}
 #terminal {
   height: 100%;
 }
@@ -120,12 +115,19 @@ body, html {
 }
 .splitGridScreen {
   position: relative;
+  height: 100%;
 }
 .splitGridScreen nav {
   position: absolute;
   top: 0;
-  right: 1em;
+  right: 0.5em;
   z-index: 999;
+}
+.verticalSplit {
+  border-right: dotted 1px rgb(70, 70, 70);
+}
+.horizontalSplit {
+  border-bottom: dotted 1px rgb(70, 70, 70);
 }
 .splitGridItem {
   display: inline-block;

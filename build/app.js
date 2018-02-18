@@ -45836,62 +45836,13 @@ var ReactTerminal = function (_React$Component) {
   }
 
   _createClass(ReactTerminal, [{
-    key: '_connectToServer',
-    value: function _connectToServer() {
-      var _this2 = this;
-
-      fetch('http://' + HOST + '/terminals/?cols=' + this.term.cols + '&rows=' + this.term.rows, { method: 'POST' }).then(function (res) {
-        if (!res.ok) {
-          _this2.failures += 1;
-          if (_this2.failures === 2) {
-            _this2.term.writeln('There is back-end server found but it returns "' + res.status + ' ' + res.statusText + '".');
-          }
-          _this2._tryAgain();
-          return;
-        }
-        res.text().then(function (processId) {
-          _this2.pid = processId;
-          _this2.socket = new WebSocket(SOCKET_URL + processId);
-          _this2.socket.onopen = function () {
-            _this2.term.attach(_this2.socket);
-          };
-          _this2.socket.onclose = function () {
-            _this2.term.writeln('Server disconnected!');
-            _this2._connectToServer();
-          };
-          _this2.socket.onerror = function () {
-            _this2.term.writeln('Server disconnected!');
-            _this2._connectToServer();
-          };
-        });
-      }, function (error) {
-        _this2.failures += 1;
-        if (_this2.failures === 2) {
-          _this2.term.writeln('It looks like there is no backend. You have to:');
-          _this2.term.writeln('> npm install evala -g');
-          _this2.term.writeln('> evala --shell=$SHELL');
-        }
-        console.error(error);
-        _this2._tryAgain();
-      });
-    }
-  }, {
-    key: '_tryAgain',
-    value: function _tryAgain() {
-      var _this3 = this;
-
-      clearTimeout(this.interval);
-      this.interval = setTimeout(function () {
-        _this3._connectToServer();
-      }, 2000);
-    }
-  }, {
     key: 'componentDidMount',
     value: function componentDidMount() {
-      var _this4 = this;
+      var _this2 = this;
 
       this.term = new _xterm.Terminal({
-        cursorBlink: true
+        cursorBlink: true,
+        rows: 3
       });
 
       this.term.open(document.querySelector('#' + this.elementId));
@@ -45902,8 +45853,8 @@ var ReactTerminal = function (_React$Component) {
         var cols = _ref.cols,
             rows = _ref.rows;
 
-        if (!_this4.pid) return;
-        fetch('http://' + HOST + '/terminals/' + _this4.pid + '/size?cols=' + cols + '&rows=' + rows, { method: 'POST' });
+        if (!_this2.pid) return;
+        fetch('http://' + HOST + '/terminals/' + _this2.pid + '/size?cols=' + cols + '&rows=' + rows, { method: 'POST' });
       });
       this._connectToServer();
 
@@ -45911,8 +45862,9 @@ var ReactTerminal = function (_React$Component) {
         this.props.children(this.term);
       }
       listenToWindowResize(function () {
-        return _this4.term.fit();
+        _this2.term.fit();
       });
+      this.term.fit();
     }
   }, {
     key: 'componentWillUnmount',
@@ -45922,11 +45874,58 @@ var ReactTerminal = function (_React$Component) {
   }, {
     key: 'render',
     value: function render() {
-      return _react2.default.createElement(
-        'div',
-        { className: 'terminal' },
-        _react2.default.createElement('div', { id: this.elementId, style: { height: '100%' } })
-      );
+      return _react2.default.createElement('div', { id: this.elementId, style: {
+          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' } });
+    }
+  }, {
+    key: '_connectToServer',
+    value: function _connectToServer() {
+      var _this3 = this;
+
+      fetch('http://' + HOST + '/terminals/?cols=' + this.term.cols + '&rows=' + this.term.rows, { method: 'POST' }).then(function (res) {
+        if (!res.ok) {
+          _this3.failures += 1;
+          if (_this3.failures === 2) {
+            _this3.term.writeln('There is back-end server found but it returns "' + res.status + ' ' + res.statusText + '".');
+          }
+          _this3._tryAgain();
+          return;
+        }
+        res.text().then(function (processId) {
+          _this3.pid = processId;
+          _this3.socket = new WebSocket(SOCKET_URL + processId);
+          _this3.socket.onopen = function () {
+            _this3.term.attach(_this3.socket);
+          };
+          _this3.socket.onclose = function () {
+            _this3.term.writeln('Server disconnected!');
+            _this3._connectToServer();
+          };
+          _this3.socket.onerror = function () {
+            _this3.term.writeln('Server disconnected!');
+            _this3._connectToServer();
+          };
+        });
+      }, function (error) {
+        _this3.failures += 1;
+        if (_this3.failures === 2) {
+          _this3.term.writeln('It looks like there is no backend. You have to:');
+          _this3.term.writeln('> npm install evala -g');
+          _this3.term.writeln('> evala --shell=$SHELL');
+        }
+        console.error(error);
+        _this3._tryAgain();
+      });
+    }
+  }, {
+    key: '_tryAgain',
+    value: function _tryAgain() {
+      var _this4 = this;
+
+      clearTimeout(this.interval);
+      this.interval = setTimeout(function () {
+        _this4._connectToServer();
+      }, 2000);
     }
   }]);
 
@@ -45993,26 +45992,37 @@ var STYLES = {
     width: '100%',
     height: '100%',
     display: 'grid',
-    color: '#fff'
+    color: '#fff',
+    gridGap: '0.5em'
   }
 };
 var CONTENT = {};
+
+function getSplitClassName(index, type) {
+  if (index === 0 && type === 'vertical') {
+    return ' verticalSplit';
+  } else if (index === 0 && type === 'horizontal') {
+    return ' horizontalSplit';
+  }
+  return '';
+}
 
 function Item(_ref) {
   var splitVertical = _ref.splitVertical,
       splitHorizontal = _ref.splitHorizontal,
       close = _ref.close,
       id = _ref.id,
-      content = _ref.content;
+      content = _ref.content,
+      index = _ref.index,
+      type = _ref.type;
 
   if (!CONTENT[id]) {
-    console.log('create new one ' + id);
     CONTENT[id] = content();
   }
 
   return _react2.default.createElement(
     'div',
-    { key: id, style: STYLES.item, className: 'splitGridScreen' },
+    { key: id, className: 'splitGridScreen' + getSplitClassName(index, type) },
     CONTENT[id],
     _react2.default.createElement(
       'nav',
@@ -46041,7 +46051,9 @@ Item.propTypes = {
   splitHorizontal: _propTypes2.default.func.isRequired,
   close: _propTypes2.default.func,
   content: _propTypes2.default.func,
-  id: _propTypes2.default.string
+  id: _propTypes2.default.string,
+  type: _propTypes2.default.string,
+  index: _propTypes2.default.number
 };
 
 var SplitGrid = function (_React$Component) {
@@ -46069,6 +46081,7 @@ var SplitGrid = function (_React$Component) {
       var _this2 = this;
 
       var level = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+      var parentType = arguments[2];
 
       var columnStyles = _defineProperty({}, items.type === 'horizontal' ? 'gridTemplateRows' : 'gridTemplateColumns', items.map(function (i) {
         return '1fr';
@@ -46079,14 +46092,17 @@ var SplitGrid = function (_React$Component) {
 
       return _react2.default.createElement(
         'div',
-        { style: Object.assign({}, STYLES.container, columnStyles), key: level },
-        itemsToRender.map(function (id) {
+        { className: getSplitClassName(0, parentType),
+          style: Object.assign({}, STYLES.container, columnStyles), key: level },
+        itemsToRender.map(function (id, i) {
           if (Array.isArray(id)) {
-            return _this2._renderItems(id, level + 1);
+            return _this2._renderItems(id, level + 1 + i, items.type);
           }
           return _react2.default.createElement(Item, {
             key: id,
             id: id,
+            index: i,
+            type: items.type,
             splitVertical: function splitVertical() {
               return _this2._split(id, items, 'vertical');
             },
@@ -46096,7 +46112,8 @@ var SplitGrid = function (_React$Component) {
             close: itemsToRender.length > 1 ? function () {
               return _this2._close(id);
             } : null,
-            content: _this2.props.content });
+            content: _this2.props.content
+          });
         })
       );
     }

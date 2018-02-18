@@ -9,19 +9,28 @@ const STYLES = {
     width: '100%',
     height: '100%',
     display: 'grid',
-    color: '#fff'
+    color: '#fff',
+    gridGap: '0.5em',
   }
 };
 const CONTENT = {};
 
-function Item({ splitVertical, splitHorizontal, close, id, content }) {
+function getSplitClassName(index, type) {
+  if (index === 0 && type === 'vertical') {
+    return ' verticalSplit';
+  } else if (index === 0 && type === 'horizontal') {
+    return ' horizontalSplit';
+  }
+  return '';
+}
+
+function Item({ splitVertical, splitHorizontal, close, id, content, index, type }) {
   if (!CONTENT[id]) {
-    console.log('create new one ' + id);
     CONTENT[id] = content();
   }
 
   return (
-    <div key={ id } style={ STYLES.item } className='splitGridScreen'>
+    <div key={ id } className={ 'splitGridScreen' + getSplitClassName(index, type) }>
       { CONTENT[id] }
       <nav>
         <a onClick={ splitVertical } className='splitGridItem' style={{ transform: 'rotateZ(90deg)' }}>
@@ -43,7 +52,9 @@ Item.propTypes = {
   splitHorizontal: PropTypes.func.isRequired,
   close: PropTypes.func,
   content: PropTypes.func,
-  id: PropTypes.string
+  id: PropTypes.string,
+  type: PropTypes.string,
+  index: PropTypes.number
 };
 
 export default class SplitGrid extends React.Component {
@@ -57,7 +68,7 @@ export default class SplitGrid extends React.Component {
   render() {
     return this._renderItems(this.state.items);
   }
-  _renderItems(items, level = 0) {
+  _renderItems(items, level = 0, parentType) {
     const columnStyles = {
       [items.type === 'horizontal' ? 'gridTemplateRows' : 'gridTemplateColumns']:
       items.map(i => '1fr').join(' ')
@@ -65,19 +76,23 @@ export default class SplitGrid extends React.Component {
     const itemsToRender = items.filter(id => id);
 
     return (
-      <div style={ Object.assign({}, STYLES.container, columnStyles) } key={ level }>
+      <div className={ getSplitClassName(0, parentType) }
+        style={ Object.assign({}, STYLES.container, columnStyles) } key={ level }>
         {
-          itemsToRender.map(id => {
+          itemsToRender.map((id, i) => {
             if (Array.isArray(id)) {
-              return this._renderItems(id, level + 1);
+              return this._renderItems(id, level + 1 + i, items.type);
             }
             return <Item
               key={ id }
               id={ id }
+              index={ i }
+              type={ items.type }
               splitVertical={ () => this._split(id, items, 'vertical') }
               splitHorizontal={ () => this._split(id, items, 'horizontal') }
               close={ itemsToRender.length > 1 ? () => this._close(id) : null }
-              content={ this.props.content } />;
+              content={ (this.props.content) }
+            />;
           })
         }
       </div>
