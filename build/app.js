@@ -45925,7 +45925,7 @@ var ReactTerminal = function (_React$Component) {
       return _react2.default.createElement(
         'div',
         { className: 'terminal' },
-        _react2.default.createElement('div', { id: this.elementId })
+        _react2.default.createElement('div', { id: this.elementId, style: { height: '100%' } })
       );
     }
   }]);
@@ -45996,6 +45996,7 @@ var STYLES = {
     color: '#fff'
   }
 };
+var CONTENT = {};
 
 function Item(_ref) {
   var splitVertical = _ref.splitVertical,
@@ -46004,14 +46005,15 @@ function Item(_ref) {
       id = _ref.id,
       content = _ref.content;
 
+  if (!CONTENT[id]) {
+    console.log('create new one ' + id);
+    CONTENT[id] = content();
+  }
+
   return _react2.default.createElement(
     'div',
     { key: id, style: STYLES.item, className: 'splitGridScreen' },
-    _react2.default.createElement(
-      'div',
-      { style: { zIndex: 1 } },
-      content()
-    ),
+    CONTENT[id],
     _react2.default.createElement(
       'nav',
       null,
@@ -46051,7 +46053,7 @@ var SplitGrid = function (_React$Component) {
     var _this = _possibleConstructorReturn(this, (SplitGrid.__proto__ || Object.getPrototypeOf(SplitGrid)).call(this, props));
 
     _this.state = {
-      items: [getId()]
+      items: [[getId()]]
     };
     return _this;
   }
@@ -46066,6 +46068,8 @@ var SplitGrid = function (_React$Component) {
     value: function _renderItems(items) {
       var _this2 = this;
 
+      var level = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : 0;
+
       var columnStyles = _defineProperty({}, items.type === 'horizontal' ? 'gridTemplateRows' : 'gridTemplateColumns', items.map(function (i) {
         return '1fr';
       }).join(' '));
@@ -46075,10 +46079,10 @@ var SplitGrid = function (_React$Component) {
 
       return _react2.default.createElement(
         'div',
-        { style: Object.assign({}, STYLES.container, columnStyles), key: items.toString() },
+        { style: Object.assign({}, STYLES.container, columnStyles), key: level },
         itemsToRender.map(function (id) {
           if (Array.isArray(id)) {
-            return _this2._renderItems(id);
+            return _this2._renderItems(id, level + 1);
           }
           return _react2.default.createElement(Item, {
             key: id,
@@ -46113,6 +46117,7 @@ var SplitGrid = function (_React$Component) {
       var traverse = function traverse(items) {
         if (Array.isArray(items)) {
           if (items.indexOf(itemId) > -1) {
+            delete CONTENT[itemId];
             return items.filter(function (id) {
               return id !== itemId;
             })[0];
@@ -46244,13 +46249,6 @@ var TerminalWindow = function (_React$Component) {
             'span',
             null,
             this._renderWindowTitle()
-          ),
-          _react3.default.createElement(
-            'a',
-            { onClick: function onClick() {
-                return _this2._splitVertical();
-              } },
-            _react3.default.createElement('i', { className: 'fa fa fa-columns' })
           )
         ),
         _react3.default.createElement(

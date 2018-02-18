@@ -124,8 +124,8 @@ body, html {
 .splitGridScreen nav {
   position: absolute;
   top: 0;
-  right: 0;
-  z-index: 2;
+  right: 1em;
+  z-index: 999;
 }
 .splitGridItem {
   display: inline-block;

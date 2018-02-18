@@ -40,9 +40,6 @@ class TerminalWindow extends React.Component {
           <a className='fakeButtons fakeZoom' onClick={ () => this._maximize() }></a>
           {/* <div className='fakeButtons fakeMinimize'></div> */}
           <span>{ this._renderWindowTitle() }</span>
-          <a onClick={ () => this._splitVertical() }>
-            <i className='fa fa fa-columns'></i>
-          </a>
         </div>
         <div className='fakeScreen'>
           <SplitGrid content={ () => <ReactTerminal /> } />

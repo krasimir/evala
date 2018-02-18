@@ -105,7 +105,7 @@ export default class ReactTerminal extends React.Component {
   render() {
     return (
       <div className='terminal'>
-        <div id={ this.elementId }></div>
+        <div id={ this.elementId } style={{ height: '100%' }}></div>
       </div>
     );
   }
