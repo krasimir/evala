@@ -10,20 +10,33 @@ const STYLES = {
     height: '100%',
     display: 'grid',
     color: '#fff'
-  },
-  item: {
-    border: 'solid 1px #999'
   }
 };
 
-function Item({ splitVertical, splitHorizontal, id }) {
+function Item({ splitVertical, splitHorizontal, close, id }) {
   return (
-    <div key={ id } style={ STYLES.item }>
-      <a onClick={ splitVertical }>split vertical</a><br />
-      <a onClick={ splitHorizontal }>split horizontal</a>
+    <div key={ id } style={ STYLES.item } className='splitGridScreen'>
+      <nav>
+        <a onClick={ splitVertical } className='splitGridItem' style={{ transform: 'rotateZ(90deg)' }}>
+          <i className='fa fa-minus-square-o'></i>
+        </a>
+        <a onClick={ splitHorizontal } className='splitGridItem' style={{ transform: 'translateY(1px)' }}>
+          <i className='fa fa-minus-square-o'></i>
+        </a>
+        { close && <a onClick={ close } className='splitGridItem'>
+          <i className='fa fa-times'></i>
+        </a> }
+      </nav>
     </div>
   );
 }
+
+Item.propTypes = {
+  splitVertical: PropTypes.func.isRequired,
+  splitHorizontal: PropTypes.func.isRequired,
+  close: PropTypes.func,
+  id: PropTypes.string
+};
 
 export default class SplitGrid extends React.Component {
   constructor(props) {
@@ -41,11 +54,12 @@ export default class SplitGrid extends React.Component {
       [items.type === 'horizontal' ? 'gridTemplateRows' : 'gridTemplateColumns']:
       items.map(i => '1fr').join(' ')
     };
+    const itemsToRender = items.filter(id => id);
 
     return (
       <div style={ Object.assign({}, STYLES.container, columnStyles) } key={ items.toString() }>
         {
-          items.map(id => {
+          itemsToRender.map(id => {
             if (Array.isArray(id)) {
               return this._renderItems(id);
             }
@@ -53,7 +67,8 @@ export default class SplitGrid extends React.Component {
               key={ id }
               id={ id }
               splitVertical={ () => this._split(id, items, 'vertical') }
-              splitHorizontal={ () => this._split(id, items, 'horizontal') }/>;
+              splitHorizontal={ () => this._split(id, items, 'horizontal') }
+              close={ itemsToRender.length > 1 ? () => this._close(id) : null }/>;
           })
         }
       </div>
@@ -68,5 +83,24 @@ export default class SplitGrid extends React.Component {
     });
     console.log(JSON.stringify(this.state.items, null, 2));
     this.setState({ items: this.state.items });
+  }
+  _close(itemId) {
+    const traverse = items => {
+      if (Array.isArray(items)) {
+        if (items.indexOf(itemId) > -1) {
+          return items.filter(id => id !== itemId)[0];
+        }
+        const newArr = items.map(traverse);
+
+        newArr.type = items.type;
+        return newArr;
+      }
+      return items;
+    };
+
+    let newItems = traverse(this.state.items);
+
+    console.log(JSON.stringify(newItems, null, 2));
+    this.setState({ items: newItems });
   }
 };

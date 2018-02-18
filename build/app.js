@@ -45989,33 +45989,46 @@ var STYLES = {
     height: '100%',
     display: 'grid',
     color: '#fff'
-  },
-  item: {
-    border: 'solid 1px #999'
   }
 };
 
 function Item(_ref) {
   var splitVertical = _ref.splitVertical,
       splitHorizontal = _ref.splitHorizontal,
+      close = _ref.close,
       id = _ref.id;
 
   return _react2.default.createElement(
     'div',
-    { key: id, style: STYLES.item },
+    { key: id, style: STYLES.item, className: 'splitGridScreen' },
     _react2.default.createElement(
-      'a',
-      { onClick: splitVertical },
-      'split vertical'
-    ),
-    _react2.default.createElement('br', null),
-    _react2.default.createElement(
-      'a',
-      { onClick: splitHorizontal },
-      'split horizontal'
+      'nav',
+      null,
+      _react2.default.createElement(
+        'a',
+        { onClick: splitVertical, className: 'splitGridItem', style: { transform: 'rotateZ(90deg)' } },
+        _react2.default.createElement('i', { className: 'fa fa-minus-square-o' })
+      ),
+      _react2.default.createElement(
+        'a',
+        { onClick: splitHorizontal, className: 'splitGridItem', style: { transform: 'translateY(1px)' } },
+        _react2.default.createElement('i', { className: 'fa fa-minus-square-o' })
+      ),
+      close && _react2.default.createElement(
+        'a',
+        { onClick: close, className: 'splitGridItem' },
+        _react2.default.createElement('i', { className: 'fa fa-times' })
+      )
     )
   );
 }
+
+Item.propTypes = {
+  splitVertical: _propTypes2.default.func.isRequired,
+  splitHorizontal: _propTypes2.default.func.isRequired,
+  close: _propTypes2.default.func,
+  id: _propTypes2.default.string
+};
 
 var SplitGrid = function (_React$Component) {
   _inherits(SplitGrid, _React$Component);
@@ -46044,11 +46057,14 @@ var SplitGrid = function (_React$Component) {
       var columnStyles = _defineProperty({}, items.type === 'horizontal' ? 'gridTemplateRows' : 'gridTemplateColumns', items.map(function (i) {
         return '1fr';
       }).join(' '));
+      var itemsToRender = items.filter(function (id) {
+        return id;
+      });
 
       return _react2.default.createElement(
         'div',
         { style: Object.assign({}, STYLES.container, columnStyles), key: items.toString() },
-        items.map(function (id) {
+        itemsToRender.map(function (id) {
           if (Array.isArray(id)) {
             return _this2._renderItems(id);
           }
@@ -46060,7 +46076,10 @@ var SplitGrid = function (_React$Component) {
             },
             splitHorizontal: function splitHorizontal() {
               return _this2._split(id, items, 'horizontal');
-            } });
+            },
+            close: itemsToRender.length > 1 ? function () {
+              return _this2._close(id);
+            } : null });
         })
       );
     }
@@ -46075,6 +46094,29 @@ var SplitGrid = function (_React$Component) {
       });
       console.log(JSON.stringify(this.state.items, null, 2));
       this.setState({ items: this.state.items });
+    }
+  }, {
+    key: '_close',
+    value: function _close(itemId) {
+      var traverse = function traverse(items) {
+        if (Array.isArray(items)) {
+          if (items.indexOf(itemId) > -1) {
+            return items.filter(function (id) {
+              return id !== itemId;
+            })[0];
+          }
+          var newArr = items.map(traverse);
+
+          newArr.type = items.type;
+          return newArr;
+        }
+        return items;
+      };
+
+      var newItems = traverse(this.state.items);
+
+      console.log(JSON.stringify(newItems, null, 2));
+      this.setState({ items: newItems });
     }
   }]);
 

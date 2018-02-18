@@ -118,6 +118,26 @@ body, html {
 .terminalWindow.maximized .fakeScreen {
   height: 100%;
 }
+.splitGridScreen {
+  position: relative;
+}
+.splitGridScreen nav {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+.splitGridItem {
+  display: inline-block;
+  cursor: pointer;
+  margin-left: 0.1em;
+  padding: 0.2em;
+  opacity: 0.2;
+  transition: opacity 300ms ease;
+  font-size: 0.9em;
+}
+.splitGridItem:hover {
+  opacity: 1;
+}
 
 
 .clockForecast {
