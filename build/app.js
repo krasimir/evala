@@ -45875,7 +45875,8 @@ var ReactTerminal = function (_React$Component) {
     key: 'render',
     value: function render() {
       return _react2.default.createElement('div', { id: this.elementId, style: {
-          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' } });
+          position: 'absolute', top: 0, left: 0, width: '100%', height: '100%'
+        } });
     }
   }, {
     key: '_connectToServer',
@@ -46192,10 +46193,6 @@ var _ReactTerminal = require('./ReactTerminal');
 
 var _ReactTerminal2 = _interopRequireDefault(_ReactTerminal);
 
-var _getId = require('../helpers/getId');
-
-var _getId2 = _interopRequireDefault(_getId);
-
 var _SplitGrid = require('./SplitGrid');
 
 var _SplitGrid2 = _interopRequireDefault(_SplitGrid);
@@ -46478,7 +46475,7 @@ exports.default = (0, _react.connect)(TerminalWindow).with('Weather').map(functi
   };
 });
 
-},{"../constants":607,"../helpers/getId":611,"./ReactTerminal":604,"./SplitGrid":605,"moment":378,"prop-types":385,"react":543,"stent/lib/react":562}],607:[function(require,module,exports){
+},{"../constants":607,"./ReactTerminal":604,"./SplitGrid":605,"moment":378,"prop-types":385,"react":543,"stent/lib/react":562}],607:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {

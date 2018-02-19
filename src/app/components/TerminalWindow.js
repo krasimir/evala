@@ -5,7 +5,6 @@ import PropTypes from 'prop-types';
 import { ICONS_MAPPING } from '../constants';
 import moment from 'moment';
 import ReactTerminal from './ReactTerminal';
-import getId from '../helpers/getId';
 import SplitGrid from './SplitGrid';
 
 class TerminalWindow extends React.Component {

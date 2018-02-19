@@ -10,7 +10,7 @@ const STYLES = {
     height: '100%',
     display: 'grid',
     color: '#fff',
-    gridGap: '0.5em',
+    gridGap: '0.5em'
   }
 };
 const CONTENT = {};
@@ -91,7 +91,7 @@ export default class SplitGrid extends React.Component {
               splitVertical={ () => this._split(id, items, 'vertical') }
               splitHorizontal={ () => this._split(id, items, 'horizontal') }
               close={ itemsToRender.length > 1 ? () => this._close(id) : null }
-              content={ (this.props.content) }
+              content={ this.props.content }
             />;
           })
         }
