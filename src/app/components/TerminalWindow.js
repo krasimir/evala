@@ -41,7 +41,7 @@ class TerminalWindow extends React.Component {
           <span>{ this._renderWindowTitle() }</span>
         </div>
         <div className='fakeScreen'>
-          <SplitGrid content={ () => <ReactTerminal /> } />
+          <SplitGrid content={ options => <ReactTerminal options={ options }/> } />
         </div>
       </div>
     );

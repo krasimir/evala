@@ -45829,6 +45829,7 @@ var ReactTerminal = function (_React$Component) {
     _this.elementId = 'terminal_' + (0, _getId2.default)();
     _this.failures = 0;
     _this.interval = null;
+    _this.fontSize = 16;
     _this.state = {
       command: ''
     };
@@ -45842,7 +45843,8 @@ var ReactTerminal = function (_React$Component) {
 
       this.term = new _xterm.Terminal({
         cursorBlink: true,
-        rows: 3
+        rows: 3,
+        fontSize: this.fontSize
       });
 
       this.term.open(document.querySelector('#' + this.elementId));
@@ -45856,15 +45858,44 @@ var ReactTerminal = function (_React$Component) {
         if (!_this2.pid) return;
         fetch('http://' + HOST + '/terminals/' + _this2.pid + '/size?cols=' + cols + '&rows=' + rows, { method: 'POST' });
       });
+      this.term.decreaseFontSize = function () {
+        _this2.term.setOption('fontSize', --_this2.fontSize);
+        _this2.term.fit();
+      };
+      this.term.increaseFontSize = function () {
+        _this2.term.setOption('fontSize', ++_this2.fontSize);
+        _this2.term.fit();
+      };
       this._connectToServer();
 
-      if (this.props.children && typeof this.props.children === 'function') {
-        this.props.children(this.term);
-      }
       listenToWindowResize(function () {
         _this2.term.fit();
       });
       this.term.fit();
+      this.term.textarea.onkeydown = function (e) {
+        // ctrl + shift + metakey + +
+        if (e.keyCode === 187 && e.shiftKey && e.ctrlKey && e.metaKey) {
+          _this2.term.setOption('fontSize', ++_this2.fontSize);
+          _this2.term.fit();
+        }
+        // ctrl + shift + metakey + -
+        if (e.keyCode === 189 && e.shiftKey && e.ctrlKey && e.metaKey) {
+          _this2.term.setOption('fontSize', --_this2.fontSize);
+          _this2.term.fit();
+        }
+        // ctrl + shift + metakey + v
+        if (e.keyCode === 86 && e.shiftKey && e.ctrlKey && e.metaKey) {
+          _this2.props.options.splitVertical && _this2.props.options.splitVertical();
+        }
+        // ctrl + shift + metakey + h
+        if (e.keyCode === 72 && e.shiftKey && e.ctrlKey && e.metaKey) {
+          _this2.props.options.splitHorizontal && _this2.props.options.splitHorizontal();
+        }
+        // ctrl + shift + metakey + w
+        if (e.keyCode === 87 && e.shiftKey && e.ctrlKey && e.metaKey) {
+          _this2.props.options.close && _this2.props.options.close();
+        }
+      };
     }
   }, {
     key: 'componentWillUnmount',
@@ -45937,7 +45968,7 @@ exports.default = ReactTerminal;
 ;
 
 ReactTerminal.propTypes = {
-  children: _propTypes2.default.func
+  options: _propTypes2.default.object
 };
 
 function listenToWindowResize(callback) {
@@ -46009,52 +46040,40 @@ function getSplitClassName(index, type) {
 }
 
 function Item(_ref) {
-  var splitVertical = _ref.splitVertical,
-      splitHorizontal = _ref.splitHorizontal,
-      close = _ref.close,
+  var close = _ref.close,
       id = _ref.id,
       content = _ref.content,
       index = _ref.index,
-      type = _ref.type;
+      type = _ref.type,
+      siblings = _ref.siblings,
+      split = _ref.split;
+
+  var splitVertical = function splitVertical() {
+    return split(id, siblings, 'vertical');
+  };
+  var splitHorizontal = function splitHorizontal() {
+    return split(id, siblings, 'horizontal');
+  };
 
   if (!CONTENT[id]) {
-    CONTENT[id] = content();
+    CONTENT[id] = content({ splitVertical: splitVertical, splitHorizontal: splitHorizontal, close: close });
   }
 
   return _react2.default.createElement(
     'div',
     { key: id, className: 'splitGridScreen' + getSplitClassName(index, type) },
-    CONTENT[id],
-    _react2.default.createElement(
-      'nav',
-      null,
-      _react2.default.createElement(
-        'a',
-        { onClick: splitVertical, className: 'splitGridItem', style: { transform: 'rotateZ(90deg)' } },
-        _react2.default.createElement('i', { className: 'fa fa-minus-square-o' })
-      ),
-      _react2.default.createElement(
-        'a',
-        { onClick: splitHorizontal, className: 'splitGridItem', style: { transform: 'translateY(1px)' } },
-        _react2.default.createElement('i', { className: 'fa fa-minus-square-o' })
-      ),
-      close && _react2.default.createElement(
-        'a',
-        { onClick: close, className: 'splitGridItem' },
-        _react2.default.createElement('i', { className: 'fa fa-times' })
-      )
-    )
+    CONTENT[id]
   );
 }
 
 Item.propTypes = {
-  splitVertical: _propTypes2.default.func.isRequired,
-  splitHorizontal: _propTypes2.default.func.isRequired,
   close: _propTypes2.default.func,
   content: _propTypes2.default.func,
   id: _propTypes2.default.string,
   type: _propTypes2.default.string,
-  index: _propTypes2.default.number
+  index: _propTypes2.default.number,
+  siblings: _propTypes2.default.array,
+  split: _propTypes2.default.func
 };
 
 var SplitGrid = function (_React$Component) {
@@ -46065,6 +46084,7 @@ var SplitGrid = function (_React$Component) {
 
     var _this = _possibleConstructorReturn(this, (SplitGrid.__proto__ || Object.getPrototypeOf(SplitGrid)).call(this, props));
 
+    _this._split = _this._split.bind(_this);
     _this.state = {
       items: [[getId()]]
     };
@@ -46102,14 +46122,10 @@ var SplitGrid = function (_React$Component) {
           return _react2.default.createElement(Item, {
             key: id,
             id: id,
+            siblings: items,
             index: i,
             type: items.type,
-            splitVertical: function splitVertical() {
-              return _this2._split(id, items, 'vertical');
-            },
-            splitHorizontal: function splitHorizontal() {
-              return _this2._split(id, items, 'horizontal');
-            },
+            split: _this2._split,
             close: itemsToRender.length > 1 ? function () {
               return _this2._close(id);
             } : null,
@@ -46268,8 +46284,8 @@ var TerminalWindow = function (_React$Component) {
         _react3.default.createElement(
           'div',
           { className: 'fakeScreen' },
-          _react3.default.createElement(_SplitGrid2.default, { content: function content() {
-              return _react3.default.createElement(_ReactTerminal2.default, null);
+          _react3.default.createElement(_SplitGrid2.default, { content: function content(options) {
+              return _react3.default.createElement(_ReactTerminal2.default, { options: options });
             } })
         )
       );

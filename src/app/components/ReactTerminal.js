@@ -27,6 +27,7 @@ export default class ReactTerminal extends React.Component {
     this.elementId = `terminal_${ getId() }`;
     this.failures = 0;
     this.interval = null;
+    this.fontSize = 16;
     this.state = {
       command: ''
     };
@@ -34,7 +35,8 @@ export default class ReactTerminal extends React.Component {
   componentDidMount() {
     this.term = new Terminal({
       cursorBlink: true,
-      rows: 3
+      rows: 3,
+      fontSize: this.fontSize
     });
 
     this.term.open(document.querySelector(`#${ this.elementId }`));
@@ -45,15 +47,44 @@ export default class ReactTerminal extends React.Component {
       if (!this.pid) return;
       fetch(`http://${ HOST }/terminals/${ this.pid }/size?cols=${ cols }&rows=${ rows }`, { method: 'POST' });
     });
+    this.term.decreaseFontSize = () => {
+      this.term.setOption('fontSize', --this.fontSize);
+      this.term.fit();
+    };
+    this.term.increaseFontSize = () => {
+      this.term.setOption('fontSize', ++this.fontSize);
+      this.term.fit();
+    };
     this._connectToServer();
 
-    if (this.props.children && typeof this.props.children === 'function') {
-      this.props.children(this.term);
-    }
     listenToWindowResize(() => {
       this.term.fit();
     });
     this.term.fit();
+    this.term.textarea.onkeydown = e => {
+      // ctrl + shift + metakey + +
+      if (e.keyCode === 187 && e.shiftKey && e.ctrlKey && e.metaKey) {
+        this.term.setOption('fontSize', ++this.fontSize);
+        this.term.fit();
+      }
+      // ctrl + shift + metakey + -
+      if (e.keyCode === 189 && e.shiftKey && e.ctrlKey && e.metaKey) {
+        this.term.setOption('fontSize', --this.fontSize);
+        this.term.fit();
+      }
+      // ctrl + shift + metakey + v
+      if (e.keyCode === 86 && e.shiftKey && e.ctrlKey && e.metaKey) {
+        this.props.options.splitVertical && this.props.options.splitVertical();
+      }
+      // ctrl + shift + metakey + h
+      if (e.keyCode === 72 && e.shiftKey && e.ctrlKey && e.metaKey) {
+        this.props.options.splitHorizontal && this.props.options.splitHorizontal();
+      }
+      // ctrl + shift + metakey + w
+      if (e.keyCode === 87 && e.shiftKey && e.ctrlKey && e.metaKey) {
+        this.props.options.close && this.props.options.close();
+      }
+    };
   }
   componentWillUnmount() {
     clearTimeout(this.interval);
@@ -72,7 +103,10 @@ export default class ReactTerminal extends React.Component {
         if (!res.ok) {
           this.failures += 1;
           if (this.failures === 2) {
-            this.term.writeln('There is back-end server found but it returns "' + res.status + ' ' + res.statusText + '".');
+            this.term.writeln(
+              'There is back-end server found but it returns "' +
+              res.status + ' ' + res.statusText + '".'
+            );
           }
           this._tryAgain();
           return;
@@ -114,7 +148,7 @@ export default class ReactTerminal extends React.Component {
 };
 
 ReactTerminal.propTypes = {
-  children: PropTypes.func
+  options: PropTypes.object
 };
 
 function listenToWindowResize(callback) {

@@ -24,43 +24,36 @@ function getSplitClassName(index, type) {
   return '';
 }
 
-function Item({ splitVertical, splitHorizontal, close, id, content, index, type }) {
+function Item({ close, id, content, index, type, siblings, split }) {
+  const splitVertical = () => split(id, siblings, 'vertical');
+  const splitHorizontal = () => split(id, siblings, 'horizontal');
+
   if (!CONTENT[id]) {
-    CONTENT[id] = content();
+    CONTENT[id] = content({ splitVertical, splitHorizontal, close });
   }
 
   return (
     <div key={ id } className={ 'splitGridScreen' + getSplitClassName(index, type) }>
       { CONTENT[id] }
-      <nav>
-        <a onClick={ splitVertical } className='splitGridItem' style={{ transform: 'rotateZ(90deg)' }}>
-          <i className='fa fa-minus-square-o'></i>
-        </a>
-        <a onClick={ splitHorizontal } className='splitGridItem' style={{ transform: 'translateY(1px)' }}>
-          <i className='fa fa-minus-square-o'></i>
-        </a>
-        { close && <a onClick={ close } className='splitGridItem'>
-          <i className='fa fa-times'></i>
-        </a> }
-      </nav>
     </div>
   );
 }
 
 Item.propTypes = {
-  splitVertical: PropTypes.func.isRequired,
-  splitHorizontal: PropTypes.func.isRequired,
   close: PropTypes.func,
   content: PropTypes.func,
   id: PropTypes.string,
   type: PropTypes.string,
-  index: PropTypes.number
+  index: PropTypes.number,
+  siblings: PropTypes.array,
+  split: PropTypes.func
 };
 
 export default class SplitGrid extends React.Component {
   constructor(props) {
     super(props);
 
+    this._split = this._split.bind(this);
     this.state = {
       items: [ [ getId() ] ]
     };
@@ -86,10 +79,10 @@ export default class SplitGrid extends React.Component {
             return <Item
               key={ id }
               id={ id }
+              siblings={ items }
               index={ i }
               type={ items.type }
-              splitVertical={ () => this._split(id, items, 'vertical') }
-              splitHorizontal={ () => this._split(id, items, 'horizontal') }
+              split={ this._split }
               close={ itemsToRender.length > 1 ? () => this._close(id) : null }
               content={ this.props.content }
             />;
