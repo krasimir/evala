@@ -13,7 +13,6 @@ const STYLES = {
     gridGap: '0.5em'
   }
 };
-const CONTENT = {};
 
 function getSplitClassName(index, type) {
   if (index === 0 && type === 'vertical') {
@@ -24,24 +23,27 @@ function getSplitClassName(index, type) {
   return '';
 }
 
-function Item({ close, id, content, index, type, siblings, split }) {
+function Item({ close, id, Content, index, type, siblings, split }) {
   const splitVertical = () => split(id, siblings, 'vertical');
   const splitHorizontal = () => split(id, siblings, 'horizontal');
 
-  if (!CONTENT[id]) {
-    CONTENT[id] = content({ splitVertical, splitHorizontal, close });
-  }
-
   return (
     <div key={ id } className={ 'splitGridScreen' + getSplitClassName(index, type) }>
-      { CONTENT[id] }
+      <Content
+        id={ id }
+        options={{
+          splitHorizontal,
+          splitVertical,
+          close
+        }}
+      />
     </div>
   );
 }
 
 Item.propTypes = {
   close: PropTypes.func,
-  content: PropTypes.func,
+  Content: PropTypes.any,
   id: PropTypes.string,
   type: PropTypes.string,
   index: PropTypes.number,
@@ -84,7 +86,7 @@ export default class SplitGrid extends React.Component {
               type={ items.type }
               split={ this._split }
               close={ itemsToRender.length > 1 ? () => this._close(id) : null }
-              content={ this.props.content }
+              Content={ this.props.content }
             />;
           })
         }
@@ -104,7 +106,6 @@ export default class SplitGrid extends React.Component {
     const traverse = items => {
       if (Array.isArray(items)) {
         if (items.indexOf(itemId) > -1) {
-          delete CONTENT[itemId];
           return items.filter(id => id !== itemId)[0];
         }
         const newArr = items.map(traverse);
@@ -122,5 +123,5 @@ export default class SplitGrid extends React.Component {
 };
 
 SplitGrid.propTypes = {
-  content: PropTypes.func
+  content: PropTypes.any
 };

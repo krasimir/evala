@@ -45575,46 +45575,25 @@ var ClockForecast = function (_React$Component) {
     value: function _renderIcon(_ref) {
       var icon = _ref.icon;
 
-      var isItDay = true;
-      var _state$today = this.state.today,
-          sunrise = _state$today.sunrise,
-          sunset = _state$today.sunset;
-      var now = this.state.now;
+      var iconClass = (0, _constants.getIconClassName)(icon);
 
-
-      if (sunset && sunrise) {
-        isItDay = now.isAfter(sunrise) && now.isBefore(sunset);
-      }
-
-      var iconClass = _constants.ICONS_MAPPING[icon][isItDay ? 0 : 1];
-
-      return iconClass ? _react2.default.createElement('i', { className: 'wi ' + iconClass }) : null;
+      return iconClass ? _react2.default.createElement('i', { className: 'wi wi-' + iconClass }) : null;
     }
   }, {
     key: '_renderTemperature',
     value: function _renderTemperature(_ref2) {
       var temperature = _ref2.temperature,
-          apparentTemperature = _ref2.apparentTemperature;
+          max = _ref2.max;
 
       return _react2.default.createElement(
         'span',
         null,
         temperature,
         _react2.default.createElement(
-          'sup',
-          { style: { fontSize: '0.5em' } },
-          '\u2103'
-        ),
-        _react2.default.createElement(
           'span',
-          { style: { opacity: 0.4 } },
+          { style: { opacity: '0.4' } },
           '/',
-          apparentTemperature,
-          _react2.default.createElement(
-            'sup',
-            { style: { fontSize: '0.5em' } },
-            '\u2103'
-          )
+          max
         )
       );
     }
@@ -45644,8 +45623,10 @@ var ClockForecast = function (_React$Component) {
       return this.props.data && this.state.today;
     }
   }, {
-    key: '_renderTodayWeather',
-    value: function _renderTodayWeather() {
+    key: '_renderWeather',
+    value: function _renderWeather() {
+      var _this2 = this;
+
       if (!this._isWeatherDataHere()) return null;
 
       var data = this.props.data;
@@ -45655,30 +45636,47 @@ var ClockForecast = function (_React$Component) {
       return _react2.default.createElement(
         'div',
         { className: 'weather' },
-        this._renderIcon(today),
-        this._renderTemperature(today),
-        ' ',
         _react2.default.createElement(
-          'small',
-          null,
-          today.summary
-        ),
-        _react2.default.createElement(
-          'span',
-          { className: 'small' },
-          data.timezone
+          'div',
+          { className: 'days' },
+          data.days.map(function (day, i) {
+            if (i > 4) return null;
+            var isItNow = today.time.isSame(day.time, 'day');
+
+            return _react2.default.createElement(
+              'div',
+              { key: i, style: { fontWeight: isItNow ? 'bold' : 'normal' } },
+              _react2.default.createElement(
+                'span',
+                { className: 'medium', style: { paddingBottom: '0.4em' } },
+                _this2._renderIcon(day),
+                ' ',
+                _this2._renderTemperature(day)
+              ),
+              _react2.default.createElement(
+                'span',
+                null,
+                day.time.format('dddd, Do')
+              ),
+              _react2.default.createElement(
+                'small',
+                { className: 'small' },
+                day.summary
+              )
+            );
+          })
         )
       );
     }
   }, {
     key: 'componentWillReceiveProps',
     value: function componentWillReceiveProps(newProps) {
-      var _this2 = this;
+      var _this3 = this;
 
       if (newProps.data) {
         this.setState({
           today: newProps.data.days.find(function (day) {
-            return day.time.isSame(_this2.state.now, 'day');
+            return day.time.isSame(_this3.state.now, 'day');
           })
         });
       }
@@ -45696,27 +45694,36 @@ var ClockForecast = function (_React$Component) {
   }, {
     key: 'render',
     value: function render() {
-      var _this3 = this;
+      var _this4 = this;
 
       return _react2.default.createElement(
         'div',
-        { className: 'clockForecast ' + (!this._isWeatherDataHere() ? 'noWeatherData' : '') },
+        { className: 'clockForecast' },
         _react2.default.createElement(
           'span',
           { className: 'big' },
           this.state.now.format('HH:mm')
         ),
         this._renderDay(),
-        this._renderTodayWeather(),
+        this._renderWeather(),
         _react2.default.createElement(
           'div',
           { className: 'newTerminal' },
           _react2.default.createElement(
             'a',
             { onClick: function onClick() {
-                return _this3.props.children();
+                return _this4.props.children();
               } },
             _react2.default.createElement('img', { src: 'img/terminal.svg', width: '100', height: '100' })
+          )
+        ),
+        this._isWeatherDataHere() && _react2.default.createElement(
+          'div',
+          { className: 'geoLocation' },
+          _react2.default.createElement(
+            'span',
+            { className: 'small' },
+            this.props.data.city + ', ' + this.props.data.country + ', ' + this.props.data.timezone
           )
         )
       );
@@ -46028,7 +46035,6 @@ var STYLES = {
     gridGap: '0.5em'
   }
 };
-var CONTENT = {};
 
 function getSplitClassName(index, type) {
   if (index === 0 && type === 'vertical') {
@@ -46042,7 +46048,7 @@ function getSplitClassName(index, type) {
 function Item(_ref) {
   var close = _ref.close,
       id = _ref.id,
-      content = _ref.content,
+      Content = _ref.Content,
       index = _ref.index,
       type = _ref.type,
       siblings = _ref.siblings,
@@ -46055,20 +46061,23 @@ function Item(_ref) {
     return split(id, siblings, 'horizontal');
   };
 
-  if (!CONTENT[id]) {
-    CONTENT[id] = content({ splitVertical: splitVertical, splitHorizontal: splitHorizontal, close: close });
-  }
-
   return _react2.default.createElement(
     'div',
     { key: id, className: 'splitGridScreen' + getSplitClassName(index, type) },
-    CONTENT[id]
+    _react2.default.createElement(Content, {
+      id: id,
+      options: {
+        splitHorizontal: splitHorizontal,
+        splitVertical: splitVertical,
+        close: close
+      }
+    })
   );
 }
 
 Item.propTypes = {
   close: _propTypes2.default.func,
-  content: _propTypes2.default.func,
+  Content: _propTypes2.default.any,
   id: _propTypes2.default.string,
   type: _propTypes2.default.string,
   index: _propTypes2.default.number,
@@ -46129,7 +46138,7 @@ var SplitGrid = function (_React$Component) {
             close: itemsToRender.length > 1 ? function () {
               return _this2._close(id);
             } : null,
-            content: _this2.props.content
+            Content: _this2.props.content
           });
         })
       );
@@ -46151,7 +46160,6 @@ var SplitGrid = function (_React$Component) {
       var traverse = function traverse(items) {
         if (Array.isArray(items)) {
           if (items.indexOf(itemId) > -1) {
-            delete CONTENT[itemId];
             return items.filter(function (id) {
               return id !== itemId;
             })[0];
@@ -46177,7 +46185,7 @@ exports.default = SplitGrid;
 ;
 
 SplitGrid.propTypes = {
-  content: _propTypes2.default.func
+  content: _propTypes2.default.any
 };
 
 },{"prop-types":385,"react":543}],606:[function(require,module,exports){
@@ -46219,7 +46227,9 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 
 function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
 
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } // https://codepen.io/addyosmani/pen/avxmvN
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } /* eslint-disable max-len */
+
+// https://codepen.io/addyosmani/pen/avxmvN
 
 
 var TerminalWindow = function (_React$Component) {
@@ -46284,9 +46294,7 @@ var TerminalWindow = function (_React$Component) {
         _react3.default.createElement(
           'div',
           { className: 'fakeScreen' },
-          _react3.default.createElement(_SplitGrid2.default, { content: function content(options) {
-              return _react3.default.createElement(_ReactTerminal2.default, { options: options });
-            } })
+          _react3.default.createElement(_SplitGrid2.default, { content: _ReactTerminal2.default })
         )
       );
     }
@@ -46313,8 +46321,6 @@ var TerminalWindow = function (_React$Component) {
   }, {
     key: '_renderWindowTitle',
     value: function _renderWindowTitle() {
-      var _this4 = this;
-
       return _react3.default.createElement(
         'span',
         null,
@@ -46324,143 +46330,6 @@ var TerminalWindow = function (_React$Component) {
           'small',
           null,
           this.state.now.format('dddd, MMMM Do')
-        ),
-        _react3.default.createElement('span', { className: 'separator' }),
-        this._renderWeatherNow(),
-        _react3.default.createElement('span', { className: 'separator' }),
-        _react3.default.createElement(
-          'small',
-          null,
-          _react3.default.createElement(
-            'a',
-            { onClick: function onClick() {
-                return _this4._renderWeather();
-              } },
-            _react3.default.createElement('i', { className: 'fa fa-thermometer-half' })
-          )
-        )
-      );
-    }
-  }, {
-    key: '_isWeatherDataHere',
-    value: function _isWeatherDataHere() {
-      return this.props.data && this.state.today;
-    }
-  }, {
-    key: '_renderWeatherNow',
-    value: function _renderWeatherNow() {
-      if (!this._isWeatherDataHere()) return null;
-
-      var data = this.props.data;
-      var today = this.state.today;
-
-
-      return _react3.default.createElement(
-        'span',
-        null,
-        this._renderIcon(today),
-        _react3.default.createElement('span', { className: 'separator' }),
-        this._renderTemperature(today),
-        _react3.default.createElement('span', { className: 'separator' }),
-        today.summary,
-        _react3.default.createElement('span', { className: 'separator' }),
-        _react3.default.createElement(
-          'small',
-          null,
-          '(',
-          data.timezone,
-          ')'
-        )
-      );
-    }
-    // _renderWeather() {
-    //   this._renderWeatherDay();
-    //   this._renderWeatherWeek();
-    // }
-    // _renderWeatherDay() {
-    //   if (!this.props.data) return;
-    //   if (!this.term) return;
-
-    //   const { data } = this.props;
-
-    //   this.term.writeln(data.hours.reduce((result, { time, temperature, apparentTemperature, summary }) => {
-    //     result += '\n\r';
-    //     result += time.format('HH:mm') + ' ';
-    //     result += temperature + '°C/' + apparentTemperature + '°C ';
-    //     result += time.format('Do dddd') + ' / ';
-    //     result += summary;
-    //     if (time.isSame(this.state.now, 'hour')) {
-    //       result += ' <---';
-    //     }
-    //     return result;
-    //   }, ''));
-    //   this.term.focus();
-    // }
-    // _renderWeatherWeek() {
-    //   if (!this.props.data) return;
-    //   if (!this.term) return;
-
-    //   const { data } = this.props;
-
-    //   this.term.writeln(data.days.reduce((result, { time, temperature, apparentTemperature, summary }) => {
-    //     result += '\n\r';
-    //     result += time.format('HH:mm') + ' ';
-    //     result += temperature + '°C/' + apparentTemperature + '°C ';
-    //     result += time.format('Do dddd') + ' / ';
-    //     result += summary + ' ';
-    //     if (time.isSame(this.state.now, 'day')) {
-    //       result += ' <---';
-    //     }
-    //     return result;
-    //   }, ''));
-    //   this.term.focus();
-    // }
-
-  }, {
-    key: '_renderIcon',
-    value: function _renderIcon(_ref) {
-      var icon = _ref.icon;
-
-      var isItDay = true;
-      var _state$today = this.state.today,
-          sunrise = _state$today.sunrise,
-          sunset = _state$today.sunset;
-      var now = this.state.now;
-
-
-      if (sunset && sunrise) {
-        isItDay = now.isAfter(sunrise) && now.isBefore(sunset);
-      }
-
-      var iconClass = _constants.ICONS_MAPPING[icon][isItDay ? 0 : 1];
-
-      return iconClass ? _react3.default.createElement('i', { className: 'wi ' + iconClass }) : null;
-    }
-  }, {
-    key: '_renderTemperature',
-    value: function _renderTemperature(_ref2) {
-      var temperature = _ref2.temperature,
-          apparentTemperature = _ref2.apparentTemperature;
-
-      return _react3.default.createElement(
-        'span',
-        null,
-        temperature,
-        _react3.default.createElement(
-          'sup',
-          { style: { fontSize: '0.5em' } },
-          '\u2103'
-        ),
-        _react3.default.createElement(
-          'span',
-          { style: { opacity: 0.4 } },
-          '/',
-          apparentTemperature,
-          _react3.default.createElement(
-            'sup',
-            { style: { fontSize: '0.5em' } },
-            '\u2103'
-          )
         )
       );
     }
@@ -46479,17 +46348,7 @@ TerminalWindow.propTypes = {
   children: _propTypes2.default.func
 };
 
-exports.default = (0, _react.connect)(TerminalWindow).with('Weather').map(function (_ref3) {
-  var state = _ref3.state,
-      fetch = _ref3.fetch,
-      refreshData = _ref3.refreshData;
-  return {
-    state: state.name,
-    data: state.data,
-    error: state.error,
-    lastUpdated: state.lastUpdated
-  };
-});
+exports.default = TerminalWindow;
 
 },{"../constants":607,"./ReactTerminal":604,"./SplitGrid":605,"moment":378,"prop-types":385,"react":543,"stent/lib/react":562}],607:[function(require,module,exports){
 'use strict';
@@ -46497,7 +46356,7 @@ exports.default = (0, _react.connect)(TerminalWindow).with('Weather').map(functi
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.ICONS_MAPPING = exports.GOOGLE_MAPS_API_KEY = exports.BG_DEFAULT_COLOR = exports.COLORS_PER_TEMPERATURE = undefined;
+exports.getIconClassName = exports.GOOGLE_MAPS_API_KEY = exports.BG_DEFAULT_COLOR = exports.COLORS_PER_TEMPERATURE = undefined;
 exports.calculateBGColor = calculateBGColor;
 
 var _chromath = require('chromath');
@@ -46527,18 +46386,386 @@ function calculateBGColor(temperature) {
   return COLORS_PER_TEMPERATURE[COLORS_PER_TEMPERATURE.length - 1].color;
 }
 
+var WEATHER_ICONS_MAPPING = {
+  '200': {
+    'label': 'thunderstorm with light rain',
+    'icon': 'storm-showers'
+  },
+
+  '201': {
+    'label': 'thunderstorm with rain',
+    'icon': 'storm-showers'
+  },
+
+  '202': {
+    'label': 'thunderstorm with heavy rain',
+    'icon': 'storm-showers'
+  },
+
+  '210': {
+    'label': 'light thunderstorm',
+    'icon': 'storm-showers'
+  },
+
+  '211': {
+    'label': 'thunderstorm',
+    'icon': 'thunderstorm'
+  },
+
+  '212': {
+    'label': 'heavy thunderstorm',
+    'icon': 'thunderstorm'
+  },
+
+  '221': {
+    'label': 'ragged thunderstorm',
+    'icon': 'thunderstorm'
+  },
+
+  '230': {
+    'label': 'thunderstorm with light drizzle',
+    'icon': 'storm-showers'
+  },
+
+  '231': {
+    'label': 'thunderstorm with drizzle',
+    'icon': 'storm-showers'
+  },
+
+  '232': {
+    'label': 'thunderstorm with heavy drizzle',
+    'icon': 'storm-showers'
+  },
+
+  '300': {
+    'label': 'light intensity drizzle',
+    'icon': 'sprinkle'
+  },
+
+  '301': {
+    'label': 'drizzle',
+    'icon': 'sprinkle'
+  },
+
+  '302': {
+    'label': 'heavy intensity drizzle',
+    'icon': 'sprinkle'
+  },
+
+  '310': {
+    'label': 'light intensity drizzle rain',
+    'icon': 'sprinkle'
+  },
+
+  '311': {
+    'label': 'drizzle rain',
+    'icon': 'sprinkle'
+  },
+
+  '312': {
+    'label': 'heavy intensity drizzle rain',
+    'icon': 'sprinkle'
+  },
+
+  '313': {
+    'label': 'shower rain and drizzle',
+    'icon': 'sprinkle'
+  },
+
+  '314': {
+    'label': 'heavy shower rain and drizzle',
+    'icon': 'sprinkle'
+  },
+
+  '321': {
+    'label': 'shower drizzle',
+    'icon': 'sprinkle'
+  },
+
+  '500': {
+    'label': 'light rain',
+    'icon': 'rain'
+  },
+
+  '501': {
+    'label': 'moderate rain',
+    'icon': 'rain'
+  },
+
+  '502': {
+    'label': 'heavy intensity rain',
+    'icon': 'rain'
+  },
+
+  '503': {
+    'label': 'very heavy rain',
+    'icon': 'rain'
+  },
+
+  '504': {
+    'label': 'extreme rain',
+    'icon': 'rain'
+  },
+
+  '511': {
+    'label': 'freezing rain',
+    'icon': 'rain-mix'
+  },
+
+  '520': {
+    'label': 'light intensity shower rain',
+    'icon': 'showers'
+  },
+
+  '521': {
+    'label': 'shower rain',
+    'icon': 'showers'
+  },
+
+  '522': {
+    'label': 'heavy intensity shower rain',
+    'icon': 'showers'
+  },
+
+  '531': {
+    'label': 'ragged shower rain',
+    'icon': 'showers'
+  },
+
+  '600': {
+    'label': 'light snow',
+    'icon': 'snow'
+  },
+
+  '601': {
+    'label': 'snow',
+    'icon': 'snow'
+  },
+
+  '602': {
+    'label': 'heavy snow',
+    'icon': 'snow'
+  },
+
+  '611': {
+    'label': 'sleet',
+    'icon': 'sleet'
+  },
+
+  '612': {
+    'label': 'shower sleet',
+    'icon': 'sleet'
+  },
+
+  '615': {
+    'label': 'light rain and snow',
+    'icon': 'rain-mix'
+  },
+
+  '616': {
+    'label': 'rain and snow',
+    'icon': 'rain-mix'
+  },
+
+  '620': {
+    'label': 'light shower snow',
+    'icon': 'rain-mix'
+  },
+
+  '621': {
+    'label': 'shower snow',
+    'icon': 'rain-mix'
+  },
+
+  '622': {
+    'label': 'heavy shower snow',
+    'icon': 'rain-mix'
+  },
+
+  '701': {
+    'label': 'mist',
+    'icon': 'sprinkle'
+  },
+
+  '711': {
+    'label': 'smoke',
+    'icon': 'smoke'
+  },
+
+  '721': {
+    'label': 'haze',
+    'icon': 'day-haze'
+  },
+
+  '731': {
+    'label': 'sand, dust whirls',
+    'icon': 'cloudy-gusts'
+  },
+
+  '741': {
+    'label': 'fog',
+    'icon': 'fog'
+  },
+
+  '751': {
+    'label': 'sand',
+    'icon': 'cloudy-gusts'
+  },
+
+  '761': {
+    'label': 'dust',
+    'icon': 'dust'
+  },
+
+  '762': {
+    'label': 'volcanic ash',
+    'icon': 'smog'
+  },
+
+  '771': {
+    'label': 'squalls',
+    'icon': 'day-windy'
+  },
+
+  '781': {
+    'label': 'tornado',
+    'icon': 'tornado'
+  },
+
+  '800': {
+    'label': 'clear sky',
+    'icon': 'sunny'
+  },
+
+  '801': {
+    'label': 'few clouds',
+    'icon': 'cloudy'
+  },
+
+  '802': {
+    'label': 'scattered clouds',
+    'icon': 'cloudy'
+  },
+
+  '803': {
+    'label': 'broken clouds',
+    'icon': 'cloudy'
+  },
+
+  '804': {
+    'label': 'overcast clouds',
+    'icon': 'cloudy'
+  },
+
+  '900': {
+    'label': 'tornado',
+    'icon': 'tornado'
+  },
+
+  '901': {
+    'label': 'tropical storm',
+    'icon': 'hurricane'
+  },
+
+  '902': {
+    'label': 'hurricane',
+    'icon': 'hurricane'
+  },
+
+  '903': {
+    'label': 'cold',
+    'icon': 'snowflake-cold'
+  },
+
+  '904': {
+    'label': 'hot',
+    'icon': 'hot'
+  },
+
+  '905': {
+    'label': 'windy',
+    'icon': 'windy'
+  },
+
+  '906': {
+    'label': 'hail',
+    'icon': 'hail'
+  },
+
+  '951': {
+    'label': 'calm',
+    'icon': 'sunny'
+  },
+
+  '952': {
+    'label': 'light breeze',
+    'icon': 'cloudy-gusts'
+  },
+
+  '953': {
+    'label': 'gentle breeze',
+    'icon': 'cloudy-gusts'
+  },
+
+  '954': {
+    'label': 'moderate breeze',
+    'icon': 'cloudy-gusts'
+  },
+
+  '955': {
+    'label': 'fresh breeze',
+    'icon': 'cloudy-gusts'
+  },
+
+  '956': {
+    'label': 'strong breeze',
+    'icon': 'cloudy-gusts'
+  },
+
+  '957': {
+    'label': 'high wind, near gale',
+    'icon': 'cloudy-gusts'
+  },
+
+  '958': {
+    'label': 'gale',
+    'icon': 'cloudy-gusts'
+  },
+
+  '959': {
+    'label': 'severe gale',
+    'icon': 'cloudy-gusts'
+  },
+
+  '960': {
+    'label': 'storm',
+    'icon': 'thunderstorm'
+  },
+
+  '961': {
+    'label': 'violent storm',
+    'icon': 'thunderstorm'
+  },
+
+  '962': {
+    'label': 'hurricane',
+    'icon': 'cloudy-gusts'
+  }
+};
+
 // https://erikflowers.github.io/weather-icons/
-var ICONS_MAPPING = exports.ICONS_MAPPING = {
-  'clear-day': ['wi-day-sunny', 'wi-night-clear'],
-  'clear-night': ['wi-day-sunny', 'wi-night-clear'],
-  'partly-cloudy-day': ['wi-day-cloudy', 'wi-night-alt-cloudy'],
-  'partly-cloudy-night': ['wi-day-cloudy', 'wi-night-alt-cloudy'],
-  'cloudy': ['wi-day-cloudy', 'wi-night-alt-cloudy'],
-  'rain': ['wi-rain', 'wi-night-rain'],
-  'sleet': ['wi-sleet', 'wi-night-sleet'],
-  'snow': ['wi-snow', 'wi-night-alt-snow'],
-  'wind': ['wi-windy', 'wi-night-cloudy-windy'],
-  'fog': ['wi-fog', 'wi-night-fog']
+var getIconClassName = exports.getIconClassName = function getIconClassName(icon) {
+  var map = [['t01d', 't01n', 200], ['t02d', 't02n', 201], ['t03d', 't03n', 202], ['t04d', 't04n', 230], ['t04d', 't04n', 231], ['t04d', 't04n', 232], ['t05d', 't05n', 233], ['d01d', 'd01n', 300], ['d02d', 'd02n', 301], ['d03d', 'd03n', 302], ['r01d', 'r01n', 500], ['r02d', 'r02n', 501], ['r03d', 'r03n', 502], ['f01d', 'f01n', 511], ['r04d', 'r04n', 520], ['r05d', 'r05n', 521], ['r06d', 'r06n', 522], ['s01d', 's01n', 600], ['s02d', 's02n', 601], ['s03d', 's03n', 602], ['s04d', 's04n', 610], ['s05d', 's05n', 611], ['s05d', 's05n', 612], ['s01d', 's01n', 621], ['s02d', 's02n', 622], ['s06d', 's06n', 623], ['a01d', 'a01n', 700], ['a02d', 'a02n', 711], ['a03d', 'a03n', 721], ['a04d', 'a04n', 731], ['a05d', 'a05n', 741], ['a06d', 'a06n', 751], ['c01d', 'c01n', 800], ['c02d', 'c02n', 801], ['c02d', 'c02n', 802], ['c03d', 'c03n', 803], ['c04d', 'c04n', 804], ['u00d', 'u00n', 900]];
+  var code = map.find(function (item) {
+    return item[0] === icon || item[1] === icon;
+  });
+
+  if (code) {
+    if (WEATHER_ICONS_MAPPING[code[2].toString()]) {
+      return WEATHER_ICONS_MAPPING[code[2].toString()].icon;
+    }
+  }
+  return false;
 };
 
 },{"chromath":3}],608:[function(require,module,exports){
@@ -46622,7 +46849,7 @@ exports.default = getId;
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.default = normalizeDarkSkyData;
+exports.default = normalizeWeatherData;
 
 var _moment = require('moment');
 
@@ -46631,50 +46858,29 @@ var _moment2 = _interopRequireDefault(_moment);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 var toDateTime = function toDateTime(time) {
-  return _moment2.default.unix(time);
-};
-
-function normalizeDarkSkyData(data) {
+  return (0, _moment2.default)(time);
+}; /* eslint-disable camelcase */
+function normalizeWeatherData(data) {
   // console.log(data);
 
-  var days = data.daily.data.map(function (_ref) {
-    var time = _ref.time,
-        summary = _ref.summary,
+  var days = data.data.map(function (_ref) {
+    var datetime = _ref.datetime,
+        weather = _ref.weather,
         icon = _ref.icon,
-        apparentTemperatureMax = _ref.apparentTemperatureMax,
-        apparentTemperatureMin = _ref.apparentTemperatureMin,
-        temperatureMax = _ref.temperatureMax,
-        temperatureMin = _ref.temperatureMin,
-        sunriseTime = _ref.sunriseTime,
-        sunsetTime = _ref.sunsetTime;
+        max_temp = _ref.max_temp,
+        min_temp = _ref.min_temp,
+        temp = _ref.temp;
     return {
-      time: toDateTime(time),
-      summary: summary,
-      icon: icon,
-      max: Math.floor(temperatureMax),
-      min: Math.floor(temperatureMin),
-      temperature: Math.floor((temperatureMax + temperatureMin) / 2),
-      apparentTemperature: Math.floor((apparentTemperatureMax + apparentTemperatureMin) / 2),
-      sunrise: toDateTime(sunriseTime),
-      sunset: toDateTime(sunsetTime)
-    };
-  });
-  var hours = data.hourly.data.map(function (_ref2) {
-    var time = _ref2.time,
-        temperature = _ref2.temperature,
-        apparentTemperature = _ref2.apparentTemperature,
-        icon = _ref2.icon,
-        summary = _ref2.summary;
-    return {
-      time: toDateTime(time),
-      temperature: Math.floor(temperature),
-      apparentTemperature: Math.floor(apparentTemperature),
-      icon: icon,
-      summary: summary
+      time: toDateTime(datetime),
+      summary: weather.description,
+      icon: weather.icon,
+      max: Math.floor(max_temp),
+      min: Math.floor(min_temp),
+      temperature: Math.floor(temp)
     };
   });
 
-  return { days: days, hours: hours, timezone: data.timezone };
+  return { days: days, timezone: data.timezone, city: data.city_name, country: data.country_code };
 };
 
 },{"moment":378}],613:[function(require,module,exports){
@@ -46703,9 +46909,9 @@ var _helpers = require('stent/lib/helpers');
 
 var _constants = require('../constants');
 
-var _normalizeDarkSkyData = require('../helpers/normalizeDarkSkyData');
+var _normalizeWeatherData = require('../helpers/normalizeWeatherData');
 
-var _normalizeDarkSkyData2 = _interopRequireDefault(_normalizeDarkSkyData);
+var _normalizeWeatherData2 = _interopRequireDefault(_normalizeWeatherData);
 
 var _moment = require('moment');
 
@@ -46733,9 +46939,9 @@ function createWeatherURL(_ref) {
       lng = _ref.lng;
 
   if (USE_FAKE) {
-    return './mocks/darksky.json';
+    return './mocks/weather.json';
   }
-  return 'http://notara.krasimirtsonev.com/_weather/?lat=' + lat + '&lng=' + lng;
+  return 'http://evala.krasimirtsonev.com?lat=' + lat + '&lon=' + lng;
 }
 function getJSONData(fetchResponse) {
   return fetchResponse.json();
@@ -46747,7 +46953,7 @@ function fetchLocal(refresh) {
     while (1) {
       switch (_context.prev = _context.next) {
         case 0:
-          fromLocalStorage = localStorage.getItem('NOTARA_WEATHER');
+          fromLocalStorage = localStorage.getItem('EVALA_WEATHER');
 
           if (!fromLocalStorage) {
             _context.next = 10;
@@ -46853,14 +47059,14 @@ function fetchData(state) {
             break;
           }
 
-          data = (0, _normalizeDarkSkyData2.default)(local.data);
+          data = (0, _normalizeWeatherData2.default)(local.data);
           lastUpdated = (0, _moment2.default)(local.lastUpdated);
           _context3.next = 15;
           return { name: 'with-data', data: data, lastUpdated: local.lastUpdated };
 
         case 15:
           if (!(!local || diff > REFRESH_AFTER)) {
-            _context3.next = 29;
+            _context3.next = 30;
             break;
           }
 
@@ -46871,30 +47077,32 @@ function fetchData(state) {
           apiData = _context3.t0;
 
 
-          data = (0, _normalizeDarkSkyData2.default)(apiData);
+          data = (0, _normalizeWeatherData2.default)(apiData);
           lastUpdated = (0, _moment2.default)();
-          localStorage.setItem('NOTARA_WEATHER', JSON.stringify({ data: apiData, lastUpdated: lastUpdated }));
-          _context3.next = 29;
+          localStorage.setItem('EVALA_WEATHER', JSON.stringify({ data: apiData, lastUpdated: lastUpdated }));
+          _context3.next = 30;
           break;
 
         case 24:
           _context3.prev = 24;
           _context3.t1 = _context3['catch'](16);
 
+          console.error(_context3.t1);
+
           if (local) {
-            _context3.next = 28;
+            _context3.next = 29;
             break;
           }
 
           return _context3.abrupt('return', { name: 'error', data: null, error: _context3.t1 });
 
-        case 28:
-          return _context3.abrupt('return', { name: 'with-data', data: data, lastUpdated: lastUpdated });
-
         case 29:
           return _context3.abrupt('return', { name: 'with-data', data: data, lastUpdated: lastUpdated });
 
         case 30:
+          return _context3.abrupt('return', { name: 'with-data', data: data, lastUpdated: lastUpdated });
+
+        case 31:
         case 'end':
           return _context3.stop();
       }
@@ -46948,7 +47156,7 @@ var Weather = _stent.Machine.create('Weather', {
 
 exports.default = Weather;
 
-},{"../constants":607,"../helpers/capabilities":608,"../helpers/normalizeDarkSkyData":612,"moment":378,"stent":560,"stent/lib/helpers":553}],615:[function(require,module,exports){
+},{"../constants":607,"../helpers/capabilities":608,"../helpers/normalizeWeatherData":612,"moment":378,"stent":560,"stent/lib/helpers":553}],615:[function(require,module,exports){
 "use strict";
 
 module.exports = {

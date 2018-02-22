@@ -1,7 +1,7 @@
 import { Machine } from 'stent';
 import { call } from 'stent/lib/helpers';
 import { GOOGLE_MAPS_API_KEY } from '../constants';
-import normalizeDarkSkyData from '../helpers/normalizeDarkSkyData';
+import normalizeWeatherData from '../helpers/normalizeWeatherData';
 import moment from 'moment';
 import { IS_LOCALSTORAGE_SUPPORTED } from '../helpers/capabilities';
 
@@ -16,15 +16,15 @@ function createGoogleMapsURL() {
 }
 function createWeatherURL({ lat, lng }) {
   if (USE_FAKE) {
-    return './mocks/darksky.json';
+    return './mocks/weather.json';
   }
-  return `http://notara.krasimirtsonev.com/_weather/?lat=${ lat }&lng=${ lng }`;
+  return `http://evala.krasimirtsonev.com?lat=${ lat }&lon=${ lng }`;
 }
 function getJSONData(fetchResponse) {
   return fetchResponse.json();
 }
 function * fetchLocal(refresh) {
-  const fromLocalStorage = localStorage.getItem('NOTARA_WEATHER');
+  const fromLocalStorage = localStorage.getItem('EVALA_WEATHER');
 
   if (fromLocalStorage) {
     try {
@@ -63,7 +63,7 @@ function * fetchData(state, refresh = false) {
   const { local, diff } = yield call(fetchLocal, refresh);
 
   if (local) {
-    data = normalizeDarkSkyData(local.data);
+    data = normalizeWeatherData(local.data);
     lastUpdated = moment(local.lastUpdated);
     yield { name: 'with-data', data, lastUpdated: local.lastUpdated };
   }
@@ -72,10 +72,11 @@ function * fetchData(state, refresh = false) {
     try {
       const apiData = yield * fetchRemote();
 
-      data = normalizeDarkSkyData(apiData);
+      data = normalizeWeatherData(apiData);
       lastUpdated = moment();
-      localStorage.setItem('NOTARA_WEATHER', JSON.stringify({ data: apiData, lastUpdated }));
+      localStorage.setItem('EVALA_WEATHER', JSON.stringify({ data: apiData, lastUpdated }));
     } catch (error) {
+      console.error(error);
       if (!local) {
         return { name: 'error', data: null, error };
       }

@@ -3,7 +3,7 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import moment from 'moment';
 import { connect } from 'stent/lib/react';
-import { ICONS_MAPPING } from '../constants';
+import { getIconClassName } from '../constants';
 
 class ClockForecast extends React.Component {
   constructor(props) {
@@ -18,22 +18,15 @@ class ClockForecast extends React.Component {
     }, 60000);
   }
   _renderIcon({ icon }) {
-    var isItDay = true;
-    const { sunrise, sunset } = this.state.today;
-    const { now } = this.state;
+    const iconClass = getIconClassName(icon);
 
-    if (sunset && sunrise) {
-      isItDay = now.isAfter(sunrise) && now.isBefore(sunset);
-    }
-
-    const iconClass = ICONS_MAPPING[icon][isItDay ? 0 : 1];
-
-    return iconClass ? <i className={ `wi ${ iconClass }` }></i> : null;
+    return iconClass ? <i className={ `wi wi-${ iconClass }` }></i> : null;
   }
-  _renderTemperature({ temperature, apparentTemperature }) {
+  _renderTemperature({ temperature, max }) {
     return (
       <span>
-        { temperature }<sup style={{ fontSize: '0.5em' }}>&#8451;</sup><span style={{ opacity: 0.4} }>/{ apparentTemperature }<sup style={{ fontSize: '0.5em' }}>&#8451;</sup></span>
+        { temperature }
+        <span style={{ opacity: '0.4' }}>/{ max }</span>
       </span>
     );
   }
@@ -48,7 +41,7 @@ class ClockForecast extends React.Component {
   _isWeatherDataHere() {
     return this.props.data && this.state.today;
   }
-  _renderTodayWeather() {
+  _renderWeather() {
     if (!this._isWeatherDataHere()) return null;
 
     const { data } = this.props;
@@ -56,16 +49,29 @@ class ClockForecast extends React.Component {
 
     return (
       <div className='weather'>
-        { this._renderIcon(today) }
-        { this._renderTemperature(today) } <small>{ today.summary }</small>
-        <span className='small'>{ data.timezone }</span>
+        <div className='days'>
+          { data.days.map((day, i) => {
+            if (i > 4) return null;
+            const isItNow = today.time.isSame(day.time, 'day');
+
+            return (
+              <div key={ i } style={{ fontWeight: isItNow ? 'bold' : 'normal' }}>
+                <span className='medium' style={{ paddingBottom: '0.4em' }}>{ this._renderIcon(day) } { this._renderTemperature(day) }</span>
+                <span>{ day.time.format('dddd, Do') }</span>
+                <small className='small'>{ day.summary }</small>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   }
   componentWillReceiveProps(newProps) {
     if (newProps.data) {
       this.setState({
-        today: newProps.data.days.find(day => day.time.isSame(this.state.now, 'day'))
+        today: newProps.data.days.find(day => {
+          return day.time.isSame(this.state.now, 'day');
+        })
       });
     }
   }
@@ -77,15 +83,20 @@ class ClockForecast extends React.Component {
   }
   render() {
     return (
-      <div className={ `clockForecast ${ !this._isWeatherDataHere() ? 'noWeatherData' : '' }` }>
+      <div className='clockForecast'>
         <span className='big'>{ this.state.now.format('HH:mm') }</span>
         { this._renderDay() }
-        { this._renderTodayWeather() }
+        { this._renderWeather() }
         <div className='newTerminal'>
           <a onClick={ () => this.props.children() }>
             <img src='img/terminal.svg' width='100' height='100' />
           </a>
         </div>
+        { this._isWeatherDataHere() &&
+          <div className='geoLocation'>
+            <span className='small'>{ `${ this.props.data.city }, ${ this.props.data.country }, ${ this.props.data.timezone }` }</span>
+          </div>
+        }
       </div>
     );
   }
