@@ -9,7 +9,7 @@ It is available as:
 
 * [Chrome extension](https://chrome.google.com/webstore/detail/evala/bmaojegjknddmkhfbkhfijcblmamgino)
 * [Firefox extension](https://addons.mozilla.org/en-US/firefox/addon/evala/)
-* Web page at http://0.0.0.0:9788 (or http://127.0.0.1:9788)
+* Web page at http://127.0.0.1:9788
 
 ## How to use it
 
@@ -36,7 +36,15 @@ alias run-evala="evala --shell=$SHELL > ~/log/evala &"
 ### To see the app:
 
 * Install this [Chrome](https://chrome.google.com/webstore/detail/evala/bmaojegjknddmkhfbkhfijcblmamgino) or [Firefox](https://addons.mozilla.org/en-US/firefox/addon/evala/) browser extension and open a new tab or 
-* Open [http://0.0.0.0:9788](http://0.0.0.0:9788) (or [http://127.0.0.1:9788](http://127.0.0.1:9788)).
+* Open [http://127.0.0.1:9788](http://127.0.0.1:9788).
+
+### Terminal shortcuts
+
+* `Ctrl` + `Shift` + `Alt` + `+` - Increase font size
+* `Ctrl` + `Shift` + `Alt` + `-` - Decrease font size
+* `Ctrl` + `Shift` + `Alt` + `v` - Split vertically
+* `Ctrl` + `Shift` + `Alt` + `h` - Split horizontally
+* `Ctrl` + `Shift` + `Alt` + `w` - Close terminal
 
 ## Misc
 

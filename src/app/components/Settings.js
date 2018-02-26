@@ -33,6 +33,7 @@ class Settings extends React.Component {
           <code>Ctrl</code> + <code>Shift</code> + <code>Alt</code> + <code>-</code> - Decrease font size<br />
           <code>Ctrl</code> + <code>Shift</code> + <code>Alt</code> + <code>v</code> - Split vertically<br />
           <code>Ctrl</code> + <code>Shift</code> + <code>Alt</code> + <code>h</code> - Split horizontally<br />
+          <code>Ctrl</code> + <code>Shift</code> + <code>Alt</code> + <code>w</code> - Close terminal<br />
         </p>
         <h1>Forecast</h1>
         { geoLocationStr }
