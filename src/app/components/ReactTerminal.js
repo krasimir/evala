@@ -62,26 +62,27 @@ export default class ReactTerminal extends React.Component {
     });
     this.term.fit();
     this.term.textarea.onkeydown = e => {
+      console.log(e.keyCode, e.shiftKey, e.ctrlKey, e.altKey);
       // ctrl + shift + metakey + +
-      if (e.keyCode === 187 && e.shiftKey && e.ctrlKey && e.metaKey) {
+      if ((e.keyCode === 187 || e.keyCode === 61) && e.shiftKey && e.ctrlKey && e.altKey) {
         this.term.setOption('fontSize', ++this.fontSize);
         this.term.fit();
       }
       // ctrl + shift + metakey + -
-      if (e.keyCode === 189 && e.shiftKey && e.ctrlKey && e.metaKey) {
+      if ((e.keyCode === 189 || e.keyCode === 173) && e.shiftKey && e.ctrlKey && e.altKey) {
         this.term.setOption('fontSize', --this.fontSize);
         this.term.fit();
       }
       // ctrl + shift + metakey + v
-      if (e.keyCode === 86 && e.shiftKey && e.ctrlKey && e.metaKey) {
+      if (e.keyCode === 86 && e.shiftKey && e.ctrlKey && e.altKey) {
         this.props.options.splitVertical && this.props.options.splitVertical();
       }
       // ctrl + shift + metakey + h
-      if (e.keyCode === 72 && e.shiftKey && e.ctrlKey && e.metaKey) {
+      if (e.keyCode === 72 && e.shiftKey && e.ctrlKey && e.altKey) {
         this.props.options.splitHorizontal && this.props.options.splitHorizontal();
       }
       // ctrl + shift + metakey + w
-      if (e.keyCode === 87 && e.shiftKey && e.ctrlKey && e.metaKey) {
+      if (e.keyCode === 87 && e.shiftKey && e.ctrlKey && e.altKey) {
         this.props.options.close && this.props.options.close();
       }
     };

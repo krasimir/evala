@@ -7,6 +7,8 @@ import { IS_LOCALSTORAGE_SUPPORTED } from '../helpers/capabilities';
 
 const USE_FAKE = false;
 const REFRESH_AFTER = 4; // hours
+const WEATHER_KEY = 'EVALA_WEATHER';
+const GEO_KEY = 'EVALA_GEO';
 
 function createGoogleMapsURL() {
   if (USE_FAKE) {
@@ -23,8 +25,8 @@ function createWeatherURL({ lat, lng }) {
 function getJSONData(fetchResponse) {
   return fetchResponse.json();
 }
-function * fetchLocal(refresh) {
-  const fromLocalStorage = localStorage.getItem('EVALA_WEATHER');
+function * fetchLocal() {
+  const fromLocalStorage = localStorage.getItem(WEATHER_KEY);
 
   if (fromLocalStorage) {
     try {
@@ -35,7 +37,7 @@ function * fetchLocal(refresh) {
           data,
           lastUpdated
         },
-        diff: refresh ? REFRESH_AFTER + 1 : (moment().diff(moment(lastUpdated), 'hours', true))
+        diff: moment().diff(moment(lastUpdated), 'hours', true)
       };
     } catch (error) {
       console.log('Error parsing weather data from local storage', error);
@@ -44,14 +46,25 @@ function * fetchLocal(refresh) {
   return {};
 }
 function * fetchRemote() {
-  const gmResponse = yield call(fetch, createGoogleMapsURL(), { method: 'POST' });
-  const { location } = yield call(getJSONData, gmResponse);
-  const weatherResponse = yield call(fetch, createWeatherURL(location), { method: 'GET', mode: 'cors' });
+  const geoLocal = localStorage.getItem(GEO_KEY);
+  var geoData;
+
+  if (geoLocal) {
+    geoData = JSON.parse(geoLocal);
+  } else {
+    const geoResponse = yield call(fetch, createGoogleMapsURL(), { method: 'POST' });
+    const { location } = yield call(getJSONData, geoResponse);
+
+    geoData = location;
+    localStorage.setItem(GEO_KEY, JSON.stringify(geoData));
+  }
+
+  const weatherResponse = yield call(fetch, createWeatherURL(geoData), { method: 'GET', mode: 'cors' });
 
   return yield call(getJSONData, weatherResponse);
 }
 
-function * fetchData(state, refresh = false) {
+function * fetchData(state) {
   var data = null, lastUpdated = null;
 
   if (!IS_LOCALSTORAGE_SUPPORTED) {
@@ -60,7 +73,7 @@ function * fetchData(state, refresh = false) {
 
   yield 'fetching';
 
-  const { local, diff } = yield call(fetchLocal, refresh);
+  const { local, diff } = yield call(fetchLocal);
 
   if (local) {
     data = normalizeWeatherData(local.data);
@@ -74,7 +87,7 @@ function * fetchData(state, refresh = false) {
 
       data = normalizeWeatherData(apiData);
       lastUpdated = moment();
-      localStorage.setItem('EVALA_WEATHER', JSON.stringify({ data: apiData, lastUpdated }));
+      localStorage.setItem(WEATHER_KEY, JSON.stringify({ data: apiData, lastUpdated }));
     } catch (error) {
       console.error(error);
       if (!local) {
@@ -101,6 +114,13 @@ const Weather = Machine.create('Weather', {
     'with-data': {
       'fetch': fetchData,
       'refresh': function * (state) {
+        localStorage.removeItem(GEO_KEY);
+        localStorage.removeItem(WEATHER_KEY);
+        return yield call(fetchData, true);
+      },
+      'save geo': function * (state, geoData) {
+        localStorage.setItem(GEO_KEY, JSON.stringify(geoData));
+        localStorage.removeItem(WEATHER_KEY);
         return yield call(fetchData, true);
       }
     }
@@ -110,6 +130,14 @@ const Weather = Machine.create('Weather', {
       return this.state.data.days.find(day => day.time.isSame(moment(), 'day'));
     }
     return null;
+  },
+  geo() {
+    const geoLocal = localStorage.getItem(GEO_KEY);
+
+    if (geoLocal) {
+      return JSON.parse(geoLocal);
+    }
+    return { lat: '', lng: '' };
   }
 });
 

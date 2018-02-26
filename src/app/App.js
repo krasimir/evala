@@ -6,7 +6,8 @@ import PropTypes from 'prop-types';
 import { Helmet } from 'react-helmet';
 import getGlobalStyles from './helpers/getGlobalStyles';
 import TerminalWindow from './components/TerminalWindow';
-import ClockForcast from './components/ClockForecast';
+import ClockForecast from './components/ClockForecast';
+import Settings from './components/Settings';
 import './helpers/debug';
 import './stent/Weather';
 import './helpers/shortcuts';
@@ -17,7 +18,7 @@ class App extends React.Component {
   constructor(props) {
     super(props);
 
-    this.state = { now: moment(), mode: 'clock' };
+    this.state = { now: moment(), mode: 'clock-forecast' };
   }
   _getNewTitle() {
     const { today } = this.props;
@@ -45,13 +46,21 @@ class App extends React.Component {
           <style>{ '.clockForecast{opacity:1;}' }</style>
           { newTitle && <title>{ newTitle }</title> }
         </Helmet>
-        {
-          this.state.mode === 'clock' ?
-            <ClockForcast>{ () => this.setState({ mode: 'terminal' }) }</ClockForcast> :
-            <TerminalWindow>{ () => this.setState({ mode: 'clock' }) }</TerminalWindow>
-        }
+        { this._renderContent() }
+        { this.state.mode === 'clock-forecast' && <a className='openSettings' onClick={ () => this.setState({ mode: 'settings' })}><i className='fa fa-gear'></i></a> }
       </div>
     );
+  }
+  _renderContent() {
+    switch (this.state.mode) {
+      case 'clock-forecast':
+        return <ClockForecast>{ () => this.setState({ mode: 'terminal' }) }</ClockForecast>;
+      case 'terminal':
+        return <TerminalWindow>{ () => this.setState({ mode: 'clock-forecast' }) }</TerminalWindow>;
+      case 'settings':
+        return <Settings>{ () => this.setState({ mode: 'clock-forecast' }) }</Settings>;
+    }
+    return null;
   }
 }
 

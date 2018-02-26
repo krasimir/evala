@@ -158,6 +158,9 @@ body, html {
 .clockForecast .day {
   text-align: center;
 }
+.clockForecast .day .medium {
+  font-weight: 100;
+}
 .clockForecast .big {
   font-size: 5.4em;
   display: block;
@@ -205,10 +208,88 @@ body, html {
 
 .geoLocation {
   position: absolute;
-  bottom: 0.5em;
+  bottom: 3em;
   text-align: center;
   width: 200px;
   left: 50%;
   margin-left: -100px;
   font-size: 0.8em;
+}
+
+
+.openSettings {
+  cursor: pointer;
+  position: absolute;
+  bottom: 0.8em;
+  text-align: center;
+  width: 30px;
+  left: 50%;
+  margin-left: -15px;
+  font-size: 1em;
+  transition: transform 300ms ease, opacity 300ms ease;
+  opacity: 0.5;
+}
+.openSettings:hover {
+  transform: scale(1.5);
+  opacity: 1;
+}
+
+
+.settings {
+  text-align: center;
+}
+.settings h1 {
+  font-size: 2em;
+  font-weight: 100;
+}
+.settings code {
+  font-family: inherit;
+  font-size: 0.8em;
+  padding: 0.2em 0.4em;
+  background: #3d8e8e;
+  color: #fff;
+  font-weight: bold;
+  border-radius: 4px;
+}
+.settings .close {
+  display: block;
+  margin: 1em 0;
+  font-size: 2em;
+  transition: transform 300ms ease, opacity 300ms ease;
+  cursor: pointer;
+}
+.settings .close:hover {
+  transform: scale(1.5);
+}
+.settings .button {
+  cursor: pointer;
+  display: inline-block;
+  margin: 0.5em;
+  padding: 0.8em;
+  border-radius: 8px;
+  background: #fff;
+  transition: background 300ms ease;
+  -webkit-box-shadow: 0px 2px 5px -1px rgba(0,0,0,0.94);
+  -moz-box-shadow: 0px 2px 5px -1px rgba(0,0,0,0.94);
+  box-shadow: 0px 2px 5px -1px rgba(0,0,0,0.94);
+}
+.settings .button:active {
+  transform: translateY(2px);
+}
+.settings .button:hover {
+  background: #efefef;
+  opacity: 1;
+}
+.settings input[type="number"] {
+  display: inline-block;
+  padding: 1em;
+  font-size: 18px;
+  font-family: inherit;
+  border: none;
+  background: #fff;
+  margin: 0.5em;
+}
+.settings form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
 }

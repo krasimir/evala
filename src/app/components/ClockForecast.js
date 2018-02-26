@@ -56,7 +56,7 @@ class ClockForecast extends React.Component {
 
             return (
               <div key={ i } style={{ fontWeight: isItNow ? 'bold' : 'normal' }}>
-                <span className='medium' style={{ paddingBottom: '0.4em' }}>{ this._renderIcon(day) } { this._renderTemperature(day) }</span>
+                <span className='medium' style={{ paddingBottom: '0.4em', fontWeight: '100' }}>{ this._renderIcon(day) } { this._renderTemperature(day) }</span>
                 <span>{ day.time.format('dddd, Do') }</span>
                 <small className='small'>{ day.summary }</small>
               </div>
@@ -114,7 +114,7 @@ ClockForecast.propTypes = {
 
 export default connect(ClockForecast)
   .with('Weather')
-  .map(({ state, fetch, refreshData }) => ({
+  .map(({ state, fetch }) => ({
     state: state.name,
     data: state.data,
     error: state.error,

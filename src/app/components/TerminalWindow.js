@@ -1,10 +1,8 @@
 /* eslint-disable max-len */
 
 // https://codepen.io/addyosmani/pen/avxmvN
-import { connect } from 'stent/lib/react';
 import React from 'react';
 import PropTypes from 'prop-types';
-import { ICONS_MAPPING } from '../constants';
 import moment from 'moment';
 import ReactTerminal from './ReactTerminal';
 import SplitGrid from './SplitGrid';
