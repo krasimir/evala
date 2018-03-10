@@ -13,7 +13,7 @@ class Settings extends React.Component {
         lng: props.geo.lng
       },
       customWeatherURL: false,
-      newDataProviderURL: ''
+      newDataProviderURL: props.dataProviderURL || ''
     };
   }
   componentWillReceiveProps(newProps) {
