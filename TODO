@@ -1,4 +1,3 @@
-* Use openweathermap.org
 * Settings panel to modify (geo coordinates + weather endpoint)
 * make it work in safari
 * show directory as a tab title

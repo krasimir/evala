@@ -8,7 +8,12 @@ class Settings extends React.Component {
     super(props);
 
     this.state = {
-      geo: { lat: props.geo.lat, lng: props.geo.lng }
+      geo: {
+        lat: props.geo.lat,
+        lng: props.geo.lng
+      },
+      customWeatherURL: false,
+      newDataProviderURL: ''
     };
   }
   componentWillReceiveProps(newProps) {
@@ -51,7 +56,20 @@ class Settings extends React.Component {
             </label>
           </form>
           <p>
-            <a className='button' onClick={ () => this.props.saveGeo(this.state.geo) }><i className='fa fa-save'></i> Save changes</a>
+            { this.state.customWeatherURL || (this.props.dataProviderURL && this.props.dataProviderURL !== '') ?
+              <label style={{ justifySelf: 'left' }}>
+                Weather data provider URL:<br />
+                <input type='text' defaultValue={ this.props.dataProviderURL }
+                  onChange={ e => this._onDataProviderURLChange(e.target.value) }/>
+              </label> :
+              <a className='button' onClick={ () => this.setState({ customWeatherURL: true }) }>Set a custom Weather data provider</a>
+            }
+          </p>
+          <p>
+            <a className='button' onClick={ () => {
+              this.props.saveDataProvider(this.state.newDataProviderURL);
+              this.props.saveGeo(this.state.geo);
+            }}><i className='fa fa-save'></i> Save changes</a>
             <a className='button' title='Localize me' onClick={ () => this.props.refresh() }><i className='fa fa-map-marker'></i></a>
           </p>
         </div>
@@ -61,6 +79,9 @@ class Settings extends React.Component {
   _onGeoInputFieldChange(field, value) {
     this.setState({ geo: { ...this.state.geo, [field]: value }});
   }
+  _onDataProviderURLChange(value) {
+    this.setState({ newDataProviderURL: value });
+  }
 };
 
 Settings.propTypes = {
@@ -68,14 +89,18 @@ Settings.propTypes = {
   geo: PropTypes.object,
   forecastData: PropTypes.object,
   saveGeo: PropTypes.func,
-  refresh: PropTypes.func
+  refresh: PropTypes.func,
+  saveDataProvider: PropTypes.func,
+  dataProviderURL: PropTypes.string
 };
 
 export default connect(Settings)
   .with('Weather')
-  .map(({ geo, saveGeo, refresh, state }) => ({
+  .map(({ geo, saveGeo, refresh, state, dataProviderURL, saveDataProvider }) => ({
     geo: geo(),
     saveGeo,
     refresh,
-    forecastData: state.data
+    forecastData: state.data,
+    dataProviderURL: dataProviderURL(),
+    saveDataProvider
   }));

@@ -9,6 +9,8 @@ const USE_FAKE = false;
 const REFRESH_AFTER = 4; // hours
 const WEATHER_KEY = 'EVALA_WEATHER';
 const GEO_KEY = 'EVALA_GEO';
+const WEATHER_DATA_PROVIDER_KEY = 'WEATHER_DATA_PROVIDER';
+const WEATHER_DATA_PROVIDER_URL = 'http://evala.krasimirtsonev.com?lat={lat}&lon={lng}';
 
 function createGoogleMapsURL() {
   if (USE_FAKE) {
@@ -17,10 +19,15 @@ function createGoogleMapsURL() {
   return `https://www.googleapis.com/geolocation/v1/geolocate?key=${ GOOGLE_MAPS_API_KEY }`;
 }
 function createWeatherURL({ lat, lng }) {
+  var url = localStorage.getItem(WEATHER_DATA_PROVIDER_KEY);
+
   if (USE_FAKE) {
     return './mocks/weather.json';
   }
-  return `http://evala.krasimirtsonev.com?lat=${ lat }&lon=${ lng }`;
+
+  return (url || WEATHER_DATA_PROVIDER_URL)
+    .replace('{lat}', lat)
+    .replace('{lng}', lng);
 }
 function getJSONData(fetchResponse) {
   return fetchResponse.json();
@@ -99,6 +106,21 @@ function * fetchData(state) {
   return { name: 'with-data', data, lastUpdated };
 }
 
+function * saveGeo(state, geoData) {
+  localStorage.setItem(GEO_KEY, JSON.stringify(geoData));
+  localStorage.removeItem(WEATHER_KEY);
+  return yield call(fetchData, true);
+}
+
+function saveDataProvider(state, dataProviderURL) {
+  if (dataProviderURL === '') {
+    localStorage.removeItem(WEATHER_DATA_PROVIDER_KEY);
+    return state;
+  }
+  localStorage.setItem(WEATHER_DATA_PROVIDER_KEY, dataProviderURL);
+  return state;
+}
+
 const Weather = Machine.create('Weather', {
   state: { name: 'no-data', data: null },
   transitions: {
@@ -109,7 +131,9 @@ const Weather = Machine.create('Weather', {
       'foo': 'bar'
     },
     'error': {
-      'fetch': fetchData
+      'fetch': fetchData,
+      'save data provider': saveDataProvider,
+      'save geo': saveGeo
     },
     'with-data': {
       'fetch': fetchData,
@@ -118,11 +142,8 @@ const Weather = Machine.create('Weather', {
         localStorage.removeItem(WEATHER_KEY);
         return yield call(fetchData, true);
       },
-      'save geo': function * (state, geoData) {
-        localStorage.setItem(GEO_KEY, JSON.stringify(geoData));
-        localStorage.removeItem(WEATHER_KEY);
-        return yield call(fetchData, true);
-      }
+      'save geo': saveGeo,
+      'save data provider': saveDataProvider
     }
   },
   today() {
@@ -138,6 +159,9 @@ const Weather = Machine.create('Weather', {
       return JSON.parse(geoLocal);
     }
     return { lat: '', lng: '' };
+  },
+  dataProviderURL() {
+    return localStorage.getItem(WEATHER_DATA_PROVIDER_KEY);
   }
 });
 
