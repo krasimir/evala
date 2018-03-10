@@ -48,7 +48,14 @@ alias run-evala="evala --shell=$SHELL > ~/log/evala &"
 
 ### Using a custom forecast data provider
 
-In the settings page you may set your own data provider for the forecast. The JSON should look like [this file]().
+In the settings page you may set your own data provider for the forecast. The JSON should look like [this file](https://github.com/krasimir/evala/blob/master/build/mocks/weather.json). Not all the data is used in the app. What you need to provide is:
+
+* `timezone`
+* `city_name`
+* `country_code`
+* For the different days: `datetime`, `weather`, `icon`, `max_temp`, `min_temp` and `temp`
+
+*More about the icons [here](https://github.com/krasimir/evala/blob/master/src/app/constants.js#L40)*
 
 ## Misc
 
