@@ -46,6 +46,10 @@ alias run-evala="evala --shell=$SHELL > ~/log/evala &"
 * `Ctrl` + `Shift` + `Alt` + `h` - Split horizontally
 * `Ctrl` + `Shift` + `Alt` + `w` - Close terminal
 
+### Using a custom forecast data provider
+
+In the settings page you may set your own data provider for the forecast. The JSON should look like [this file]().
+
 ## Misc
 
 * [Introductory blog post](http://krasimirtsonev.com/blog/article/meet-evala-your-terminal-in-the-browser-extension)
